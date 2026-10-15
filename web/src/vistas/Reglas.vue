@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { CircleCheck, CircleX, Plus, Search, X } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { hora, NOMBRE_TABLA, TABLAS } from '@/formato'
+import { hora, NOMBRE_DIMENSION, NOMBRE_TABLA, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 
 type Regla = {
@@ -21,19 +22,23 @@ type Regla = {
 
 const { datos, cargando, error, recargar } = usarCarga(() => api<Regla[]>('/api/v1/reglas'))
 const filtro = ref('')
+const filtroTabla = ref('')
 const reglas = computed(() =>
-  (datos.value ?? []).filter((r) => !filtro.value || `${r.id} ${r.tabla} ${r.dim} ${r.tipo}`.toLowerCase().includes(filtro.value.toLowerCase())),
+  (datos.value ?? []).filter(
+    (r) =>
+      (!filtroTabla.value || r.tabla === filtroTabla.value || (filtroTabla.value === '*' && r.tabla === '*')) &&
+      (!filtro.value || `${r.id} ${r.tabla} ${r.dim} ${r.tipo}`.toLowerCase().includes(filtro.value.toLowerCase())),
+  ),
 )
-const mensaje = ref<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+const mensaje = ref<{ tipo: 'bien' | 'error'; texto: string } | null>(null)
 const guardando = ref<string | null>(null)
 
 async function cambiar(regla: Regla, cambios: Record<string, unknown>) {
   guardando.value = regla.id
   mensaje.value = null
   try {
-    const nueva = await api<Regla>(`/api/v1/reglas/${regla.id}`, { metodo: 'PATCH', cuerpo: cambios })
-    Object.assign(regla, nueva)
-    mensaje.value = { tipo: 'ok', texto: `${regla.id} guardada. El cambio se aplica en la próxima corrida.` }
+    Object.assign(regla, await api<Regla>(`/api/v1/reglas/${regla.id}`, { metodo: 'PATCH', cuerpo: cambios }))
+    mensaje.value = { tipo: 'bien', texto: `${regla.id} guardada. El cambio se aplica en la próxima corrida.` }
   } catch (e) {
     mensaje.value = { tipo: 'error', texto: `${regla.id}: ${e instanceof Error ? e.message : e}` }
     await recargar()
@@ -44,7 +49,6 @@ async function cambiar(regla: Regla, cambios: Record<string, unknown>) {
 
 // Nueva regla
 const TIPOS = ['no_nulo', 'al_menos_uno', 'unico', 'regex', 'dominio', 'expresion', 'referencia', 'frescura', 'variacion_volumen', 'minimo_filas']
-const DIMENSIONES = ['completitud', 'unicidad', 'validez', 'consistencia', 'integridad', 'oportunidad', 'volumetria']
 const creando = ref(false)
 const nueva = reactive({ id: '', tabla: 'poliza', dim: 'validez', tipo: 'expresion', sev: 'MEDIA', umbral: 99, campo: '', campos: '', patron: '', valores: '', filtro: '', cumple: '', ref: '', descripcion: '' })
 const errorNueva = ref<string | null>(null)
@@ -58,7 +62,7 @@ async function crear() {
   try {
     await api('/api/v1/reglas', { metodo: 'POST', cuerpo })
     creando.value = false
-    mensaje.value = { tipo: 'ok', texto: `${cuerpo.id} creada: su SQL se validó contra el último corte.` }
+    mensaje.value = { tipo: 'bien', texto: `${cuerpo.id} creada: su SQL compiló contra el último corte.` }
     await recargar()
   } catch (e) {
     errorNueva.value = e instanceof Error ? e.message : String(e)
@@ -80,27 +84,27 @@ const necesita = (campo: string) =>
     <div class="encabezado">
       <div>
         <h1>Reglas</h1>
-        <p class="muted">
-          Catálogo de reglas de calidad. Se editan sin tocar código; antes de guardar, la API valida la regla y compila su
-          SQL contra el último corte (HU-03).
-        </p>
+        <p>El catálogo de calidad, editable sin tocar código. Antes de guardar, la API valida la regla y compila su SQL contra el último corte (HU-03).</p>
       </div>
-      <div class="fila">
-        <input v-model="filtro" type="search" placeholder="Filtrar reglas…" aria-label="Filtrar reglas" />
-        <button type="button" class="primario" @click="creando = !creando">{{ creando ? 'Cancelar' : 'Nueva regla' }}</button>
-      </div>
+      <button type="button" class="primario" @click="creando = !creando">
+        <component :is="creando ? X : Plus" :size="16" /> {{ creando ? 'Cancelar' : 'Nueva regla' }}
+      </button>
     </div>
 
-    <p v-if="mensaje" class="aviso" :class="{ error: mensaje.tipo === 'error' }" role="status">{{ mensaje.texto }}</p>
+    <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" role="status">
+      <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
+    </p>
 
-    <section v-if="creando" class="tarjeta pila">
+    <section v-if="creando" class="panel pila">
       <h2>Nueva regla</h2>
       <div class="formulario">
         <label class="campo">Id (ABC-DEF-01) <input v-model="nueva.id" placeholder="POL-VAL-09" /></label>
         <label class="campo">Tabla
           <select v-model="nueva.tabla"><option v-for="t in TABLAS" :key="t" :value="t">{{ NOMBRE_TABLA[t] }}</option></select>
         </label>
-        <label class="campo">Dimensión <select v-model="nueva.dim"><option v-for="d in DIMENSIONES" :key="d">{{ d }}</option></select></label>
+        <label class="campo">Dimensión
+          <select v-model="nueva.dim"><option v-for="(n, d) in NOMBRE_DIMENSION" :key="d" :value="d">{{ n }}</option></select>
+        </label>
         <label class="campo">Tipo <select v-model="nueva.tipo"><option v-for="t in TIPOS" :key="t">{{ t }}</option></select></label>
         <label class="campo">Severidad <select v-model="nueva.sev"><option>CRITICA</option><option>ALTA</option><option>MEDIA</option></select></label>
         <label class="campo">Umbral (%) <input v-model.number="nueva.umbral" type="number" min="0" max="100" step="0.5" /></label>
@@ -113,41 +117,56 @@ const necesita = (campo: string) =>
       <label v-if="necesita('cumple')" class="campo">Condición que debe cumplir cada fila (SQL) <input v-model="nueva.cumple" class="mono" placeholder="prima_total >= prima_neta" /></label>
       <label class="campo">Filtro del universo (SQL, opcional) <input v-model="nueva.filtro" class="mono" placeholder="estado = 'VIGENTE'" /></label>
       <label class="campo">Descripción <input v-model="nueva.descripcion" /></label>
-      <p v-if="errorNueva" class="aviso error">{{ errorNueva }}</p>
+      <p v-if="errorNueva" class="aviso-caja error"><CircleX :size="17" />{{ errorNueva }}</p>
       <div><button type="button" class="primario" @click="crear">Validar y crear</button></div>
     </section>
 
+    <div class="fila">
+      <div class="segmentos" role="group" aria-label="Tabla">
+        <button type="button" :class="{ activo: !filtroTabla }" @click="filtroTabla = ''">Todas</button>
+        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: filtroTabla === t }" @click="filtroTabla = t">{{ NOMBRE_TABLA[t] }}</button>
+        <button type="button" :class="{ activo: filtroTabla === '*' }" @click="filtroTabla = '*'">Transversales</button>
+      </div>
+      <label class="buscar"><Search :size="15" /><input v-model="filtro" type="search" placeholder="Buscar regla" aria-label="Buscar regla" /></label>
+    </div>
+
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
-      <section class="tarjeta tabla-envoltura">
-        <table>
-          <thead>
-            <tr><th>Regla</th><th>Tabla</th><th>Dimensión</th><th>Tipo</th><th>Severidad</th><th>Umbral</th><th>Activa</th><th>Último cambio</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in reglas" :key="r.id" :class="{ inactiva: r.activa === false }">
-              <td class="mono">{{ r.id }}</td>
-              <td>{{ r.tabla === '*' ? 'Todas' : NOMBRE_TABLA[r.tabla] }}</td>
-              <td class="capital">{{ r.dim }}</td>
-              <td class="mono">{{ r.tipo }}</td>
-              <td>
-                <select :value="r.sev" :disabled="guardando === r.id" aria-label="Severidad" @change="cambiar(r, { sev: ($event.target as HTMLSelectElement).value })">
-                  <option>CRITICA</option><option>ALTA</option><option>MEDIA</option>
-                </select>
-              </td>
-              <td>
-                <input
-                  type="number" min="0" max="100" step="0.5" class="umbral" :value="r.umbral" :disabled="guardando === r.id" aria-label="Umbral"
-                  @change="cambiar(r, { umbral: Number(($event.target as HTMLInputElement).value) })"
-                />
-              </td>
-              <td>
-                <input type="checkbox" :checked="r.activa !== false" :disabled="guardando === r.id" aria-label="Activa"
-                  @change="cambiar(r, { activa: ($event.target as HTMLInputElement).checked })" />
-              </td>
-              <td class="muted pequeno">{{ r.actualizado_por }} <br />{{ hora(r.actualizado_en) }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <section class="panel lista">
+        <div class="tabla-envoltura">
+          <table>
+            <thead>
+              <tr><th>Activa</th><th>Regla</th><th>Tabla</th><th>Dimensión</th><th>Tipo</th><th>Severidad</th><th>Umbral</th><th>Último cambio</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in reglas" :key="r.id" :class="{ inactiva: r.activa === false }">
+                <td>
+                  <label class="interruptor" :title="r.activa === false ? 'Activar' : 'Desactivar'">
+                    <input type="checkbox" :checked="r.activa !== false" :disabled="guardando === r.id" :aria-label="`Activar ${r.id}`"
+                      @change="cambiar(r, { activa: ($event.target as HTMLInputElement).checked })" />
+                    <span />
+                  </label>
+                </td>
+                <td>
+                  <strong>{{ r.id }}</strong>
+                  <p v-if="r.descripcion" class="tenue pequeno">{{ r.descripcion }}</p>
+                </td>
+                <td>{{ r.tabla === '*' ? 'Todas' : NOMBRE_TABLA[r.tabla] }}</td>
+                <td>{{ NOMBRE_DIMENSION[r.dim] }}</td>
+                <td><span class="chip">{{ r.tipo }}</span></td>
+                <td>
+                  <select :value="r.sev" :disabled="guardando === r.id" aria-label="Severidad" @change="cambiar(r, { sev: ($event.target as HTMLSelectElement).value })">
+                    <option>CRITICA</option><option>ALTA</option><option>MEDIA</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="number" min="0" max="100" step="0.5" class="umbral" :value="r.umbral" :disabled="guardando === r.id" aria-label="Umbral"
+                    @change="cambiar(r, { umbral: Number(($event.target as HTMLInputElement).value) })" />
+                </td>
+                <td class="tenue pequeno">{{ r.actualizado_por }}<br />{{ hora(r.actualizado_en) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </BloqueCarga>
   </div>
@@ -155,8 +174,17 @@ const necesita = (campo: string) =>
 
 <style scoped>
 .formulario { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.umbral { width: 80px; }
-.capital { text-transform: capitalize; }
-.inactiva td { opacity: 0.5; }
+.buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--linea-fuerte); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
+.buscar input { border: 0; background: transparent; padding: 7px 0; outline: none; }
+.lista { padding: 6px 8px; }
+.umbral { width: 84px; }
+.inactiva td:not(:first-child) { opacity: 0.45; }
 .pequeno { font-size: 12px; }
+.interruptor { position: relative; display: inline-block; width: 38px; height: 22px; }
+.interruptor input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.interruptor span { position: absolute; inset: 0; border-radius: 999px; background: var(--linea-fuerte); transition: background 0.15s; pointer-events: none; }
+.interruptor span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
+.interruptor input:checked + span { background: var(--bien); }
+.interruptor input:checked + span::after { transform: translateX(16px); }
+.interruptor input:focus-visible + span { outline: 2px solid var(--marca); outline-offset: 2px; }
 </style>

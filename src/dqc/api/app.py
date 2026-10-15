@@ -236,7 +236,18 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
 
     @app.get("/api/v1/cortes")
     def cortes(_: Usuario = Depends(lector)):
-        return [{"fecha_corte": c, "id_ejecucion": e["id_ejecucion"], "terminada_en": e["terminada_en"]} for c, e in ultimas().items()]
+        """Cortes evaluados con su score global y cuántas tablas quedaron sin certificar."""
+        resumen = vistas.resumen(ultimas(), s.fuente.resultados(), s.fuente.certificaciones())
+        return [
+            {
+                "fecha_corte": c["fecha_corte"],
+                "id_ejecucion": c["id_ejecucion"],
+                "terminada_en": c["terminada_en"],
+                "global": c["global"],
+                "no_certificadas": sum(e == "NO_CERTIFICADO" for e in c["certificacion"].values()),
+            }
+            for c in resumen["cortes"]
+        ]
 
     @app.get("/api/v1/resumen")
     def resumen(_: Usuario = Depends(lector)):

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { Fingerprint, Lock, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
+import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
@@ -46,6 +48,7 @@ const HALLAZGO: Record<string, string> = {
   COLUMNA_SIN_CLASIFICAR: 'Columna sin clasificación DAC',
 }
 const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
+const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b) => a + b, 0) || 1
 </script>
 
 <template>
@@ -53,27 +56,27 @@ const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
     <div class="encabezado">
       <div>
         <h1>Certificación</h1>
-        <p class="muted">
-          Veredicto del Quality &amp; Privacy Gate por tabla: calidad en tres niveles, privacidad y trazabilidad
-          (HU-04, HU-07, HU-12). Una regla CRÍTICA o ALTA en FAIL, o PII en claro, impide certificar.
+        <p>
+          El Quality &amp; Privacy Gate sella cada tabla: calidad en tres niveles, privacidad y trazabilidad (HU-04, HU-07,
+          HU-12). Una regla CRÍTICA o ALTA en FAIL, o PII en texto claro, impide certificar y publicar.
         </p>
       </div>
     </div>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="datos">
-        <section class="tarjeta pila">
-          <h2>Historia de certificación</h2>
+        <section class="panel pila">
+          <h2>Historia de los sellos</h2>
           <div class="tabla-envoltura">
-            <table>
+            <table class="historia">
               <thead>
-                <tr><th>Tabla</th><th v-for="c in Object.keys(datos.historia)" :key="c">{{ nombreCorte(c) }}</th></tr>
+                <tr><th>Tabla</th><th v-for="c in Object.keys(datos.historia)" :key="c" class="centro" :class="{ actual: c === datos.fecha_corte }">{{ nombreCorte(c) }}</th></tr>
               </thead>
               <tbody>
                 <tr v-for="t in TABLAS" :key="t">
-                  <td><strong>{{ NOMBRE_TABLA[t] }}</strong></td>
-                  <td v-for="(estados, c) in datos.historia" :key="c" :class="{ actual: c === datos.fecha_corte }">
-                    <EstadoChip :estado="estados[t] ?? 'SIN_DATOS'" />
+                  <th scope="row">{{ NOMBRE_TABLA[t] }}</th>
+                  <td v-for="(estados, c) in datos.historia" :key="c" class="centro" :class="{ actual: c === datos.fecha_corte }">
+                    <EstadoChip :estado="estados[t] ?? 'SIN_DATOS'" compacto />
                   </td>
                 </tr>
               </tbody>
@@ -81,88 +84,100 @@ const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
           </div>
         </section>
 
-        <div class="grilla-tarjetas">
-          <article v-for="t in datos.tablas" :key="t.tabla" class="tarjeta pila tarjeta-tabla" :class="t.estado">
-            <div class="fila entre">
-              <div>
-                <h2>{{ NOMBRE_TABLA[t.tabla] }}</h2>
-                <span class="muted">Dominio {{ t.dominio }} · {{ nombreCorte(datos.fecha_corte) }}</span>
+        <article v-for="t in datos.tablas" :key="t.tabla" class="panel ficha" :class="t.estado">
+          <Sello :estado="t.estado" :tabla="NOMBRE_TABLA[t.tabla]" :detalle="`Dominio ${t.dominio}`" :tamano="150" />
+
+          <section class="bloque">
+            <h3 class="fila"><component :is="t.calidad.ok ? ShieldCheck : ShieldAlert" :size="18" :class="t.calidad.ok ? 'bien' : 'critico'" /> Calidad</h3>
+            <p class="secundario"><strong class="num">{{ pct(t.calidad.pct_pass) }}</strong> de las reglas en PASS</p>
+            <div v-for="n in ['N1', 'N2', 'N3']" :key="n" class="nivel" :title="`${n}: ${niveles(t, n).OK ?? 0} PASS, ${niveles(t, n).ALERTA ?? 0} alerta, ${niveles(t, n).FALLA ?? 0} FAIL`">
+              <strong>{{ n }}</strong>
+              <div class="pila-barra">
+                <span class="seg bien" :style="{ flex: niveles(t, n).OK ?? 0 }" />
+                <span class="seg aviso" :style="{ flex: niveles(t, n).ALERTA ?? 0 }" />
+                <span class="seg critico" :style="{ flex: niveles(t, n).FALLA ?? 0 }" />
+                <span class="seg neutro" :style="{ flex: niveles(t, n).SIN_DATOS ?? 0 }" />
               </div>
-              <EstadoChip :estado="t.estado" />
+              <span class="tenue num">{{ niveles(t, n).OK ?? 0 }}/{{ total(t, n) }}</span>
             </div>
+            <p v-if="t.calidad.reglas_bloqueantes.length" class="aviso-caja error">
+              <ShieldAlert :size="17" /><span>Bloquean: <strong>{{ t.calidad.reglas_bloqueantes.join(', ') }}</strong></span>
+            </p>
+            <p v-if="t.calidad.reglas_con_observacion.length" class="tenue pequeno">
+              Con observación: {{ t.calidad.reglas_con_observacion.join(', ') }}
+            </p>
+          </section>
 
-            <section class="bloque">
-              <h3>Calidad <span :class="t.calidad.ok ? 'ok' : 'falla'">{{ t.calidad.ok ? '✓' : '✕' }}</span></h3>
-              <p class="muted">{{ pct(t.calidad.pct_pass) }} de las reglas en PASS</p>
-              <div class="niveles">
-                <div v-for="n in ['N1', 'N2', 'N3']" :key="n" class="nivel">
-                  <strong>{{ n }}</strong>
-                  <span class="chip ok">{{ niveles(t, n).OK ?? 0 }}</span>
-                  <span v-if="niveles(t, n).ALERTA" class="chip alerta">{{ niveles(t, n).ALERTA }}</span>
-                  <span v-if="niveles(t, n).FALLA" class="chip falla">{{ niveles(t, n).FALLA }}</span>
-                </div>
-              </div>
-              <p v-if="t.calidad.reglas_bloqueantes.length" class="aviso error">
-                Bloquean: <span class="mono">{{ t.calidad.reglas_bloqueantes.join(', ') }}</span>
-              </p>
-              <p v-if="t.calidad.reglas_con_observacion.length" class="muted pequeno">
-                Observaciones: <span class="mono">{{ t.calidad.reglas_con_observacion.join(', ') }}</span>
-              </p>
-            </section>
+          <section class="bloque">
+            <h3 class="fila"><component :is="t.privacidad.ok ? Lock : ShieldAlert" :size="18" :class="t.privacidad.ok ? 'sello-c' : 'critico'" /> Privacidad</h3>
+            <div v-if="t.privacidad.campos_cifrados.length" class="fila chips">
+              <span v-for="c in t.privacidad.campos_cifrados" :key="c.campo" class="chip" :class="c.protegido ? 'sello' : 'critico'">
+                <Lock :size="12" /> {{ c.campo }}
+              </span>
+            </div>
+            <p v-else class="tenue pequeno">Sin campos de PII que cifrar.</p>
+            <p v-for="h in t.privacidad.hallazgos" :key="h.tipo + h.columna" class="aviso-caja" :class="{ error: h.bloqueante }">
+              <component :is="h.bloqueante ? ShieldAlert : TriangleAlert" :size="17" />
+              <span>
+                {{ HALLAZGO[h.tipo] ?? h.tipo }} en <strong>{{ h.columna }}</strong>
+                <template v-if="h.tipo === 'PII_EN_CLARO'"> · {{ num(h.registros) }} registros</template>
+                <template v-if="!h.bloqueante"> (observación)</template>
+              </span>
+            </p>
+          </section>
 
-            <section class="bloque">
-              <h3>Privacidad <span :class="t.privacidad.ok ? 'ok' : 'falla'">{{ t.privacidad.ok ? '✓' : '✕' }}</span></h3>
-              <p v-if="t.privacidad.campos_cifrados.length" class="pequeno">
-                <span v-for="c in t.privacidad.campos_cifrados" :key="c.campo" class="chip" :class="c.protegido ? 'cifrado' : 'falla'">
-                  {{ c.protegido ? '🔒' : '⚠' }} {{ c.campo }}
-                </span>
-              </p>
-              <p v-else class="muted pequeno">Sin campos que cifrar.</p>
-              <ul v-if="t.privacidad.hallazgos.length" class="hallazgos">
-                <li v-for="h in t.privacidad.hallazgos" :key="h.tipo + h.columna" :class="h.bloqueante ? 'falla' : 'alerta'">
-                  {{ HALLAZGO[h.tipo] ?? h.tipo }} en <span class="mono">{{ h.columna }}</span>
-                  <template v-if="h.tipo === 'PII_EN_CLARO'"> · {{ num(h.registros) }} registros</template>
-                  <template v-if="!h.bloqueante"> (observación)</template>
-                </li>
-              </ul>
-            </section>
-
-            <section class="bloque">
-              <h3>Trazabilidad</h3>
-              <dl class="sello">
-                <dt>Corrida</dt><dd class="mono">{{ t.trazabilidad.id_ejecucion.slice(0, 12) }}</dd>
-                <dt>Motor · reglas</dt><dd class="mono">v{{ t.trazabilidad.version_motor }} · {{ t.trazabilidad.version_reglas }}</dd>
-                <dt>Cobertura</dt><dd class="num">{{ pct(t.trazabilidad.cobertura) }} de reglas con datos</dd>
-                <dt>Certificado</dt><dd>{{ hora(t.trazabilidad.certificado_en) }}</dd>
-                <dt>BUSINESS</dt>
-                <dd>
-                  <span v-if="t.trazabilidad.publicado" class="mono">{{ t.trazabilidad.objeto_business }}</span>
-                  <span v-else class="falla">No publicado</span>
-                </dd>
-              </dl>
-              <RouterLink :to="`/linaje/${t.tabla}`">Ver linaje →</RouterLink>
-            </section>
-          </article>
-        </div>
+          <section class="bloque">
+            <h3 class="fila"><Fingerprint :size="18" class="marca-c" /> Trazabilidad</h3>
+            <dl class="sello-datos">
+              <dt>Corrida</dt><dd class="mono">{{ t.trazabilidad.id_ejecucion.slice(0, 12) }}</dd>
+              <dt>Motor · reglas</dt><dd class="mono">v{{ t.trazabilidad.version_motor }} · {{ t.trazabilidad.version_reglas }}</dd>
+              <dt>Cobertura</dt><dd>{{ pct(t.trazabilidad.cobertura) }} de reglas con datos</dd>
+              <dt>Sellado</dt><dd>{{ hora(t.trazabilidad.certificado_en) }}</dd>
+              <dt>BUSINESS</dt>
+              <dd>
+                <span v-if="t.trazabilidad.publicado" class="chip bien"><Stamp :size="12" /> {{ t.trazabilidad.objeto_business }}</span>
+                <span v-else class="chip critico">Retenido por el Gate</span>
+              </dd>
+            </dl>
+            <RouterLink :to="`/linaje/${t.tabla}`" class="fila enlace"><Workflow :size="16" /> Ver su linaje</RouterLink>
+          </section>
+        </article>
       </template>
     </BloqueCarga>
   </div>
 </template>
 
 <style scoped>
-.actual { background: var(--accent-soft); }
-.tarjeta-tabla { border-top: 4px solid var(--alerta); }
-.tarjeta-tabla.CERTIFICADO { border-top-color: var(--ok); }
-.tarjeta-tabla.NO_CERTIFICADO { border-top-color: var(--falla); }
-.bloque { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
-.niveles { display: flex; gap: 14px; flex-wrap: wrap; }
-.nivel { display: flex; gap: 4px; align-items: center; }
-.ok { color: var(--ok); }
-.falla { color: var(--falla); }
-.alerta { color: var(--alerta); }
-.pequeno { font-size: 12.5px; display: flex; gap: 4px; flex-wrap: wrap; }
-.hallazgos { margin: 0; padding-left: 18px; font-size: 13px; }
-.sello { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
-.sello dt { color: var(--muted); }
-.sello dd { margin: 0; }
+.historia th[scope="row"] { color: var(--tinta); font-size: 14px; }
+.historia .actual { background: var(--marca-suave); }
+.historia thead .actual { color: var(--marca); }
+.ficha { display: grid; grid-template-columns: 180px repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; border-left: 5px solid var(--aviso); }
+.ficha.CERTIFICADO { border-left-color: var(--bien); }
+.ficha.NO_CERTIFICADO { border-left-color: var(--critico); }
+.bloque { display: grid; gap: 9px; align-content: start; }
+.bloque h3 { gap: 7px; }
+.bien { color: var(--bien); }
+.critico { color: var(--critico); }
+.sello-c { color: var(--sello); }
+.marca-c { color: var(--marca); }
+.nivel { display: grid; grid-template-columns: 28px 1fr 42px; gap: 8px; align-items: center; font-size: 13px; }
+.pila-barra { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--superficie-3); }
+.seg.bien { background: var(--bien); }
+.seg.aviso { background: var(--aviso); }
+.seg.critico { background: var(--critico); }
+.seg.neutro { background: var(--linea-fuerte); }
+.chips { gap: 5px; }
+.pequeno { font-size: 12.5px; }
+.sello-datos { display: grid; grid-template-columns: max-content 1fr; gap: 5px 12px; margin: 0; font-size: 13px; }
+.sello-datos dt { color: var(--tenue); font-weight: 600; }
+.sello-datos dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.enlace { gap: 6px; font-weight: 700; font-size: 13.5px; }
+@media (max-width: 1100px) {
+  .ficha { grid-template-columns: 1fr 1fr; }
+  .ficha :deep(.sello) { grid-row: span 2; }
+}
+@media (max-width: 680px) {
+  .ficha { grid-template-columns: 1fr; justify-items: stretch; }
+  .ficha :deep(.sello) { justify-self: center; }
+}
 </style>

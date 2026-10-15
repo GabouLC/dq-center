@@ -2,7 +2,13 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/servicios/api'
 
-type Corte = { fecha_corte: string; id_ejecucion: string; terminada_en: string }
+export type Corte = {
+  fecha_corte: string
+  id_ejecucion: string
+  terminada_en: string
+  global: number | null
+  no_certificadas: number
+}
 
 /** Cortes con evaluación y el corte elegido, compartido por todos los módulos. */
 export const useCortes = defineStore('cortes', () => {

@@ -1,29 +1,27 @@
 <script setup lang="ts">
+import { CircleCheck, CircleDashed, CircleX, TriangleAlert } from 'lucide-vue-next'
 import { computed } from 'vue'
 
+/** Estado con ícono + texto: el color nunca va solo (dataviz: status palette). */
 const props = defineProps<{ estado: string; compacto?: boolean }>()
 
-// Versión corta para matrices con muchas columnas; el nombre completo va en el título.
-const CORTO: Record<string, string> = {
-  CERTIFICADO: '✓',
-  CERTIFICADO_CON_OBSERVACIONES: 'Obs.',
-  NO_CERTIFICADO: '✕ No',
+const ESTADOS: Record<string, { tono: string; texto: string; corto: string; icono: unknown }> = {
+  OK: { tono: 'bien', texto: 'PASS', corto: 'PASS', icono: CircleCheck },
+  ALERTA: { tono: 'aviso', texto: 'Alerta', corto: 'Alerta', icono: TriangleAlert },
+  FALLA: { tono: 'critico', texto: 'FAIL', corto: 'FAIL', icono: CircleX },
+  SIN_DATOS: { tono: '', texto: 'Sin datos', corto: 'S/d', icono: CircleDashed },
+  CERTIFICADO: { tono: 'bien', texto: 'Certificada', corto: 'Cert.', icono: CircleCheck },
+  CERTIFICADO_CON_OBSERVACIONES: { tono: 'aviso', texto: 'Con observaciones', corto: 'Obs.', icono: TriangleAlert },
+  NO_CERTIFICADO: { tono: 'critico', texto: 'No certificada', corto: 'No cert.', icono: CircleX },
+  EXITOSA: { tono: 'bien', texto: 'Exitosa', corto: 'OK', icono: CircleCheck },
+  RECHAZADA: { tono: 'critico', texto: 'Rechazada', corto: 'Rech.', icono: CircleX },
 }
-
-const ESTADOS: Record<string, [string, string]> = {
-  OK: ['ok', 'PASS'],
-  ALERTA: ['alerta', 'Alerta'],
-  FALLA: ['falla', 'FAIL'],
-  SIN_DATOS: ['', 'Sin datos'],
-  CERTIFICADO: ['ok', 'Certificada'],
-  CERTIFICADO_CON_OBSERVACIONES: ['alerta', 'Con observaciones'],
-  NO_CERTIFICADO: ['falla', 'No certificada'],
-  EXITOSA: ['ok', 'Exitosa'],
-  RECHAZADA: ['falla', 'Rechazada'],
-}
-const datos = computed(() => ESTADOS[props.estado] ?? ['', props.estado])
+const datos = computed(() => ESTADOS[props.estado] ?? { tono: '', texto: props.estado, corto: props.estado, icono: CircleDashed })
 </script>
 
 <template>
-  <span class="chip" :class="datos[0]" :title="datos[1]">{{ compacto ? (CORTO[estado] ?? datos[1]) : datos[1] }}</span>
+  <span class="chip" :class="datos.tono" :title="datos.texto">
+    <component :is="datos.icono" :size="13" :stroke-width="2.4" aria-hidden="true" />
+    {{ compacto ? datos.corto : datos.texto }}
+  </span>
 </template>
