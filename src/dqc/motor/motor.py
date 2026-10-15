@@ -11,7 +11,7 @@ from dqc.modelo import TABLAS_CORTE
 from dqc.motor.backends import Backend
 from dqc.motor.puntuacion import ResultadoRegla
 from dqc.motor.reglas import Regla, expandir
-from dqc.motor.sql import sql_regla
+from dqc.motor.sql import sql_muestra, sql_regla
 
 
 @dataclass
@@ -27,14 +27,15 @@ class Ejecucion:
 
 
 class Motor:
-    def __init__(self, backend: Backend, reglas: list[Regla], hilos: int = 1):
+    def __init__(self, backend: Backend, reglas: list[Regla], hilos: int = 1, muestras: int = 20):
         self.backend = backend
         self.reglas = [r for r in expandir(reglas) if r.activa]
         self.hilos = hilos
+        self.muestras = muestras
 
     def _evaluar_regla(self, regla: Regla, corte: date) -> ResultadoRegla:
         fila = self.backend.consultar(sql_regla(regla, corte))[0]
-        return ResultadoRegla(
+        resultado = ResultadoRegla(
             id_regla=regla.id,
             tabla=regla.tabla,
             dimension=regla.dim,
@@ -47,6 +48,12 @@ class Motor:
             cumplen=int(fila["cumplen"] or 0),
             fallidos=list(fila["fallidos"] or []),
         )
+        if resultado.fallidos and self.muestras and not regla.es_de_tabla:
+            llaves = resultado.fallidos[: self.muestras]
+            resultado.muestra = {
+                f["llave"]: f["detalle"] for f in self.backend.consultar(sql_muestra(regla, corte, llaves))
+            }
+        return resultado
 
     def ejecutar(self, corte: date, origen: str = "manual") -> Ejecucion:
         ejecucion = Ejecucion(

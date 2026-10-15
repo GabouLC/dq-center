@@ -1,5 +1,6 @@
 """Prueba de aceptación: el motor detecta exactamente los errores sembrados."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -60,6 +61,14 @@ def test_hay_reglas_en_ok_alerta_y_falla(ejecuciones):
 def test_variacion_de_volumen_sin_corte_anterior_es_sin_datos(ejecuciones):
     primeras = [r for r in ejecuciones[CORTES[0]].resultados if r.tipo == "variacion_volumen"]
     assert {r.estado for r in primeras} == {"SIN_DATOS"}
+
+
+def test_muestras_traen_la_fila_completa_de_los_fallidos(ejecuciones):
+    r = next(r for r in ejecuciones[JULIO].resultados if r.id_regla == "PER-COM-01")
+    assert set(r.muestra) == set(r.fallidos[:20])
+    fila = json.loads(r.muestra[r.fallidos[0]])
+    assert fila["nro_documento"] is None
+    assert str(fila["id_persona"]) == r.fallidos[0]
 
 
 def test_estructura_detecta_canal_venta_en_septiembre(ejecuciones):

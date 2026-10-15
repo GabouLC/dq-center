@@ -139,6 +139,17 @@ def _sql_tabla(r: Regla, corte: date) -> str:
     return _resultado(universo, cargas)
 
 
+def sql_muestra(r: Regla, corte: date, llaves: list[str]) -> str:
+    """Filas completas (en JSON) de algunas llaves fallidas de una regla de fila."""
+    llave = LLAVES[r.tabla]
+    return (
+        f"SELECT CAST(t.{llave} AS STRING) AS llave, TO_JSON_STRING(t) AS detalle\n"
+        f"FROM {r.tabla} AS t\n"
+        f"WHERE t.fecha_corte = {fecha(corte)}\n"
+        f"  AND CAST(t.{llave} AS STRING) IN ({', '.join(literal(v) for v in llaves)})"
+    )
+
+
 def sql_regla(r: Regla, corte: date) -> str:
     """SQL (BigQuery) que evalúa una regla ya expandida en un corte."""
     if r.tabla == "*":

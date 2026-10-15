@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from dqc.modelo import PESO_SEVERIDAD
@@ -38,6 +38,8 @@ class ResultadoRegla:
     universo: int
     cumplen: int
     fallidos: list[str]
+    # llave -> fila completa en JSON, para las primeras llaves fallidas
+    muestra: dict[str, str] = field(default_factory=dict)
 
     @property
     def cumplimiento(self) -> float | None:
