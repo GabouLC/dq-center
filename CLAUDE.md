@@ -25,10 +25,16 @@ Datos 100 % sintéticos.
 ## Comandos
 
 ```bash
-.venv/Scripts/python -m dqc.datagen                  # genera data/landing y el manifiesto
-.venv/Scripts/python -m dqc.pipeline                 # flujo completo en DuckDB + verificación
-.venv/Scripts/python -m pytest -q                    # pruebas (sin GCP)
+.venv/Scripts/python -m dqc.datagen                       # genera data/landing y el manifiesto
+.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb  # flujo completo en DuckDB + verificación
+.venv/Scripts/python -m dqc.api                           # API local (usuarios demo)
+cd web && npm run dev                                     # portal en http://localhost:5173
+.venv/Scripts/python -m pytest -q                         # pruebas (sin GCP)
 DQC_PROYECTO=dq-center-gabou .venv/Scripts/python -m dqc.gcp --sandbox simular   # en BigQuery
 ```
+
+- `src/dqc/api`: API FastAPI (solo lee las vistas `dq_business.v_calidad_*`).
+- `web/`: portal Vue 3 + TypeScript + Pinia.
+- Capturas del portal: Playwright está en el venv (no es dependencia del proyecto).
 
 Sin facturación en GCP: usar `--sandbox` (ver ADR 0008).
