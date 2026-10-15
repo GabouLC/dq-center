@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dqc"
+version = "0.1.0"
+description = "Generador de datos, motor de reglas y API de dq-center"
+requires-python = ">=3.12"
+dependencies = ["pyyaml>=6.0", "pandas>=2.2", "pyarrow>=17"]
+
+[project.optional-dependencies]
+# Faker fijo: con otra versión la misma semilla puede generar otros nombres.
+datagen = ["faker==40.43.0", "python-dateutil>=2.9"]
+local = ["duckdb>=1.1", "sqlglot>=26"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
