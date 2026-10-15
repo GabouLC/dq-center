@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Entorno y credenciales
+.env
+.env.*
+!.env.example
+*-key.json
+credentials*.json
+service-account*.json
+
+# Datos generados localmente
+data/out/
+
+# IDE y sistema
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,54 @@
+# Catálogo inicial de reglas de calidad de dq-center.
+#
+# tipo: no_nulo | al_menos_uno | unico | regex | dominio | expresion | referencia
+#       | frescura | variacion_volumen | minimo_filas
+# filtro: qué filas entran al universo de la regla (opcional).
+# cumple: condición SQL por fila; si da NULL cuenta como NO cumple.
+# join: cruza con otra tabla del MISMO corte por la llave (alias t = tabla, j = join);
+#       el lado del join se deduplica por la llave para no multiplicar filas.
+# referencia: el valor debe existir en ref (mismo corte si es tabla por corte);
+#       ref_filtro restringe qué filas de ref valen.
+# tabla '*': se expande a una regla por cada tabla por corte (5).
+reglas:
+  # persona
+  - {id: PER-COM-01, tabla: persona, dim: completitud, tipo: no_nulo, campos: [nro_documento], umbral: 100, sev: CRITICA}
+  - {id: PER-COM-02, tabla: persona, dim: completitud, tipo: al_menos_uno, campos: [email, celular], umbral: 95, sev: MEDIA}
+  - {id: PER-UNI-01, tabla: persona, dim: unicidad, tipo: unico, campos: [tipo_documento, nro_documento], umbral: 100, sev: CRITICA}
+  - {id: PER-VAL-01, tabla: persona, dim: validez, tipo: regex, campo: nro_documento, patron: '^[0-9]{8}$', filtro: "tipo_documento = 'DNI'", umbral: 99.5, sev: ALTA}
+  - {id: PER-VAL-02, tabla: persona, dim: validez, tipo: regex, campo: nro_documento, patron: '^(10|15|17|20)[0-9]{9}$', filtro: "tipo_documento = 'RUC'", umbral: 99.5, sev: ALTA}
+  - {id: PER-VAL-03, tabla: persona, dim: validez, tipo: regex, campo: celular, patron: '^9[0-9]{8}$', filtro: "celular IS NOT NULL", umbral: 97, sev: MEDIA}
+  - {id: PER-VAL-04, tabla: persona, dim: validez, tipo: expresion, cumple: "fecha_nacimiento BETWEEN '1915-01-01' AND fecha_corte", filtro: "tipo_documento != 'RUC'", umbral: 99, sev: MEDIA}
+  - {id: PER-VAL-05, tabla: persona, dim: validez, tipo: regex, campo: email, patron: '^[^@\s]+@[^@\s]+\.[a-z]{2,}$', filtro: "email IS NOT NULL", umbral: 97, sev: MEDIA}
+  - {id: PER-INT-01, tabla: persona, dim: integridad, tipo: referencia, campo: ubigeo, ref: ref_ubigeo.ubigeo, filtro: "ubigeo IS NOT NULL", umbral: 99, sev: MEDIA}
+  # poliza
+  - {id: POL-COM-01, tabla: poliza, dim: completitud, tipo: no_nulo, campos: [cod_producto, id_contratante, fecha_inicio_vigencia, fecha_fin_vigencia], umbral: 100, sev: CRITICA}
+  - {id: POL-UNI-01, tabla: poliza, dim: unicidad, tipo: unico, campos: [nro_poliza], umbral: 100, sev: CRITICA}
+  - {id: POL-VAL-01, tabla: poliza, dim: validez, tipo: dominio, campo: estado, valores: [VIGENTE, ANULADA, VENCIDA, SUSPENDIDA], umbral: 100, sev: ALTA}
+  - {id: POL-VAL-02, tabla: poliza, dim: validez, tipo: dominio, campo: moneda, valores: [PEN, USD], umbral: 100, sev: ALTA}
+  - {id: POL-VAL-03, tabla: poliza, dim: validez, tipo: expresion, cumple: "prima_neta > 0 AND suma_asegurada > 0", umbral: 99.5, sev: ALTA}
+  - {id: POL-CON-01, tabla: poliza, dim: consistencia, tipo: expresion, cumple: "fecha_inicio_vigencia < fecha_fin_vigencia AND fecha_emision <= DATE_ADD(fecha_inicio_vigencia, INTERVAL 30 DAY)", umbral: 99.5, sev: ALTA}
+  - {id: POL-CON-02, tabla: poliza, dim: consistencia, tipo: expresion, cumple: "ABS(prima_total - ROUND(prima_neta * 1.03 * 1.18, 2)) <= 0.05", umbral: 99, sev: ALTA}
+  - {id: POL-CON-03, tabla: poliza, dim: consistencia, tipo: expresion, cumple: "fecha_corte BETWEEN fecha_inicio_vigencia AND fecha_fin_vigencia", filtro: "estado = 'VIGENTE'", umbral: 98, sev: ALTA}
+  - {id: POL-INT-01, tabla: poliza, dim: integridad, tipo: referencia, campo: id_contratante, ref: persona.id_persona, umbral: 100, sev: CRITICA}
+  - {id: POL-INT-02, tabla: poliza, dim: integridad, tipo: referencia, campo: cod_producto, ref: ref_producto.cod_producto, ref_filtro: "activo", umbral: 100, sev: ALTA}
+  # vehiculo
+  - {id: VEH-VAL-01, tabla: vehiculo, dim: validez, tipo: regex, campo: placa, patron: '^[A-Z0-9]{3}-[0-9]{3}$', umbral: 98, sev: MEDIA}
+  - {id: VEH-VAL-02, tabla: vehiculo, dim: validez, tipo: expresion, cumple: "anio_fabricacion BETWEEN 1980 AND EXTRACT(YEAR FROM fecha_corte) + 1", umbral: 99, sev: MEDIA}
+  - {id: VEH-VAL-03, tabla: vehiculo, dim: validez, tipo: regex, campo: nro_serie, patron: '^[A-HJ-NPR-Z0-9]{17}$', umbral: 98, sev: MEDIA}
+  - {id: VEH-UNI-01, tabla: vehiculo, dim: unicidad, tipo: unico, campos: [nro_serie], umbral: 99.5, sev: ALTA}
+  - {id: VEH-INT-01, tabla: vehiculo, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, ref_filtro: "cod_producto IN (SELECT cod_producto FROM ref_producto WHERE ramo IN ('VEHICULAR', 'SOAT'))", umbral: 100, sev: ALTA}
+  # siniestro
+  - {id: SIN-INT-01, tabla: siniestro, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, umbral: 100, sev: CRITICA}
+  - {id: SIN-VAL-01, tabla: siniestro, dim: validez, tipo: dominio, campo: estado, valores: [ABIERTO, EN_EVALUACION, PAGADO, RECHAZADO], umbral: 100, sev: ALTA}
+  - {id: SIN-CON-01, tabla: siniestro, dim: consistencia, tipo: expresion, join: {tabla: poliza, llave: id_poliza}, filtro: "j.id_poliza IS NOT NULL", cumple: "t.fecha_ocurrencia BETWEEN j.fecha_inicio_vigencia AND j.fecha_fin_vigencia", umbral: 99, sev: CRITICA}
+  - {id: SIN-CON-02, tabla: siniestro, dim: consistencia, tipo: expresion, cumple: "fecha_aviso >= fecha_ocurrencia", umbral: 99, sev: ALTA}
+  - {id: SIN-CON-03, tabla: siniestro, dim: consistencia, tipo: expresion, cumple: "COALESCE(monto_pagado, 0) <= monto_reclamado AND (estado != 'PAGADO' OR monto_pagado > 0)", umbral: 99, sev: ALTA}
+  # pago
+  - {id: PAG-INT-01, tabla: pago, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, umbral: 100, sev: ALTA}
+  - {id: PAG-UNI-01, tabla: pago, dim: unicidad, tipo: unico, campos: [id_poliza, nro_cuota], umbral: 100, sev: ALTA}
+  - {id: PAG-CON-01, tabla: pago, dim: consistencia, tipo: expresion, cumple: "(estado = 'PAGADO') = (fecha_pago IS NOT NULL)", umbral: 99.5, sev: ALTA}
+  - {id: PAG-CON-02, tabla: pago, dim: consistencia, tipo: expresion, cumple: "estado != 'PENDIENTE' OR fecha_vencimiento >= fecha_corte", umbral: 98, sev: MEDIA}
+  # transversales (se expanden a las 5 tablas por corte)
+  - {id: GEN-OPO-01, tabla: '*', dim: oportunidad, tipo: frescura, limite: "fecha_corte + 2 días, 09:00 America/Lima (según registro_cargas)", umbral: 100, sev: CRITICA}
+  - {id: GEN-VOL-01, tabla: '*', dim: volumetria, tipo: variacion_volumen, max_variacion_pct: 15, umbral: 100, sev: ALTA}
+  - {id: GEN-VOL-02, tabla: '*', dim: volumetria, tipo: minimo_filas, min: 100, umbral: 100, sev: CRITICA}
