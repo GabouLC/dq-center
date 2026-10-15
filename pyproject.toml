@@ -12,7 +12,7 @@ dependencies = ["pyyaml>=6.0", "pandas>=2.2", "pyarrow>=17", "sqlglot>=26", "tzd
 [project.optional-dependencies]
 # Faker fijo: con otra versión la misma semilla puede generar otros nombres.
 datagen = ["faker==40.43.0", "python-dateutil>=2.9"]
-local = ["duckdb>=1.1"]
+local = ["duckdb>=1.4", "cryptography>=42"]
 gcp = ["google-cloud-bigquery>=3.25", "google-cloud-firestore>=2.19"]
 dev = ["pytest>=8"]
 
