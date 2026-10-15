@@ -1,56 +1,22 @@
-"""Prueba de aceptación: el motor detecta exactamente los errores sembrados."""
+"""Motor de calidad sobre MASTER (HU-02, HU-03): estados, niveles, muestras y tendencia."""
 
 import json
-from pathlib import Path
-
-import pytest
 
 from dqc.datagen.generador import AGOSTO, JULIO, SEPTIEMBRE
-from dqc.datagen.salida import escribir_parquet
-from dqc.modelo import CORTES
-from dqc.motor.backends import BackendDuckDB
-from dqc.motor.motor import Motor, comparar_con_manifiesto
+from dqc.modelo import CORTES, NIVEL_POR_DIMENSION
 from dqc.motor.puntuacion import scores
-from dqc.motor.reglas import cargar_yaml, expandir
-
-CATALOGO = Path(__file__).parents[1] / "config" / "reglas_iniciales.yaml"
+from dqc.motor.reglas import expandir
 
 
-@pytest.fixture(scope="session")
-def datos(resultado, tmp_path_factory):
-    salida = tmp_path_factory.mktemp("datos")
-    escribir_parquet(resultado, salida)
-    return salida
-
-
-@pytest.fixture(scope="session")
-def ejecuciones(datos):
-    """Simula la historia: carga corte por corte y corre el motor después de cada carga."""
-    backend = BackendDuckDB()
-    backend.cargar_referencias(datos)
-    motor = Motor(backend, cargar_yaml(CATALOGO))
-    historia = []
-    for corte in CORTES:
-        backend.cargar_corte(datos, corte)
-        historia.append(motor.ejecutar(corte, origen="simulacion"))
-    return {e.fecha_corte: e for e in historia}
-
-
-def test_catalogo_tiene_36_reglas_y_48_expandidas():
-    reglas = cargar_yaml(CATALOGO)
+def test_catalogo_tiene_36_reglas_y_48_expandidas(reglas):
     assert len(reglas) == 36
     assert len(expandir(reglas)) == 48
 
 
-def test_motor_detecta_exactamente_el_manifiesto(ejecuciones, resultado):
-    faltantes, sobrantes = comparar_con_manifiesto(list(ejecuciones.values()), resultado.manifiesto)
-    assert not faltantes, f"{len(faltantes)} sembrados sin detectar, p. ej. {sorted(faltantes)[:5]}"
-    assert not sobrantes, f"{len(sobrantes)} fallidos no sembrados, p. ej. {sorted(sobrantes)[:5]}"
-
-
-def test_cada_corte_evalua_las_48_reglas(ejecuciones):
+def test_cada_corte_evalua_las_48_reglas_con_su_nivel(ejecuciones):
     for e in ejecuciones.values():
         assert len(e.resultados) == 48
+        assert all(r.nivel == NIVEL_POR_DIMENSION[r.dimension] for r in e.resultados)
 
 
 def test_hay_reglas_en_ok_alerta_y_falla(ejecuciones):
@@ -63,12 +29,12 @@ def test_variacion_de_volumen_sin_corte_anterior_es_sin_datos(ejecuciones):
     assert {r.estado for r in primeras} == {"SIN_DATOS"}
 
 
-def test_muestras_traen_la_fila_completa_de_los_fallidos(ejecuciones):
-    r = next(r for r in ejecuciones[JULIO].resultados if r.id_regla == "PER-COM-01")
+def test_muestras_traen_la_fila_sin_exponer_pii(ejecuciones):
+    r = next(r for r in ejecuciones[JULIO].resultados if r.id_regla == "PER-VAL-05")
     assert set(r.muestra) == set(r.fallidos[:20])
     fila = json.loads(r.muestra[r.fallidos[0]])
-    assert fila["nro_documento"] is None
     assert str(fila["id_persona"]) == r.fallidos[0]
+    assert "@" not in str(fila["email"])  # la muestra se lee de MASTER: el correo va cifrado
 
 
 def test_estructura_detecta_canal_venta_en_septiembre(ejecuciones):
@@ -84,3 +50,7 @@ def test_resumen_cae_en_julio_agosto_y_se_recupera_en_septiembre(ejecuciones):
     assert globales[AGOSTO] < globales[junio]
     assert globales[SEPTIEMBRE] > globales[AGOSTO]
     assert globales[SEPTIEMBRE] > globales[JULIO]
+
+
+def test_septiembre_no_tiene_reglas_en_falla(ejecuciones):
+    assert [r.id_regla for r in ejecuciones[SEPTIEMBRE].resultados if r.estado == "FALLA"] == []

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from dqc.gcp.firestore import cargar_contratos
 from dqc.modelo import ESQUEMAS, TABLAS_CORTE
 from dqc.motor.reglas import a_documento, cargar_yaml, desde_documento
+from dqc.pipeline.configuracion import cargar_contratos
 
 CONFIG = Path(__file__).parents[1] / "config"
 

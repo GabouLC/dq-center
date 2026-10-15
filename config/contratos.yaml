@@ -1,85 +1,92 @@
-# Contratos de datos de dq_raw, uno por tabla por corte. Dueños y consumidores
+# Contratos de datos de MASTER, uno por tabla por corte. Dueños y consumidores
 # son ficticios. canal_venta (poliza, desde 2026-09-30) queda fuera del contrato
 # a propósito: llegó sin acordarse y el portal debe mostrarlo.
+#
+# dac: clasificación según la taxonomía de Datos de Alta Criticidad (HU-05)
+#   PUBLICO           sin restricciones
+#   SENSIBLE          visible solo para roles autorizados (HU-13)
+#   SENSIBLE_CIFRADO  PII: se guarda cifrado desde MASTER (HU-06)
+# cifrado: deterministico si hace falta comparar o cruzar el valor (unicidad,
+#   joins); aleatorio en otro caso.
 contratos:
   persona:
     dueno: Lucía Paredes (Gestión de Clientes)
     descripcion: Personas naturales y empresas que contratan o están aseguradas.
     consumidores: [Reporte regulatorio mensual, Tablero comercial, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, descripcion: Fecha de la foto mensual}
-      - {nombre: id_persona, tipo: INT64, obligatorio: true, descripcion: Identificador interno}
-      - {nombre: tipo_documento, tipo: STRING, obligatorio: true, descripcion: "DNI, CE o RUC"}
-      - {nombre: nro_documento, tipo: STRING, obligatorio: true, descripcion: Número de documento con ceros iniciales}
-      - {nombre: nombres, tipo: STRING, obligatorio: false, descripcion: Solo personas naturales}
-      - {nombre: apellido_paterno, tipo: STRING, obligatorio: false, descripcion: Solo personas naturales}
-      - {nombre: apellido_materno, tipo: STRING, obligatorio: false, descripcion: Solo personas naturales}
-      - {nombre: razon_social, tipo: STRING, obligatorio: false, descripcion: Solo empresas (RUC)}
-      - {nombre: fecha_nacimiento, tipo: DATE, obligatorio: false, descripcion: Solo personas naturales}
-      - {nombre: sexo, tipo: STRING, obligatorio: false, descripcion: "M o F; solo personas naturales"}
-      - {nombre: email, tipo: STRING, obligatorio: false, descripcion: Correo de contacto}
-      - {nombre: celular, tipo: STRING, obligatorio: false, descripcion: "Celular de 9 dígitos que empieza con 9"}
-      - {nombre: ubigeo, tipo: STRING, obligatorio: false, descripcion: Código INEI de 6 dígitos del distrito}
-      - {nombre: fecha_alta, tipo: DATE, obligatorio: true, descripcion: Fecha de registro como cliente}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: id_persona, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
+      - {nombre: tipo_documento, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "DNI, CE o RUC"}
+      - {nombre: nro_documento, tipo: STRING, obligatorio: true, dac: SENSIBLE_CIFRADO, cifrado: deterministico, descripcion: Número de documento con ceros iniciales}
+      - {nombre: nombres, tipo: STRING, obligatorio: false, dac: SENSIBLE_CIFRADO, cifrado: aleatorio, descripcion: Solo personas naturales}
+      - {nombre: apellido_paterno, tipo: STRING, obligatorio: false, dac: SENSIBLE_CIFRADO, cifrado: aleatorio, descripcion: Solo personas naturales}
+      - {nombre: apellido_materno, tipo: STRING, obligatorio: false, dac: SENSIBLE_CIFRADO, cifrado: aleatorio, descripcion: Solo personas naturales}
+      - {nombre: razon_social, tipo: STRING, obligatorio: false, dac: PUBLICO, descripcion: Solo empresas (RUC)}
+      - {nombre: fecha_nacimiento, tipo: DATE, obligatorio: false, dac: SENSIBLE, descripcion: Solo personas naturales}
+      - {nombre: sexo, tipo: STRING, obligatorio: false, dac: SENSIBLE, descripcion: "M o F; solo personas naturales"}
+      - {nombre: email, tipo: STRING, obligatorio: false, dac: SENSIBLE_CIFRADO, cifrado: aleatorio, descripcion: Correo de contacto}
+      - {nombre: celular, tipo: STRING, obligatorio: false, dac: SENSIBLE_CIFRADO, cifrado: aleatorio, descripcion: "Celular de 9 dígitos que empieza con 9"}
+      - {nombre: ubigeo, tipo: STRING, obligatorio: false, dac: SENSIBLE, descripcion: Código INEI de 6 dígitos del distrito}
+      - {nombre: fecha_alta, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de registro como cliente}
   poliza:
     dueno: Martín Salas (Suscripción)
     descripcion: Pólizas emitidas de todos los ramos.
     consumidores: [Reporte regulatorio mensual, Tablero comercial, Modelo de siniestralidad, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, descripcion: Fecha de la foto mensual}
-      - {nombre: id_poliza, tipo: INT64, obligatorio: true, descripcion: Identificador técnico}
-      - {nombre: nro_poliza, tipo: STRING, obligatorio: true, descripcion: "Número comercial POL-AAAA-NNNNNN"}
-      - {nombre: cod_producto, tipo: STRING, obligatorio: true, descripcion: Producto vigente de ref_producto}
-      - {nombre: id_contratante, tipo: INT64, obligatorio: true, descripcion: Persona que contrata}
-      - {nombre: id_asegurado, tipo: INT64, obligatorio: true, descripcion: Persona asegurada}
-      - {nombre: fecha_emision, tipo: DATE, obligatorio: true, descripcion: Fecha de emisión}
-      - {nombre: fecha_inicio_vigencia, tipo: DATE, obligatorio: true, descripcion: Inicio de cobertura}
-      - {nombre: fecha_fin_vigencia, tipo: DATE, obligatorio: true, descripcion: Fin de cobertura}
-      - {nombre: moneda, tipo: STRING, obligatorio: true, descripcion: "PEN o USD"}
-      - {nombre: suma_asegurada, tipo: FLOAT64, obligatorio: true, descripcion: Monto máximo cubierto}
-      - {nombre: prima_neta, tipo: FLOAT64, obligatorio: true, descripcion: Prima antes de cargos}
-      - {nombre: prima_total, tipo: FLOAT64, obligatorio: true, descripcion: "prima_neta × 1.03 (derecho de emisión) × 1.18 (IGV)"}
-      - {nombre: estado, tipo: STRING, obligatorio: true, descripcion: "VIGENTE, ANULADA, VENCIDA o SUSPENDIDA"}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador técnico}
+      - {nombre: nro_poliza, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "Número comercial POL-AAAA-NNNNNN"}
+      - {nombre: cod_producto, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: Producto vigente de ref_producto}
+      - {nombre: id_contratante, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Persona que contrata}
+      - {nombre: id_asegurado, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Persona asegurada}
+      - {nombre: fecha_emision, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de emisión}
+      - {nombre: fecha_inicio_vigencia, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Inicio de cobertura}
+      - {nombre: fecha_fin_vigencia, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fin de cobertura}
+      - {nombre: moneda, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "PEN o USD"}
+      - {nombre: suma_asegurada, tipo: FLOAT64, obligatorio: true, dac: SENSIBLE, descripcion: Monto máximo cubierto}
+      - {nombre: prima_neta, tipo: FLOAT64, obligatorio: true, dac: SENSIBLE, descripcion: Prima antes de cargos}
+      - {nombre: prima_total, tipo: FLOAT64, obligatorio: true, dac: SENSIBLE, descripcion: "prima_neta × 1.03 (derecho de emisión) × 1.18 (IGV)"}
+      - {nombre: estado, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "VIGENTE, ANULADA, VENCIDA o SUSPENDIDA"}
   vehiculo:
     dueno: Rosa Quispe (Riesgos Vehiculares)
     descripcion: Vehículos cubiertos por pólizas vehiculares y SOAT.
     consumidores: [Modelo de siniestralidad, Tablero comercial]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, descripcion: Fecha de la foto mensual}
-      - {nombre: id_vehiculo, tipo: INT64, obligatorio: true, descripcion: Identificador interno}
-      - {nombre: id_poliza, tipo: INT64, obligatorio: true, descripcion: Póliza vehicular o SOAT que lo cubre}
-      - {nombre: placa, tipo: STRING, obligatorio: true, descripcion: "Formato ABC-123"}
-      - {nombre: nro_serie, tipo: STRING, obligatorio: true, descripcion: VIN de 17 caracteres}
-      - {nombre: marca, tipo: STRING, obligatorio: true, descripcion: Marca}
-      - {nombre: modelo, tipo: STRING, obligatorio: true, descripcion: Modelo}
-      - {nombre: anio_fabricacion, tipo: INT64, obligatorio: true, descripcion: Año de fabricación}
-      - {nombre: uso, tipo: STRING, obligatorio: true, descripcion: "PARTICULAR, TAXI o CARGA"}
-      - {nombre: valor_comercial, tipo: FLOAT64, obligatorio: false, descripcion: Valor de mercado}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: id_vehiculo, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
+      - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza vehicular o SOAT que lo cubre}
+      - {nombre: placa, tipo: STRING, obligatorio: true, dac: SENSIBLE, descripcion: "Formato ABC-123"}
+      - {nombre: nro_serie, tipo: STRING, obligatorio: true, dac: SENSIBLE, descripcion: VIN de 17 caracteres}
+      - {nombre: marca, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: Marca}
+      - {nombre: modelo, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: Modelo}
+      - {nombre: anio_fabricacion, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Año de fabricación}
+      - {nombre: uso, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "PARTICULAR, TAXI o CARGA"}
+      - {nombre: valor_comercial, tipo: FLOAT64, obligatorio: false, dac: SENSIBLE, descripcion: Valor de mercado}
   siniestro:
     dueno: Diego Rengifo (Siniestros)
     descripcion: Siniestros avisados y su estado de atención.
     consumidores: [Modelo de siniestralidad, Reporte regulatorio mensual]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, descripcion: Fecha de la foto mensual}
-      - {nombre: id_siniestro, tipo: INT64, obligatorio: true, descripcion: Identificador interno}
-      - {nombre: id_poliza, tipo: INT64, obligatorio: true, descripcion: Póliza afectada}
-      - {nombre: fecha_ocurrencia, tipo: DATE, obligatorio: true, descripcion: Fecha del evento}
-      - {nombre: fecha_aviso, tipo: DATE, obligatorio: true, descripcion: Fecha en que se reportó}
-      - {nombre: causa, tipo: STRING, obligatorio: true, descripcion: Causa del siniestro}
-      - {nombre: monto_reclamado, tipo: FLOAT64, obligatorio: true, descripcion: Monto pedido}
-      - {nombre: monto_pagado, tipo: FLOAT64, obligatorio: false, descripcion: Solo si el estado es PAGADO}
-      - {nombre: estado, tipo: STRING, obligatorio: true, descripcion: "ABIERTO, EN_EVALUACION, PAGADO o RECHAZADO"}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: id_siniestro, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
+      - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza afectada}
+      - {nombre: fecha_ocurrencia, tipo: DATE, obligatorio: true, dac: SENSIBLE, descripcion: Fecha del evento}
+      - {nombre: fecha_aviso, tipo: DATE, obligatorio: true, dac: SENSIBLE, descripcion: Fecha en que se reportó}
+      - {nombre: causa, tipo: STRING, obligatorio: true, dac: SENSIBLE, descripcion: Causa del siniestro}
+      - {nombre: monto_reclamado, tipo: FLOAT64, obligatorio: true, dac: SENSIBLE, descripcion: Monto pedido}
+      - {nombre: monto_pagado, tipo: FLOAT64, obligatorio: false, dac: SENSIBLE, descripcion: Solo si el estado es PAGADO}
+      - {nombre: estado, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "ABIERTO, EN_EVALUACION, PAGADO o RECHAZADO"}
   pago:
     dueno: Carmen Huamán (Cobranzas)
     descripcion: Cuotas de prima por póliza.
     consumidores: [Reporte regulatorio mensual, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, descripcion: Fecha de la foto mensual}
-      - {nombre: id_pago, tipo: INT64, obligatorio: true, descripcion: Identificador interno}
-      - {nombre: id_poliza, tipo: INT64, obligatorio: true, descripcion: Póliza a la que pertenece la cuota}
-      - {nombre: nro_cuota, tipo: INT64, obligatorio: true, descripcion: Número de cuota}
-      - {nombre: fecha_vencimiento, tipo: DATE, obligatorio: true, descripcion: Fecha límite de pago}
-      - {nombre: fecha_pago, tipo: DATE, obligatorio: false, descripcion: Solo si la cuota está PAGADO}
-      - {nombre: monto, tipo: FLOAT64, obligatorio: true, descripcion: Monto de la cuota}
-      - {nombre: medio_pago, tipo: STRING, obligatorio: true, descripcion: Medio de pago}
-      - {nombre: estado, tipo: STRING, obligatorio: true, descripcion: "PENDIENTE, PAGADO o VENCIDO"}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: id_pago, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
+      - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza a la que pertenece la cuota}
+      - {nombre: nro_cuota, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Número de cuota}
+      - {nombre: fecha_vencimiento, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha límite de pago}
+      - {nombre: fecha_pago, tipo: DATE, obligatorio: false, dac: PUBLICO, descripcion: Solo si la cuota está PAGADO}
+      - {nombre: monto, tipo: FLOAT64, obligatorio: true, dac: SENSIBLE, descripcion: Monto de la cuota}
+      - {nombre: medio_pago, tipo: STRING, obligatorio: true, dac: SENSIBLE, descripcion: Medio de pago}
+      - {nombre: estado, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "PENDIENTE, PAGADO o VENCIDO"}

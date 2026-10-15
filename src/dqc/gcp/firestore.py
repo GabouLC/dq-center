@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 
-import yaml
 from google.cloud import firestore
 
 from dqc.motor.reglas import Regla, a_documento, desde_documento
@@ -22,11 +20,6 @@ REGLAS, CONTRATOS, USUARIOS = "reglas", "contratos", "usuarios"
 
 def cargar_reglas(db: firestore.Client) -> list[Regla]:
     return sorted((desde_documento(d.to_dict()) for d in db.collection(REGLAS).stream()), key=lambda r: r.id)
-
-
-def cargar_contratos(ruta: str | Path) -> dict[str, dict]:
-    with open(ruta, encoding="utf-8") as f:
-        return yaml.safe_load(f)["contratos"]
 
 
 def sembrar(

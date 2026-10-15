@@ -1,0 +1,92 @@
+# Homologación RAW -> MASTER (HU-14).
+#
+# Cada fuente llega como CSV con los nombres y formatos de su sistema de origen.
+# La homologación renombra al modelo estándar y convierte tipos, sin corregir
+# valores: si un dato viene mal, lo detecta el motor de calidad. Un registro
+# cuyo valor no se puede convertir al tipo destino va a incidencias y no pasa.
+#
+# tipo: STRING (por defecto), INT64, FLOAT64, DATE (con formato strftime) o BOOL
+#       (con los valores de verdadero y falso). opcional: la columna puede faltar.
+fuentes:
+  ref_producto:
+    archivo: productos
+    columnas:
+      - {origen: COD_PRODUCTO, destino: cod_producto}
+      - {origen: DESCRIPCION, destino: nombre}
+      - {origen: RAMO, destino: ramo}
+      - {origen: ACTIVO, destino: activo, tipo: BOOL, verdadero: S, falso: N}
+  ref_ubigeo:
+    archivo: ubigeos
+    columnas:
+      - {origen: UBIGEO, destino: ubigeo}
+      - {origen: DEPARTAMENTO, destino: departamento}
+      - {origen: PROVINCIA, destino: provincia}
+      - {origen: DISTRITO, destino: distrito}
+  persona:
+    archivo: clientes
+    columnas:
+      - {origen: COD_CLIENTE, destino: id_persona, tipo: INT64}
+      - {origen: TIPO_DOC, destino: tipo_documento}
+      - {origen: NUM_DOC, destino: nro_documento}
+      - {origen: NOMBRES, destino: nombres}
+      - {origen: APE_PATERNO, destino: apellido_paterno}
+      - {origen: APE_MATERNO, destino: apellido_materno}
+      - {origen: RAZON_SOCIAL, destino: razon_social}
+      - {origen: FEC_NACIMIENTO, destino: fecha_nacimiento, tipo: DATE, formato: "%d/%m/%Y"}
+      - {origen: SEXO, destino: sexo}
+      - {origen: CORREO, destino: email}
+      - {origen: TELEFONO_MOVIL, destino: celular}
+      - {origen: COD_UBIGEO, destino: ubigeo}
+      - {origen: FEC_REGISTRO, destino: fecha_alta, tipo: DATE, formato: "%d/%m/%Y"}
+  poliza:
+    archivo: polizas
+    columnas:
+      - {origen: ID_POLIZA, destino: id_poliza, tipo: INT64}
+      - {origen: NUM_POLIZA, destino: nro_poliza}
+      - {origen: COD_PRODUCTO, destino: cod_producto}
+      - {origen: ID_CONTRATANTE, destino: id_contratante, tipo: INT64}
+      - {origen: ID_ASEGURADO, destino: id_asegurado, tipo: INT64}
+      - {origen: FEC_EMISION, destino: fecha_emision, tipo: DATE, formato: "%Y%m%d"}
+      - {origen: FEC_INI_VIG, destino: fecha_inicio_vigencia, tipo: DATE, formato: "%Y%m%d"}
+      - {origen: FEC_FIN_VIG, destino: fecha_fin_vigencia, tipo: DATE, formato: "%Y%m%d"}
+      - {origen: MONEDA, destino: moneda}
+      - {origen: SUMA_ASEG, destino: suma_asegurada, tipo: FLOAT64}
+      - {origen: PRIMA_NETA, destino: prima_neta, tipo: FLOAT64}
+      - {origen: PRIMA_TOTAL, destino: prima_total, tipo: FLOAT64}
+      - {origen: ESTADO_POLIZA, destino: estado}
+      # El sistema de pólizas empieza a enviarla el 2026-09-30.
+      - {origen: CANAL_VENTA, destino: canal_venta, opcional: true}
+  vehiculo:
+    archivo: vehiculos
+    columnas:
+      - {origen: ID_VEHICULO, destino: id_vehiculo, tipo: INT64}
+      - {origen: ID_POLIZA, destino: id_poliza, tipo: INT64}
+      - {origen: PLACA, destino: placa}
+      - {origen: VIN, destino: nro_serie}
+      - {origen: MARCA, destino: marca}
+      - {origen: MODELO, destino: modelo}
+      - {origen: ANIO_FAB, destino: anio_fabricacion, tipo: INT64}
+      - {origen: USO_VEHICULO, destino: uso}
+      - {origen: VALOR_COMERCIAL, destino: valor_comercial, tipo: FLOAT64}
+  siniestro:
+    archivo: siniestros
+    columnas:
+      - {origen: ID_SINIESTRO, destino: id_siniestro, tipo: INT64}
+      - {origen: ID_POLIZA, destino: id_poliza, tipo: INT64}
+      - {origen: FEC_OCURRENCIA, destino: fecha_ocurrencia, tipo: DATE, formato: "%Y-%m-%d"}
+      - {origen: FEC_AVISO, destino: fecha_aviso, tipo: DATE, formato: "%Y-%m-%d"}
+      - {origen: CAUSA, destino: causa}
+      - {origen: MTO_RECLAMADO, destino: monto_reclamado, tipo: FLOAT64}
+      - {origen: MTO_PAGADO, destino: monto_pagado, tipo: FLOAT64}
+      - {origen: ESTADO_SINIESTRO, destino: estado}
+  pago:
+    archivo: cobranzas
+    columnas:
+      - {origen: ID_CUOTA, destino: id_pago, tipo: INT64}
+      - {origen: ID_POLIZA, destino: id_poliza, tipo: INT64}
+      - {origen: NUM_CUOTA, destino: nro_cuota, tipo: INT64}
+      - {origen: FEC_VENCIMIENTO, destino: fecha_vencimiento, tipo: DATE, formato: "%d/%m/%Y"}
+      - {origen: FEC_PAGO, destino: fecha_pago, tipo: DATE, formato: "%d/%m/%Y"}
+      - {origen: IMPORTE, destino: monto, tipo: FLOAT64}
+      - {origen: MEDIO_PAGO, destino: medio_pago}
+      - {origen: ESTADO_CUOTA, destino: estado}

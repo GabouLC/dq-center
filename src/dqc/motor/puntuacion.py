@@ -40,6 +40,7 @@ class ResultadoRegla:
     fallidos: list[str]
     # llave -> fila completa en JSON, para las primeras llaves fallidas
     muestra: dict[str, str] = field(default_factory=dict)
+    nivel: str = ""
 
     @property
     def cumplimiento(self) -> float | None:

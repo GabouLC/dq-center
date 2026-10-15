@@ -3,30 +3,50 @@
 Toda regla produce la misma forma de resultado: el universo (filas que entran
 a la regla), cuántas cumplen y la lista de llaves que no cumplen. Las reglas
 de fila usan el alias `t` para la tabla y `j` para el join; las de tabla
-completa leen registro_cargas y usan el nombre de la tabla como llave.
+completa leen registro_cargas (solo cargas exitosas) y usan el nombre de la
+tabla como llave.
 
-Los nombres de tabla van sin dataset: el backend fija el dataset por defecto
-(dq_raw en BigQuery, el esquema principal en DuckDB).
+Las tablas van sin dataset: la plataforma fija dq_master como dataset por
+defecto. Si una regla usa campos cifrados (SENSIBLE_CIFRADO), la tabla se
+envuelve en una subconsulta que descifra solo esos campos: el texto claro
+existe únicamente dentro de la consulta del motor, nunca se guarda.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-import sqlglot
-
-from dqc.modelo import LLAVES, TABLAS_CORTE
+from dqc.modelo import LLAVES, RAW, TABLAS_CORTE
 from dqc.motor.reglas import Regla
+from dqc.pipeline.funciones import SQL_LLAVES
+from dqc.sql_util import fecha, literal
+
+REGISTRO = f"{RAW}.registro_cargas"
 
 
-def literal(valor: str) -> str:
-    """Literal de texto escapado para BigQuery (las barras invertidas se duplican)."""
-    return sqlglot.exp.Literal.string(valor).sql(dialect="bigquery")
+@dataclass
+class ContextoSQL:
+    """Lo que el SQL necesita saber de la plataforma para descifrar."""
+
+    funciones: object | None = None
+    cifrados: dict[str, dict[str, str]] = field(default_factory=dict)  # tabla -> campo -> modo
+    columnas: dict[str, list[str]] = field(default_factory=dict)  # columnas actuales en MASTER
+
+    def origen(self, tabla: str, usados: set[str]) -> str:
+        """La tabla, o una subconsulta que descifra los campos cifrados que la regla usa."""
+        modos = {c: m for c, m in self.cifrados.get(tabla, {}).items() if c in usados}
+        if not modos or self.funciones is None:
+            return tabla
+        columnas = [
+            f"{self.funciones.descifrar(f'x.{c}', modos[c], tabla, c)} AS {c}" if c in modos else f"x.{c}"
+            for c in self.columnas[tabla]
+        ]
+        return f"(SELECT {', '.join(columnas)} FROM {tabla} AS x CROSS JOIN {SQL_LLAVES} AS k)"
 
 
-def fecha(d: date) -> str:
-    return f"DATE '{d.isoformat()}'"
+SIN_CIFRADO = ContextoSQL()
 
 
 def _resultado(universo_sql: str, ctes_previas: str = "") -> str:
@@ -39,7 +59,7 @@ SELECT
   ARRAY(SELECT llave FROM universo WHERE NOT ok ORDER BY llave) AS fallidos"""
 
 
-def _sql_fila(r: Regla, corte: date) -> str:
+def _sql_fila(r: Regla, corte: date, ctx: ContextoSQL) -> str:
     condiciones = [f"t.fecha_corte = {fecha(corte)}"]
     if r.filtro:
         condiciones.append(f"({r.filtro})")
@@ -84,7 +104,7 @@ def _sql_fila(r: Regla, corte: date) -> str:
 
     universo = (
         f"  SELECT CAST(t.{LLAVES[r.tabla]} AS STRING) AS llave, COALESCE({cumple}, FALSE) AS ok\n"
-        f"  FROM {r.tabla} AS t\n"
+        f"  FROM {ctx.origen(r.tabla, r.campos_usados())} AS t\n"
         f"{join}"
         f"  WHERE {' AND '.join(condiciones)}"
     )
@@ -99,22 +119,23 @@ def limite_frescura_utc(r: Regla, corte: date) -> datetime:
 
 def _sql_tabla(r: Regla, corte: date) -> str:
     tabla = literal(r.tabla)
+    exitosas = f"tabla = {tabla} AND estado = 'EXITOSA'"
     if r.tipo == "frescura":
-        # Cuenta la primera llegada de la carga, aunque luego se haya recargado.
+        # Cuenta la primera carga exitosa, aunque luego se haya recargado.
         limite = limite_frescura_utc(r, corte).strftime("%Y-%m-%d %H:%M:%S+00")
         universo = (
             f"  SELECT {tabla} AS llave, COALESCE(MIN(cargado_en) <= TIMESTAMP '{limite}', FALSE) AS ok\n"
-            f"  FROM registro_cargas\n"
-            f"  WHERE tabla = {tabla} AND fecha_corte = {fecha(corte)}\n"
+            f"  FROM {REGISTRO}\n"
+            f"  WHERE {exitosas} AND fecha_corte = {fecha(corte)}\n"
             f"  HAVING COUNT(*) > 0"
         )
         return _resultado(universo)
 
-    # Volumetría: filas de la última carga de cada corte.
+    # Volumetría: filas de la última carga exitosa de cada corte.
     cargas = (
         f"cargas AS (\n"
-        f"  SELECT fecha_corte, filas FROM registro_cargas\n"
-        f"  WHERE tabla = {tabla} AND fecha_corte <= {fecha(corte)}\n"
+        f"  SELECT fecha_corte, filas FROM {REGISTRO}\n"
+        f"  WHERE {exitosas} AND fecha_corte <= {fecha(corte)}\n"
         f"  QUALIFY ROW_NUMBER() OVER (PARTITION BY fecha_corte ORDER BY cargado_en DESC) = 1\n"
         f"),\n"
     )
@@ -140,7 +161,7 @@ def _sql_tabla(r: Regla, corte: date) -> str:
 
 
 def sql_muestra(r: Regla, corte: date, llaves: list[str]) -> str:
-    """Filas completas (en JSON) de algunas llaves fallidas de una regla de fila."""
+    """Filas (en JSON) de algunas llaves fallidas. Se leen cifradas: la muestra no expone PII."""
     llave = LLAVES[r.tabla]
     return (
         f"SELECT CAST(t.{llave} AS STRING) AS llave, TO_JSON_STRING(t) AS detalle\n"
@@ -150,8 +171,8 @@ def sql_muestra(r: Regla, corte: date, llaves: list[str]) -> str:
     )
 
 
-def sql_regla(r: Regla, corte: date) -> str:
+def sql_regla(r: Regla, corte: date, ctx: ContextoSQL = SIN_CIFRADO) -> str:
     """SQL (BigQuery) que evalúa una regla ya expandida en un corte."""
     if r.tabla == "*":
         raise ValueError(f"{r.id}: expande las reglas transversales antes de generar SQL")
-    return _sql_tabla(r, corte) if r.es_de_tabla else _sql_fila(r, corte)
+    return _sql_tabla(r, corte) if r.es_de_tabla else _sql_fila(r, corte, ctx)

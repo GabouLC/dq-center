@@ -10,27 +10,21 @@ def test_es_determinista(resultado):
     assert otro.por_corte["persona"][JULIO] == resultado.por_corte["persona"][JULIO]
 
 
-def test_registro_cargas_cuadra_con_las_filas(resultado):
-    for r in resultado.registro_cargas:
-        assert r["filas"] == len(resultado.por_corte[r["tabla"]][r["fecha_corte"]])
-
-
 def test_solo_poliza_de_agosto_varia_mas_de_15_por_ciento(resultado):
-    filas = {(r["tabla"], r["fecha_corte"]): r["filas"] for r in resultado.registro_cargas}
     fuera_de_rango = {
         (tabla, actual)
         for tabla in TABLAS_CORTE
         for anterior, actual in zip(CORTES, CORTES[1:])
-        if abs(filas[tabla, actual] / filas[tabla, anterior] - 1) > 0.15
+        if abs(len(resultado.por_corte[tabla][actual]) / len(resultado.por_corte[tabla][anterior]) - 1) > 0.15
     }
     assert fuera_de_rango == {("poliza", AGOSTO)}
 
 
 def test_solo_persona_de_julio_llega_tarde(resultado):
     tardias = {
-        (r["tabla"], r["fecha_corte"])
-        for r in resultado.registro_cargas
-        if r["cargado_en"] > datetime.combine(r["fecha_corte"] + timedelta(days=2), time(9), ZONA_LIMA)
+        (tabla, corte)
+        for (tabla, corte), llegada in resultado.llegadas.items()
+        if llegada > datetime.combine(corte + timedelta(days=2), time(9), ZONA_LIMA)
     }
     assert tardias == {("persona", JULIO)}
 

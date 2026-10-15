@@ -23,7 +23,7 @@ from dateutil.relativedelta import relativedelta
 from faker import Faker
 
 from dqc.datagen import catalogos as cat
-from dqc.modelo import COLUMNAS_NUEVAS, CORTES, TABLAS_CORTE
+from dqc.modelo import COLUMNAS_NUEVAS, CORTES, HOMOLOGACION, INGESTA, TABLAS_CORTE  # noqa: F401 (INGESTA se reexporta)
 
 SEMILLA = 20260930
 CRECIMIENTO_MENSUAL = 0.02
@@ -59,7 +59,12 @@ DESCRIPCIONES = {
     "SIN_POLIZA": "Siniestro sin póliza",
     "PAGADO_SIN_FECHA": "Cuota PAGADO sin fecha_pago",
     "PENDIENTE_VENCIDA": "Cuota PENDIENTE ya vencida",
+    "IMPORTE_NO_CONVERTIBLE": "IMPORTE con formato de moneda: no se puede convertir a número",
+    "AVISO_NO_CONVERTIBLE": "FEC_AVISO en formato DD/MM/AAAA: no se puede convertir a fecha",
 }
+
+# Campo que el exportador escribe con un formato que la homologación no acepta.
+NO_CONVERTIBLE = "_no_convertible"
 
 
 def _slug(texto: str) -> str:
@@ -172,7 +177,7 @@ class Pago:
 class Resultado:
     ref: dict[str, list[dict]]
     por_corte: dict[str, dict[date, list[dict]]]
-    registro_cargas: list[dict]
+    llegadas: dict[tuple[str, date], datetime]  # (tabla, corte) -> llegada del archivo
     manifiesto: list[dict]
     entidades: dict[str, list] = field(repr=False, default_factory=dict)
 
@@ -423,9 +428,9 @@ class Generador:
                 defecto = "ESTADO_SUCIO"
             elif u < 0.007:
                 defecto = "FIN_ANTES_DEL_INICIO" if estado_fijo is None else None
-            elif u < 0.032:
+            elif u < 0.022:
                 defecto = "VIGENTE_VENCIDA" if estado_fijo is None else None
-            elif u < 0.042:
+            elif u < 0.032:
                 defecto = "PRIMA_SIN_IGV"
         elif origen == "PRODUCTO_INACTIVO":
             defecto = "PRODUCTO_INACTIVO"
@@ -541,7 +546,8 @@ class Generador:
                 poliza = r.choice(recientes or candidatas)
                 ocurrencia = poliza.fecha_inicio_vigencia - timedelta(days=r.randint(3, 45))
             else:
-                defecto = None
+                # Algunos llegan con la fecha de aviso en otro formato: no se pueden homologar.
+                defecto = "AVISO_NO_CONVERTIBLE" if r.random() < 0.01 else None
                 poliza = r.choice(candidatas)
                 ocurrencia = self._fecha_entre(
                     max(poliza.fecha_emision, aviso - timedelta(days=60)),
@@ -578,7 +584,8 @@ class Generador:
                     defecto = "PENDIENTE_VENCIDA" if r.random() < 0.55 else None
                 else:
                     pago_real = max(p.fecha_emision, vencimiento + timedelta(days=r.randint(-20, 20)))
-                    defecto = "PAGADO_SIN_FECHA" if r.random() < 0.004 else None
+                    u = r.random()
+                    defecto = "PAGADO_SIN_FECHA" if u < 0.004 else "IMPORTE_NO_CONVERTIBLE" if u < 0.006 else None
                 self.pagos.append(Pago(
                     id_pago=len(self.pagos) + 1,
                     id_poliza=p.id_poliza,
@@ -720,8 +727,10 @@ class Generador:
                 error("SIN-CON-01", "siniestro", s.id_siniestro, s.defecto)
             elif s.defecto == "SIN_POLIZA":
                 error("SIN-INT-01", "siniestro", s.id_siniestro, s.defecto)
+            elif s.defecto == "AVISO_NO_CONVERTIBLE":
+                error(HOMOLOGACION, "siniestro", s.id_siniestro, s.defecto)
             estado = s.estado(corte)
-            filas["siniestro"].append({
+            fila = {
                 "fecha_corte": corte,
                 "id_siniestro": s.id_siniestro,
                 "id_poliza": s.id_poliza,
@@ -731,7 +740,10 @@ class Generador:
                 "monto_reclamado": s.monto_reclamado,
                 "monto_pagado": s.monto_pagado_final if estado == "PAGADO" else None,
                 "estado": estado,
-            })
+            }
+            if s.defecto == "AVISO_NO_CONVERTIBLE":
+                fila[NO_CONVERTIBLE] = "fecha_aviso"
+            filas["siniestro"].append(fila)
 
         for c in self.pagos:
             if c.desde > corte:
@@ -751,7 +763,7 @@ class Generador:
                 error("PAG-CON-02", "pago", c.id_pago, c.defecto)
             else:
                 estado = "VENCIDO"
-            filas["pago"].append({
+            fila = {
                 "fecha_corte": corte,
                 "id_pago": c.id_pago,
                 "id_poliza": c.id_poliza,
@@ -761,12 +773,16 @@ class Generador:
                 "monto": c.monto,
                 "medio_pago": c.medio_pago,
                 "estado": estado,
-            })
+            }
+            if c.defecto == "IMPORTE_NO_CONVERTIBLE":
+                error(HOMOLOGACION, "pago", c.id_pago, c.defecto)
+                fila[NO_CONVERTIBLE] = "monto"
+            filas["pago"].append(fila)
 
         return filas, manifiesto
 
-    def cargado_en(self, tabla: str, corte: date) -> datetime:
-        """Hora de llegada de la carga: el día siguiente al corte, de madrugada."""
+    def llegada(self, tabla: str, corte: date) -> datetime:
+        """Hora en que el archivo llega: el día siguiente al corte, de madrugada."""
         if tabla == "persona" and corte == JULIO:
             local = datetime.combine(corte + timedelta(days=3), time(10, 20), ZONA_LIMA)
         else:
@@ -786,19 +802,18 @@ def generar(semilla: int = SEMILLA) -> Resultado:
         ],
     }
     por_corte: dict[str, dict[date, list[dict]]] = {t: {} for t in TABLAS_CORTE}
-    registro: list[dict] = []
+    # Las referencias llegan una vez, antes que las tablas del primer corte.
+    llegadas = {
+        (tabla, CORTES[0]): datetime.combine(CORTES[0] + UN_DIA, time(5, 0), ZONA_LIMA).astimezone(timezone.utc)
+        for tabla in ref
+    }
     manifiesto: list[dict] = []
     for corte in CORTES:
         filas, errores = g.foto(corte)
         manifiesto += errores
         for tabla in TABLAS_CORTE:
             por_corte[tabla][corte] = filas[tabla]
-            registro.append({
-                "tabla": tabla,
-                "fecha_corte": corte,
-                "cargado_en": g.cargado_en(tabla, corte),
-                "filas": len(filas[tabla]),
-            })
+            llegadas[tabla, corte] = g.llegada(tabla, corte)
 
     for regla, tabla, corte, defecto in [
         ("GEN-OPO-01", "persona", JULIO, "PERSONA_TARDE_JULIO"),
@@ -815,7 +830,7 @@ def generar(semilla: int = SEMILLA) -> Resultado:
     return Resultado(
         ref=ref,
         por_corte=por_corte,
-        registro_cargas=registro,
+        llegadas=llegadas,
         manifiesto=manifiesto,
         entidades={
             "persona": g.personas,

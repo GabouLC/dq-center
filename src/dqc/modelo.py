@@ -37,6 +37,29 @@ DIMENSIONES = [
 
 PESO_SEVERIDAD = {"CRITICA": 3, "ALTA": 2, "MEDIA": 1}
 
+# Niveles de calidad del backlog: N1 detecta errores básicos de cada registro
+# (HU-02), N2 aplica reglas de negocio entre campos y tablas (HU-03) y N3 mide
+# la salud de la carga completa antes de certificar (HU-04).
+NIVEL_POR_DIMENSION = {
+    "completitud": "N1",
+    "unicidad": "N1",
+    "validez": "N1",
+    "consistencia": "N2",
+    "integridad": "N2",
+    "oportunidad": "N3",
+    "volumetria": "N3",
+}
+
+# Capas del flujo RAW -> MASTER -> BUSINESS y datasets de soporte.
+RAW, MASTER, BUSINESS = "dq_raw", "dq_master", "dq_business"
+ENGINE, SEGURIDAD = "dq_engine", "dq_seguridad"
+
+# Etapas previas al motor que también se verifican contra el manifiesto.
+INGESTA, HOMOLOGACION = "INGESTA", "HOMOLOGACION"
+
+DAC = ("PUBLICO", "SENSIBLE", "SENSIBLE_CIFRADO")
+MODOS_CIFRADO = ("deterministico", "aleatorio")
+
 # Tipos en notación de BigQuery; el generador los traduce a Arrow.
 ESQUEMAS = {
     "ref_producto": [
@@ -75,11 +98,38 @@ ESQUEMAS = {
         ("medio_pago", "STRING"), ("estado", "STRING"),
     ],
     "registro_cargas": [
-        ("tabla", "STRING"), ("fecha_corte", "DATE"), ("cargado_en", "TIMESTAMP"), ("filas", "INT64"),
+        ("tabla", "STRING"), ("fecha_corte", "DATE"), ("archivo", "STRING"), ("cargado_en", "TIMESTAMP"),
+        ("filas", "INT64"), ("estado", "STRING"), ("detalle", "STRING"),
+    ],
+    "incidencias_homologacion": [
+        ("fecha_corte", "DATE"), ("tabla", "STRING"), ("archivo", "STRING"), ("llave", "STRING"),
+        ("columnas", "STRING"), ("valores", "STRING"),
     ],
     "manifiesto_errores": [
         ("id_regla", "STRING"), ("tabla", "STRING"), ("fecha_corte", "DATE"), ("llave", "STRING"),
         ("descripcion", "STRING"),
+    ],
+}
+
+# Resultados del motor en dq_engine.
+ESQUEMAS_ENGINE = {
+    "ejecuciones": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("origen", "STRING"),
+        ("iniciada_en", "TIMESTAMP"), ("terminada_en", "TIMESTAMP"), ("reglas", "INT64"),
+    ],
+    "resultados": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("id_regla", "STRING"), ("tabla", "STRING"),
+        ("nivel", "STRING"), ("dimension", "STRING"), ("severidad", "STRING"), ("tipo", "STRING"),
+        ("umbral", "FLOAT64"), ("universo", "INT64"), ("cumplen", "INT64"), ("cumplimiento", "FLOAT64"),
+        ("estado", "STRING"),
+    ],
+    "fallidos": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("id_regla", "STRING"), ("tabla", "STRING"),
+        ("llave", "STRING"), ("detalle", "STRING"),
+    ],
+    "esquemas": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("tabla", "STRING"), ("posicion", "INT64"),
+        ("columna", "STRING"), ("tipo", "STRING"),
     ],
 }
 

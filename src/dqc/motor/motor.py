@@ -7,11 +7,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
-from dqc.modelo import TABLAS_CORTE
-from dqc.motor.backends import Backend
+from dqc.modelo import ENGINE, ESQUEMAS_ENGINE, NIVEL_POR_DIMENSION, TABLAS_CORTE
 from dqc.motor.puntuacion import ResultadoRegla
 from dqc.motor.reglas import Regla, expandir
-from dqc.motor.sql import sql_muestra, sql_regla
+from dqc.motor.sql import ContextoSQL, sql_muestra, sql_regla
 
 
 @dataclass
@@ -27,14 +26,22 @@ class Ejecucion:
 
 
 class Motor:
-    def __init__(self, backend: Backend, reglas: list[Regla], hilos: int = 1, muestras: int = 20):
-        self.backend = backend
+    def __init__(
+        self,
+        plataforma,
+        reglas: list[Regla],
+        hilos: int = 1,
+        muestras: int = 20,
+        cifrados: dict[str, dict[str, str]] | None = None,
+    ):
+        self.plataforma = plataforma
         self.reglas = [r for r in expandir(reglas) if r.activa]
         self.hilos = hilos
         self.muestras = muestras
+        self.cifrados = cifrados or {}
 
-    def _evaluar_regla(self, regla: Regla, corte: date) -> ResultadoRegla:
-        fila = self.backend.consultar(sql_regla(regla, corte))[0]
+    def _evaluar_regla(self, regla: Regla, corte: date, ctx: ContextoSQL) -> ResultadoRegla:
+        fila = self.plataforma.consultar(sql_regla(regla, corte, ctx))[0]
         resultado = ResultadoRegla(
             id_regla=regla.id,
             tabla=regla.tabla,
@@ -47,11 +54,12 @@ class Motor:
             # Con universo vacío DuckDB devuelve NULL donde BigQuery devuelve 0.
             cumplen=int(fila["cumplen"] or 0),
             fallidos=list(fila["fallidos"] or []),
+            nivel=NIVEL_POR_DIMENSION[regla.dim],
         )
         if resultado.fallidos and self.muestras and not regla.es_de_tabla:
             llaves = resultado.fallidos[: self.muestras]
             resultado.muestra = {
-                f["llave"]: f["detalle"] for f in self.backend.consultar(sql_muestra(regla, corte, llaves))
+                f["llave"]: f["detalle"] for f in self.plataforma.consultar(sql_muestra(regla, corte, llaves))
             }
         return resultado
 
@@ -62,12 +70,17 @@ class Motor:
             origen=origen,
             iniciada_en=datetime.now(timezone.utc),
         )
+        ejecucion.esquemas = {t: self.plataforma.columnas(t) for t in TABLAS_CORTE}
+        ctx = ContextoSQL(
+            funciones=self.plataforma.funciones,
+            cifrados=self.cifrados,
+            columnas={t: [c for c, _ in cols] for t, cols in ejecucion.esquemas.items()},
+        )
         if self.hilos > 1:
             with ThreadPoolExecutor(self.hilos) as pool:
-                ejecucion.resultados = list(pool.map(lambda r: self._evaluar_regla(r, corte), self.reglas))
+                ejecucion.resultados = list(pool.map(lambda r: self._evaluar_regla(r, corte, ctx), self.reglas))
         else:
-            ejecucion.resultados = [self._evaluar_regla(r, corte) for r in self.reglas]
-        ejecucion.esquemas = {t: self.backend.columnas(t) for t in TABLAS_CORTE}
+            ejecucion.resultados = [self._evaluar_regla(r, corte, ctx) for r in self.reglas]
         ejecucion.terminada_en = datetime.now(timezone.utc)
         return ejecucion
 
@@ -82,7 +95,7 @@ def filas_de_ejecucion(e: Ejecucion) -> dict[str, list[dict]]:
         }],
         "resultados": [
             {
-                **base, "id_regla": r.id_regla, "tabla": r.tabla, "dimension": r.dimension,
+                **base, "id_regla": r.id_regla, "tabla": r.tabla, "nivel": r.nivel, "dimension": r.dimension,
                 "severidad": r.severidad, "tipo": r.tipo, "umbral": r.umbral, "universo": r.universo,
                 "cumplen": r.cumplen, "cumplimiento": r.cumplimiento, "estado": r.estado,
             }
@@ -101,6 +114,13 @@ def filas_de_ejecucion(e: Ejecucion) -> dict[str, list[dict]]:
     }
 
 
+def guardar_ejecucion(plataforma, e: Ejecucion) -> None:
+    """La ejecución se escribe al final: el portal solo ve una corrida cuando ya está completa."""
+    filas = filas_de_ejecucion(e)
+    for tabla in ("resultados", "fallidos", "esquemas", "ejecuciones"):
+        plataforma.agregar(ENGINE, tabla, filas[tabla], ESQUEMAS_ENGINE[tabla])
+
+
 def comparar_con_manifiesto(
     ejecuciones: list[Ejecucion], manifiesto: list[dict]
 ) -> tuple[set[tuple], set[tuple]]:
@@ -112,9 +132,10 @@ def comparar_con_manifiesto(
         for llave in r.fallidos
     }
     cortes = {e.fecha_corte for e in ejecuciones}
+    reglas = {r.id_regla for e in ejecuciones for r in e.resultados}
     esperados = {
         (m["id_regla"], m["tabla"], m["fecha_corte"], m["llave"])
         for m in manifiesto
-        if m["fecha_corte"] in cortes
+        if m["fecha_corte"] in cortes and m["id_regla"] in reglas
     }
     return esperados - detectados, detectados - esperados
