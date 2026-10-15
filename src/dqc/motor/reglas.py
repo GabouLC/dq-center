@@ -69,7 +69,7 @@ class Regla:
         return int(m[1]), int(m[2]), int(m[3]), m[4]
 
 
-_CAMPOS_REGLA = {f.name for f in fields(Regla)}
+CAMPOS_REGLA = {f.name for f in fields(Regla)}
 
 
 def _fragmento_sql_valido(fragmento: str) -> str | None:
@@ -89,7 +89,7 @@ def _fragmento_sql_valido(fragmento: str) -> str | None:
 def validar(datos: dict) -> list[str]:
     """Errores de una regla en formato dict (tal como viene del YAML o del portal)."""
     errores = []
-    desconocidos = set(datos) - _CAMPOS_REGLA
+    desconocidos = set(datos) - CAMPOS_REGLA
     if desconocidos:
         errores.append(f"atributos desconocidos: {sorted(desconocidos)}")
     for requerido in ("id", "tabla", "dim", "tipo", "umbral", "sev"):
