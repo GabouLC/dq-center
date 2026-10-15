@@ -1,9 +1,11 @@
-"""Firestore: reglas, contratos y usuarios del portal.
+"""Firestore: configuración del portal.
 
 Colecciones:
   reglas/{id}        una regla del catálogo (sin expandir), con activa y auditoría
-  contratos/{tabla}  dueño, consumidores y campos pactados de cada tabla
-  usuarios/{email}   rol (admin o lector)
+  contratos/{tabla}  dueño, consumidores y campos pactados con su clasificación DAC
+  glosario/{id}      términos de negocio (HU-10)
+  usuarios/{email}   rol: admin, gobierno o lector (HU-13)
+  auditoria/{auto}   cambios de configuración y accesos denegados o restringidos
 """
 
 from __future__ import annotations
@@ -15,7 +17,8 @@ from google.cloud import firestore
 
 from dqc.motor.reglas import Regla, a_documento, desde_documento
 
-REGLAS, CONTRATOS, USUARIOS = "reglas", "contratos", "usuarios"
+REGLAS, CONTRATOS, GLOSARIO, USUARIOS, AUDITORIA = "reglas", "contratos", "glosario", "usuarios", "auditoria"
+VIGENCIA_CACHE = 30  # segundos
 
 
 def cargar_reglas(db: firestore.Client) -> list[Regla]:
@@ -26,17 +29,19 @@ def sembrar(
     db: firestore.Client,
     reglas: list[Regla],
     contratos: dict[str, dict],
+    glosario: list[dict],
     admins: list[str],
     reemplazar: bool = False,
 ) -> dict[str, int]:
     """Carga la configuración inicial. Sin reemplazar, no toca lo que ya existe."""
     ahora = datetime.now(timezone.utc)
-    escritos = {REGLAS: 0, CONTRATOS: 0, USUARIOS: 0}
+    escritos = {REGLAS: 0, CONTRATOS: 0, GLOSARIO: 0, USUARIOS: 0}
     documentos = [
         (REGLAS, r.id, {**a_documento(r), "actualizado_en": ahora, "actualizado_por": "semilla"})
         for r in reglas
     ]
     documentos += [(CONTRATOS, tabla, {**c, "actualizado_en": ahora}) for tabla, c in contratos.items()]
+    documentos += [(GLOSARIO, t["id"], {**t, "actualizado_en": ahora, "actualizado_por": "semilla"}) for t in glosario]
     documentos += [(USUARIOS, email.lower(), {"rol": "admin", "creado_en": ahora}) for email in admins]
 
     lote = db.batch()
@@ -51,39 +56,59 @@ def sembrar(
 
 
 class ConfiguracionFirestore:
-    """Configuración del portal en Firestore. Los roles se guardan 30 s en memoria."""
+    """Misma interfaz que dqc.api.configuracion.ConfiguracionLocal, sobre Firestore."""
 
     def __init__(self, db: firestore.Client):
         self.db = db
-        self._usuarios: tuple[float, dict[str, str]] | None = None
+        self._cache: dict[str, tuple[float, object]] = {}
+
+    def _leer(self, clave: str, cargar):
+        guardado = self._cache.get(clave)
+        if guardado is None or guardado[0] < time.monotonic():
+            guardado = (time.monotonic() + VIGENCIA_CACHE, cargar())
+            self._cache[clave] = guardado
+        return guardado[1]
+
+    def _coleccion(self, nombre: str) -> dict[str, dict]:
+        return self._leer(nombre, lambda: {d.id: d.to_dict() for d in self.db.collection(nombre).stream()})
+
+    def _escribir(self, coleccion: str, id_doc: str, datos: dict, usuario: str) -> None:
+        self.db.collection(coleccion).document(id_doc).set(
+            {**datos, "actualizado_en": datetime.now(timezone.utc), "actualizado_por": usuario}
+        )
+        self._cache.pop(coleccion, None)
 
     def reglas(self) -> list[dict]:
-        return [d.to_dict() for d in self.db.collection(REGLAS).stream()]
+        return list(self._coleccion(REGLAS).values())
 
     def regla(self, id_regla: str) -> dict | None:
-        doc = self.db.collection(REGLAS).document(id_regla).get()
-        return doc.to_dict() if doc.exists else None
+        return self._coleccion(REGLAS).get(id_regla)
 
     def guardar_regla(self, doc: dict, usuario: str) -> None:
-        self.db.collection(REGLAS).document(doc["id"]).set(
-            {**doc, "actualizado_en": datetime.now(timezone.utc), "actualizado_por": usuario}
-        )
+        self._escribir(REGLAS, doc["id"], doc, usuario)
 
     def contratos(self) -> dict[str, dict]:
-        return {d.id: d.to_dict() for d in self.db.collection(CONTRATOS).stream()}
+        return self._coleccion(CONTRATOS)
+
+    def glosario(self) -> list[dict]:
+        return list(self._coleccion(GLOSARIO).values())
+
+    def guardar_termino(self, doc: dict, usuario: str) -> None:
+        self._escribir(GLOSARIO, doc["id"], doc, usuario)
 
     def usuarios(self) -> dict[str, str]:
-        if self._usuarios is None or self._usuarios[0] < time.monotonic():
-            roles = {d.id: d.to_dict()["rol"] for d in self.db.collection(USUARIOS).stream()}
-            self._usuarios = (time.monotonic() + 30, roles)
-        return self._usuarios[1]
+        return {email: d["rol"] for email, d in self._coleccion(USUARIOS).items()}
 
     def guardar_usuario(self, email: str, rol: str, usuario: str) -> None:
-        self.db.collection(USUARIOS).document(email).set(
-            {"rol": rol, "actualizado_en": datetime.now(timezone.utc), "actualizado_por": usuario}, merge=True
-        )
-        self._usuarios = None
+        self._escribir(USUARIOS, email, {"rol": rol}, usuario)
 
     def borrar_usuario(self, email: str) -> None:
         self.db.collection(USUARIOS).document(email).delete()
-        self._usuarios = None
+        self._cache.pop(USUARIOS, None)
+
+    def auditar(self, evento: dict) -> None:
+        self.db.collection(AUDITORIA).add({**evento, "fecha": datetime.now(timezone.utc)})
+
+    def auditoria(self, limite: int = 200) -> list[dict]:
+        consulta = self.db.collection(AUDITORIA).order_by("fecha", direction=firestore.Query.DESCENDING).limit(limite)
+        return [d.to_dict() for d in consulta.stream()]

@@ -18,6 +18,7 @@ from datetime import date, datetime
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import sqlglot
 from google.api_core.exceptions import BadRequest, NotFound
 from google.cloud import bigquery
 
@@ -71,9 +72,42 @@ class PlataformaBigQuery:
         self.agregar(SEGURIDAD, "llaves", filas, [("nombre", "STRING"), ("keyset", "BYTES")], _guardian=False)
 
     def reiniciar(self) -> None:
-        for dataset in (RAW, MASTER, ENGINE, BUSINESS):
-            for tabla in self.cliente.list_tables(f"{self.proyecto}.{dataset}"):
-                self.cliente.delete_table(tabla.reference, not_found_ok=True)
+        for dataset in (BUSINESS, RAW, MASTER, ENGINE):  # primero las vistas de BUSINESS
+            try:
+                for tabla in self.cliente.list_tables(f"{self.proyecto}.{dataset}"):
+                    self.cliente.delete_table(tabla.reference, not_found_ok=True)
+            except NotFound:
+                pass
+
+    def crear_tabla(self, dataset: str, tabla: str, columnas: list[tuple[str, str]]) -> None:
+        nueva = bigquery.Table(self._tabla(dataset, tabla), schema=[bigquery.SchemaField(n, t) for n, t in columnas])
+        if any(c == "fecha_corte" for c, _ in columnas):
+            if self.sandbox:
+                nueva.clustering_fields = ["fecha_corte"]
+            else:
+                nueva.time_partitioning = bigquery.TimePartitioning(field="fecha_corte")
+        self.cliente.create_table(nueva, exists_ok=True)
+
+    def _calificar(self, sql_bigquery: str) -> str:
+        """Una vista de BigQuery necesita las tablas con el proyecto: dataset.tabla -> proyecto.dataset.tabla."""
+        arbol = sqlglot.parse_one(sql_bigquery, read="bigquery")
+        for tabla in arbol.find_all(sqlglot.exp.Table):
+            if tabla.args.get("db") is not None and tabla.args.get("catalog") is None:
+                tabla.set("catalog", sqlglot.exp.to_identifier(self.proyecto, quoted=True))
+        return arbol.sql(dialect="bigquery")
+
+    def crear_vista(self, dataset: str, nombre: str, sql_bigquery: str) -> None:
+        if dataset not in ESCRIBIBLES:
+            raise PermissionError(f"el flujo no escribe en {dataset}")
+        consulta = self._calificar(sql_bigquery)
+        try:
+            vista = self.cliente.get_table(self._tabla(dataset, nombre))
+            vista.view_query = consulta
+            self.cliente.update_table(vista, ["view_query"])
+        except NotFound:
+            vista = bigquery.Table(self._tabla(dataset, nombre))
+            vista.view_query = consulta
+            self.cliente.create_table(vista)
 
     # ── consultas ───────────────────────────────────────────────────────────
 

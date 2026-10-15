@@ -20,7 +20,7 @@ credentials*.json
 service-account*.json
 
 # Datos generados localmente
-data/out/
+data/
 
 # IDE y sistema
 .idea/

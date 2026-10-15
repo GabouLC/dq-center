@@ -13,5 +13,7 @@ Interfaz común:
   escribir(dataset, tabla, arrow, corte, primero)        reemplaza el corte
   materializar(sql, dataset, tabla, corte, primero)      idem, desde una consulta
   agregar(dataset, tabla, filas, esquema)                agrega filas
+  crear_tabla(dataset, tabla, esquema)                   crea la tabla vacía si no existe
+  crear_vista(dataset, nombre, sql)                      crea o reemplaza una vista
 Con corte=None se reemplaza la tabla completa.
 """

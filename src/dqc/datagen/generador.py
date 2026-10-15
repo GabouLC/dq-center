@@ -23,7 +23,9 @@ from dateutil.relativedelta import relativedelta
 from faker import Faker
 
 from dqc.datagen import catalogos as cat
-from dqc.modelo import COLUMNAS_NUEVAS, CORTES, HOMOLOGACION, INGESTA, TABLAS_CORTE  # noqa: F401 (INGESTA se reexporta)
+from dqc.modelo import (  # noqa: F401 (INGESTA se reexporta)
+    COLUMNAS_NUEVAS, CORTES, HOMOLOGACION, INGESTA, PRIVACIDAD, TABLAS_CORTE,
+)
 
 SEMILLA = 20260930
 CRECIMIENTO_MENSUAL = 0.02
@@ -35,7 +37,7 @@ N_PERSONAS_BASE = 4900
 N_POLIZAS_BASE = 8000
 N_SINIESTROS_BASE = 600
 
-JULIO, AGOSTO, SEPTIEMBRE = CORTES[3], CORTES[4], CORTES[5]
+JUNIO, JULIO, AGOSTO, SEPTIEMBRE = CORTES[2], CORTES[3], CORTES[4], CORTES[5]
 
 DESCRIPCIONES = {
     "DUPLICADA": "Persona duplicada con el mismo documento",
@@ -61,6 +63,7 @@ DESCRIPCIONES = {
     "PENDIENTE_VENCIDA": "Cuota PENDIENTE ya vencida",
     "IMPORTE_NO_CONVERTIBLE": "IMPORTE con formato de moneda: no se puede convertir a número",
     "AVISO_NO_CONVERTIBLE": "FEC_AVISO en formato DD/MM/AAAA: no se puede convertir a fecha",
+    "DNI_EN_CAUSA": "Carga de junio: el DNI del reportante quedó escrito en la causa del siniestro",
 }
 
 # Campo que el exportador escribe con un formato que la homologación no acepta.
@@ -228,6 +231,12 @@ class Generador:
         self._generar_vehiculos()
         self._generar_siniestros()
         self._generar_pagos()
+        # Junio: el sistema de siniestros escribe el DNI del reportante en la causa
+        # de 6 registros (fuga de PII que el Privacy Gate debe detectar).
+        candidatos = [s for s in self.siniestros if s.defecto is None and s.fecha_aviso <= JUNIO]
+        self._dni_en_causa = {
+            s.id_siniestro: f"{self.rnd.randint(10000000, 79999999)}" for s in self.rnd.sample(candidatos, 6)
+        }
         return self
 
     def _generar_personas(self) -> None:
@@ -729,6 +738,10 @@ class Generador:
                 error("SIN-INT-01", "siniestro", s.id_siniestro, s.defecto)
             elif s.defecto == "AVISO_NO_CONVERTIBLE":
                 error(HOMOLOGACION, "siniestro", s.id_siniestro, s.defecto)
+            causa = s.causa
+            if corte == JUNIO and s.id_siniestro in self._dni_en_causa:
+                causa = f"{s.causa} - reportado por DNI {self._dni_en_causa[s.id_siniestro]}"
+                error(PRIVACIDAD, "siniestro", s.id_siniestro, "DNI_EN_CAUSA")
             estado = s.estado(corte)
             fila = {
                 "fecha_corte": corte,
@@ -736,7 +749,7 @@ class Generador:
                 "id_poliza": s.id_poliza,
                 "fecha_ocurrencia": s.fecha_ocurrencia,
                 "fecha_aviso": s.fecha_aviso,
-                "causa": s.causa,
+                "causa": causa,
                 "monto_reclamado": s.monto_reclamado,
                 "monto_pagado": s.monto_pagado_final if estado == "PAGADO" else None,
                 "estado": estado,

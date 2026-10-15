@@ -54,8 +54,23 @@ NIVEL_POR_DIMENSION = {
 RAW, MASTER, BUSINESS = "dq_raw", "dq_master", "dq_business"
 ENGINE, SEGURIDAD = "dq_engine", "dq_seguridad"
 
-# Etapas previas al motor que también se verifican contra el manifiesto.
-INGESTA, HOMOLOGACION = "INGESTA", "HOMOLOGACION"
+# Etapas fuera del motor que también se verifican contra el manifiesto.
+INGESTA, HOMOLOGACION, PRIVACIDAD = "INGESTA", "HOMOLOGACION", "PRIVACIDAD"
+
+# Dominios de negocio del backlog: cada tabla pertenece a uno.
+DOMINIO_POR_TABLA = {
+    "persona": "Persona",
+    "poliza": "Póliza",
+    "vehiculo": "Póliza",
+    "siniestro": "Póliza",
+    "pago": "Póliza",
+}
+
+# Una regla en FALLA bloquea la certificación si su severidad es una de estas (HU-04).
+SEVERIDADES_BLOQUEANTES = ("CRITICA", "ALTA")
+CERTIFICADO = "CERTIFICADO"
+CON_OBSERVACIONES = "CERTIFICADO_CON_OBSERVACIONES"
+NO_CERTIFICADO = "NO_CERTIFICADO"
 
 DAC = ("PUBLICO", "SENSIBLE", "SENSIBLE_CIFRADO")
 MODOS_CIFRADO = ("deterministico", "aleatorio")
@@ -119,7 +134,7 @@ ESQUEMAS_ENGINE = {
     ],
     "resultados": [
         ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("id_regla", "STRING"), ("tabla", "STRING"),
-        ("nivel", "STRING"), ("dimension", "STRING"), ("severidad", "STRING"), ("tipo", "STRING"),
+        ("dominio", "STRING"), ("nivel", "STRING"), ("dimension", "STRING"), ("severidad", "STRING"), ("tipo", "STRING"),
         ("umbral", "FLOAT64"), ("universo", "INT64"), ("cumplen", "INT64"), ("cumplimiento", "FLOAT64"),
         ("estado", "STRING"),
     ],
@@ -130,6 +145,19 @@ ESQUEMAS_ENGINE = {
     "esquemas": [
         ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("tabla", "STRING"), ("posicion", "INT64"),
         ("columna", "STRING"), ("tipo", "STRING"),
+    ],
+    # Veredicto del Quality & Privacy Gate por tabla y corte, con su sello (HU-04, HU-07).
+    "certificaciones": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("tabla", "STRING"), ("dominio", "STRING"),
+        ("estado", "STRING"), ("calidad_ok", "BOOL"), ("privacidad_ok", "BOOL"),
+        ("reglas_bloqueantes", "STRING"), ("reglas_con_observacion", "STRING"), ("hallazgos", "INT64"),
+        ("cobertura", "FLOAT64"), ("publicado", "BOOL"), ("version_motor", "STRING"),
+        ("version_reglas", "STRING"), ("certificado_en", "TIMESTAMP"),
+    ],
+    # Evidencia de la revisión de privacidad: qué se encontró, dónde y si bloquea.
+    "hallazgos_privacidad": [
+        ("id_ejecucion", "STRING"), ("fecha_corte", "DATE"), ("tabla", "STRING"), ("tipo", "STRING"),
+        ("columna", "STRING"), ("llave", "STRING"), ("bloqueante", "BOOL"),
     ],
 }
 

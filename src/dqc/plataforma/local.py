@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import functools
+import threading
 from datetime import date
 
 import duckdb
@@ -26,9 +28,31 @@ TIPOS_BIGQUERY = {
     "BLOB": "BYTES",
     "TIMESTAMP WITH TIME ZONE": "TIMESTAMP",
 }
+TIPOS_DUCKDB = {
+    "STRING": "VARCHAR",
+    "INT64": "BIGINT",
+    "FLOAT64": "DOUBLE",
+    "BOOL": "BOOLEAN",
+    "DATE": "DATE",
+    "BYTES": "BLOB",
+    "TIMESTAMP": "TIMESTAMPTZ",
+}
+
+
+def _con_candado(metodo):
+    """Una conexión de DuckDB no admite hilos en paralelo (la API atiende en varios)."""
+
+    @functools.wraps(metodo)
+    def envuelto(self, *args, **kwargs):
+        with self._candado:
+            return metodo(self, *args, **kwargs)
+
+    return envuelto
+
 
 class PlataformaDuckDB:
     def __init__(self, ruta: str = ":memory:"):
+        self._candado = threading.RLock()
         self.con = duckdb.connect(ruta)
         self.funciones = FuncionesLocal()
         registrar_funciones_duckdb(self.con)
@@ -36,18 +60,31 @@ class PlataformaDuckDB:
             self.con.execute(f"CREATE SCHEMA IF NOT EXISTS {dataset}")
         self.con.execute(f"SET search_path = '{MASTER}'")
 
+    @_con_candado
     def preparar(self) -> None:
         self.con.execute(f"CREATE TABLE IF NOT EXISTS {SEGURIDAD}.llaves (nombre VARCHAR, keyset BLOB)")
         if not self.con.execute(f"SELECT COUNT(*) FROM {SEGURIDAD}.llaves").fetchone()[0]:
             for nombre, llave in llaves_locales().items():
                 self.con.execute(f"INSERT INTO {SEGURIDAD}.llaves VALUES (?, ?)", [nombre, llave])
 
+    @_con_candado
     def reiniciar(self) -> None:
-        for dataset in (RAW, MASTER, ENGINE, BUSINESS):
-            for (tabla,) in self.con.execute(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = ?", [dataset]
-            ).fetchall():
-                self.con.execute(f"DROP TABLE {dataset}.{tabla}")
+        objetos = self.con.execute(
+            "SELECT table_schema, table_name, table_type FROM information_schema.tables "
+            "WHERE table_schema IN (?, ?, ?, ?) ORDER BY table_type DESC",  # primero las vistas
+            [RAW, MASTER, ENGINE, BUSINESS],
+        ).fetchall()
+        for dataset, nombre, tipo in objetos:
+            self.con.execute(f"DROP {'VIEW' if tipo == 'VIEW' else 'TABLE'} IF EXISTS {dataset}.{nombre}")
+
+    @_con_candado
+    def crear_tabla(self, dataset: str, tabla: str, columnas: list[tuple[str, str]]) -> None:
+        definicion = ", ".join(f"{c} {TIPOS_DUCKDB[t]}" for c, t in columnas)
+        self.con.execute(f"CREATE TABLE IF NOT EXISTS {dataset}.{tabla} ({definicion})")
+
+    @_con_candado
+    def crear_vista(self, dataset: str, nombre: str, sql_bigquery: str) -> None:
+        self.con.execute(f"CREATE OR REPLACE VIEW {dataset}.{nombre} AS {self._traducir(sql_bigquery)}")
 
     # ── consultas ───────────────────────────────────────────────────────────
 
@@ -55,11 +92,13 @@ class PlataformaDuckDB:
     def _traducir(sql_bigquery: str) -> str:
         return sqlglot.transpile(sql_bigquery, read="bigquery", write="duckdb")[0]
 
+    @_con_candado
     def consultar(self, sql_bigquery: str) -> list[dict]:
         cursor = self.con.execute(self._traducir(sql_bigquery))
         nombres = [d[0] for d in cursor.description]
         return [dict(zip(nombres, fila)) for fila in cursor.fetchall()]
 
+    @_con_candado
     def probar(self, sql_bigquery: str) -> str | None:
         try:
             self.con.execute("EXPLAIN " + self._traducir(sql_bigquery))
@@ -67,6 +106,7 @@ class PlataformaDuckDB:
             return str(e).splitlines()[0]
         return None
 
+    @_con_candado
     def columnas(self, tabla: str, dataset: str = MASTER) -> list[tuple[str, str]]:
         filas = self.con.execute(
             "SELECT column_name, data_type FROM information_schema.columns "
@@ -98,6 +138,7 @@ class PlataformaDuckDB:
         self.con.execute("DROP TABLE _nuevo")
         return filas
 
+    @_con_candado
     def escribir(self, dataset: str, tabla: str, datos: pa.Table, corte: date | None, primero: bool = False) -> int:
         self.con.register("_datos", datos)
         try:
@@ -105,9 +146,11 @@ class PlataformaDuckDB:
         finally:
             self.con.unregister("_datos")
 
+    @_con_candado
     def materializar(self, sql_bigquery: str, dataset: str, tabla: str, corte: date | None, primero: bool = False) -> int:
         return self._reemplazar(dataset, tabla, self._traducir(sql_bigquery), corte)
 
+    @_con_candado
     def agregar(self, dataset: str, tabla: str, filas: list[dict], esquema: list[tuple[str, str]]) -> None:
         if not filas:
             return

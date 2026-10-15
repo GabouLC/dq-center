@@ -95,7 +95,8 @@ def filas_de_ejecucion(e: Ejecucion) -> dict[str, list[dict]]:
         }],
         "resultados": [
             {
-                **base, "id_regla": r.id_regla, "tabla": r.tabla, "nivel": r.nivel, "dimension": r.dimension,
+                **base, "id_regla": r.id_regla, "tabla": r.tabla, "dominio": r.dominio, "nivel": r.nivel,
+                "dimension": r.dimension,
                 "severidad": r.severidad, "tipo": r.tipo, "umbral": r.umbral, "universo": r.universo,
                 "cumplen": r.cumplen, "cumplimiento": r.cumplimiento, "estado": r.estado,
             }
@@ -114,10 +115,10 @@ def filas_de_ejecucion(e: Ejecucion) -> dict[str, list[dict]]:
     }
 
 
-def guardar_ejecucion(plataforma, e: Ejecucion) -> None:
+def guardar_ejecucion(plataforma, e: Ejecucion, extra: dict[str, list[dict]] | None = None) -> None:
     """La ejecución se escribe al final: el portal solo ve una corrida cuando ya está completa."""
-    filas = filas_de_ejecucion(e)
-    for tabla in ("resultados", "fallidos", "esquemas", "ejecuciones"):
+    filas = {**filas_de_ejecucion(e), **(extra or {})}
+    for tabla in [t for t in filas if t != "ejecuciones"] + ["ejecuciones"]:
         plataforma.agregar(ENGINE, tabla, filas[tabla], ESQUEMAS_ENGINE[tabla])
 
 

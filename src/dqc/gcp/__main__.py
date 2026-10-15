@@ -21,12 +21,13 @@ from pathlib import Path
 import pyarrow.parquet as pq
 from google.cloud import bigquery, firestore
 
+from dqc.api.configuracion import cargar_glosario
 from dqc.gcp.firestore import CONTRATOS, cargar_reglas, sembrar
 from dqc.modelo import CORTES, RAW
-from dqc.motor.motor import Ejecucion, Motor, guardar_ejecucion
+from dqc.motor.motor import Ejecucion
 from dqc.motor.puntuacion import scores
 from dqc.motor.reglas import cargar_yaml
-from dqc.pipeline.configuracion import cargar_contratos, cargar_homologacion, cifrados
+from dqc.pipeline.configuracion import cargar_contratos, cargar_homologacion
 from dqc.pipeline.flujo import Flujo
 from dqc.pipeline.ingesta import RECHAZADA, leer_entregas
 from dqc.pipeline.verificacion import verificar
@@ -75,6 +76,7 @@ def main() -> None:
             db,
             cargar_yaml(args.config / "reglas_iniciales.yaml"),
             cargar_contratos(args.config / "contratos.yaml"),
+            cargar_glosario(args.config / "glosario.yaml"),
             args.admin,
             args.reemplazar,
         )
@@ -87,17 +89,15 @@ def main() -> None:
 
     if args.comando == "ejecutar":
         contratos = {d.id: d.to_dict() for d in db.collection(CONTRATOS).stream()}
-        motor = Motor(plataforma, reglas, hilos=8, cifrados=cifrados(contratos))
+        flujo = Flujo(plataforma, {}, contratos, reglas, hilos=8)
         corte = args.corte or plataforma.consultar(
             f"SELECT MAX(fecha_corte) AS corte FROM {RAW}.registro_cargas WHERE estado = 'EXITOSA'"
         )[0]["corte"]
-        e = motor.ejecutar(corte, origen=args.origen)
-        guardar_ejecucion(plataforma, e)
-        _imprimir(e)
+        e, certificaciones = flujo.evaluar(corte, origen=args.origen)
+        _imprimir(e, "  " + ", ".join(f"{c.tabla} {c.estado}" for c in certificaciones))
         return
 
     plataforma.reiniciar()
-    plataforma.preparar()
     flujo = Flujo(
         plataforma,
         cargar_homologacion(args.config / "homologacion.yaml"),
@@ -106,6 +106,7 @@ def main() -> None:
         args.datos / "landing",
         hilos=8,
     )
+    flujo.preparar()
     entregas = leer_entregas(args.datos / "landing")
     resultados = []
     for i, corte in enumerate(CORTES):

@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
-from dqc.modelo import PESO_SEVERIDAD
+from dqc.modelo import DOMINIO_POR_TABLA, PESO_SEVERIDAD
 
 MARGEN_ALERTA = 2.0
 
@@ -45,6 +45,10 @@ class ResultadoRegla:
     @property
     def cumplimiento(self) -> float | None:
         return cumplimiento(self.universo, self.cumplen)
+
+    @property
+    def dominio(self) -> str:
+        return DOMINIO_POR_TABLA[self.tabla]
 
     @property
     def estado(self) -> str:

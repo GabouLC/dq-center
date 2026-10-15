@@ -35,7 +35,6 @@ def main() -> None:
 
     plataforma = PlataformaDuckDB(args.db)
     plataforma.reiniciar()
-    plataforma.preparar()
     flujo = Flujo(
         plataforma,
         cargar_homologacion(args.config / "homologacion.yaml"),
@@ -43,6 +42,7 @@ def main() -> None:
         cargar_yaml(args.config / "reglas_iniciales.yaml"),
         args.datos / "landing",
     )
+    flujo.preparar()
     entregas = leer_entregas(args.datos / "landing")
 
     print(f"{'corte':<12}{'global':>8}" + "".join(f"{t:>11}" for t in TABLAS_CORTE)
@@ -70,6 +70,20 @@ def main() -> None:
             continue
         celdas = "".join(f"{_pct(por_corte[c].cumplimiento)}{por_corte[c].estado[0]:>2}" for c in CORTES)
         print(f"  {regla.id:<11}{regla.tabla:<10}umbral {regla.umbral:>5}  {celdas}")
+
+    print("\nCertificación (C certificada, O con observaciones, X no certificada):")
+    print(f"  {'tabla':<10}" + "".join(f"{c.isoformat():>12}" for c in CORTES))
+    marca = {"CERTIFICADO": "C", "CERTIFICADO_CON_OBSERVACIONES": "O", "NO_CERTIFICADO": "X"}
+    for tabla in TABLAS_CORTE:
+        celdas = [next(c for c in r.certificaciones if c.tabla == tabla) for r in resultados]
+        print(f"  {tabla:<10}" + "".join(f"{marca[c.estado]:>12}" for c in celdas))
+    for r in resultados:
+        for c in r.certificaciones:
+            if not c.certificado:
+                motivo = ", ".join(c.reglas_bloqueantes) or "privacidad: " + ", ".join(
+                    sorted({f"{h.tipo} en {h.columna}" for h in c.hallazgos if h.bloqueante})
+                )
+                print(f"  {r.fecha_corte} {c.tabla}: {motivo}")
 
     manifiesto = pq.read_table(args.datos / "manifiesto_errores.parquet").to_pylist()
     print("\nVerificación contra el manifiesto:")

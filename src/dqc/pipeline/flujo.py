@@ -1,4 +1,8 @@
-"""El flujo de un corte: ingesta -> homologación y Privacy Gate -> motor de calidad."""
+"""El flujo de un corte, como una tubería de etapas (Pipes and Filters):
+
+  ingesta -> homologación + cifrado -> motor de calidad -> revisión de privacidad
+          -> certificación -> publicación en BUSINESS -> evidencia en dq_engine
+"""
 
 from __future__ import annotations
 
@@ -6,12 +10,15 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from dqc.modelo import ESQUEMAS, MASTER, RAW
+from dqc.modelo import ESQUEMAS, MASTER, RAW, TABLAS_CORTE
+from dqc.motor.certificacion import Certificacion, certificar, version_reglas
 from dqc.motor.motor import Ejecucion, Motor, guardar_ejecucion
 from dqc.motor.reglas import Regla
 from dqc.pipeline.configuracion import Fuente, cifrados
 from dqc.pipeline.homologacion import sql_homologacion
 from dqc.pipeline.ingesta import EXITOSA, Carga, Entrega, validar_csv
+from dqc.pipeline.privacidad import revisar
+from dqc.pipeline.publicacion import preparar_almacen, publicar
 
 
 @dataclass
@@ -20,6 +27,7 @@ class ResultadoCorte:
     cargas: list[Carga]
     incidencias: list[dict]
     ejecucion: Ejecucion
+    certificaciones: list[Certificacion]
 
 
 class Flujo:
@@ -29,14 +37,19 @@ class Flujo:
         fuentes: dict[str, Fuente],
         contratos: dict[str, dict],
         reglas: list[Regla],
-        landing: Path,
+        landing: Path | None = None,
         hilos: int = 1,
     ):
         self.plataforma = plataforma
         self.fuentes = fuentes
+        self.contratos = contratos
         self.cifrados = cifrados(contratos)
         self.landing = landing
         self.motor = Motor(plataforma, reglas, hilos=hilos, cifrados=self.cifrados)
+        self.version_reglas = version_reglas(reglas)
+
+    def preparar(self) -> None:
+        preparar_almacen(self.plataforma)
 
     def _ingerir(self, entregas: list[Entrega], corte: date, primero: bool) -> tuple[list[Carga], dict[str, Carga]]:
         cargas, aceptadas = [], {}
@@ -64,13 +77,43 @@ class Flujo:
             incidencias += nuevas
         return incidencias
 
+    def evaluar(self, corte: date, origen: str, primero: bool = False) -> tuple[Ejecucion, list[Certificacion]]:
+        """Motor + Quality & Privacy Gate + publicación de lo certificado, con su evidencia."""
+        ejecucion = self.motor.ejecutar(corte, origen)
+        hallazgos = [
+            h
+            for tabla in TABLAS_CORTE
+            for h in revisar(self.plataforma, tabla, corte, self.contratos[tabla], self.cifrados.get(tabla, {}))
+        ]
+        certificaciones = certificar(ejecucion, hallazgos, self.version_reglas)
+        publicar(self.plataforma, certificaciones, corte, primero)
+        base = {"id_ejecucion": ejecucion.id_ejecucion, "fecha_corte": corte}
+        guardar_ejecucion(self.plataforma, ejecucion, {
+            "certificaciones": [
+                {
+                    **base, "tabla": c.tabla, "dominio": c.dominio, "estado": c.estado,
+                    "calidad_ok": c.calidad_ok, "privacidad_ok": c.privacidad_ok,
+                    "reglas_bloqueantes": ",".join(c.reglas_bloqueantes),
+                    "reglas_con_observacion": ",".join(c.reglas_con_observacion),
+                    "hallazgos": len(c.hallazgos), "cobertura": c.cobertura, "publicado": c.publicado,
+                    "version_motor": c.version_motor, "version_reglas": c.version_reglas,
+                    "certificado_en": c.certificado_en,
+                }
+                for c in certificaciones
+            ],
+            "hallazgos_privacidad": [
+                {**base, "tabla": h.tabla, "tipo": h.tipo, "columna": h.columna, "llave": h.llave, "bloqueante": h.bloqueante}
+                for h in hallazgos
+            ],
+        })
+        return ejecucion, certificaciones
+
     def procesar_corte(
         self, corte: date, entregas: list[Entrega], primero: bool = False, origen: str = "simulacion"
     ) -> ResultadoCorte:
-        """Procesa las entregas de un corte (en orden de llegada) y corre el motor."""
+        """Procesa las entregas de un corte (en orden de llegada) y lo evalúa."""
         del_corte = [e for e in entregas if e.fecha_corte == corte]
         cargas, aceptadas = self._ingerir(del_corte, corte, primero)
         incidencias = self._homologar(aceptadas, corte, primero)
-        ejecucion = self.motor.ejecutar(corte, origen)
-        guardar_ejecucion(self.plataforma, ejecucion)
-        return ResultadoCorte(corte, cargas, incidencias, ejecucion)
+        ejecucion, certificaciones = self.evaluar(corte, origen, primero)
+        return ResultadoCorte(corte, cargas, incidencias, ejecucion, certificaciones)

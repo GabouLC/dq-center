@@ -59,8 +59,8 @@ def datos(resultado, fuentes, tmp_path_factory) -> Datos:
 def simulacion(datos, fuentes, contratos, reglas) -> Simulacion:
     """Simula la historia en DuckDB: cada corte pasa por ingesta, homologación y motor."""
     plataforma = PlataformaDuckDB()
-    plataforma.preparar()
     flujo = Flujo(plataforma, fuentes, contratos, reglas, datos.landing)
+    flujo.preparar()
     entregas = leer_entregas(datos.landing)
     resultados = {c: flujo.procesar_corte(c, entregas, primero=i == 0) for i, c in enumerate(CORTES)}
     return Simulacion(plataforma, resultados)

@@ -1,0 +1,72 @@
+# Glosario de negocio del portal (HU-10). dominio: Póliza, Persona, Calidad o Privacidad.
+# campos: tabla.campo de MASTER relacionados con el término.
+terminos:
+  - {id: poliza, termino: Póliza, dominio: Póliza, campos: [poliza.nro_poliza, poliza.id_poliza],
+     definicion: "Contrato por el que la aseguradora cubre un riesgo a cambio de una prima. Se identifica por su número comercial POL-AAAA-NNNNNN."}
+  - {id: ramo, termino: Ramo, dominio: Póliza, campos: [ref_producto.ramo],
+     definicion: "Línea de negocio a la que pertenece un producto: vehicular, SOAT, vida, salud u hogar."}
+  - {id: soat, termino: SOAT, dominio: Póliza, sinonimos: [Seguro Obligatorio de Accidentes de Tránsito], campos: [ref_producto.ramo],
+     definicion: "Seguro obligatorio que cubre a las víctimas de accidentes de tránsito. Sus pólizas también tienen un vehículo asociado."}
+  - {id: vigencia, termino: Vigencia, dominio: Póliza, campos: [poliza.fecha_inicio_vigencia, poliza.fecha_fin_vigencia],
+     definicion: "Periodo en que la póliza da cobertura. Una póliza VIGENTE en una fecha de corte debe tener esa fecha dentro de su vigencia."}
+  - {id: prima-neta, termino: Prima neta, dominio: Póliza, campos: [poliza.prima_neta],
+     definicion: "Precio del riesgo, antes de cargos e impuestos."}
+  - {id: prima-total, termino: Prima total, dominio: Póliza, campos: [poliza.prima_total],
+     definicion: "Lo que paga el cliente: prima neta × 1.03 (derecho de emisión) × 1.18 (IGV)."}
+  - {id: derecho-emision, termino: Derecho de emisión, dominio: Póliza, campos: [poliza.prima_total],
+     definicion: "Cargo del 3 % sobre la prima neta por emitir la póliza."}
+  - {id: suma-asegurada, termino: Suma asegurada, dominio: Póliza, campos: [poliza.suma_asegurada],
+     definicion: "Monto máximo que la aseguradora pagaría por un siniestro de la póliza."}
+  - {id: contratante, termino: Contratante, dominio: Póliza, campos: [poliza.id_contratante],
+     definicion: "Persona natural o empresa que firma la póliza y paga la prima."}
+  - {id: asegurado, termino: Asegurado, dominio: Póliza, campos: [poliza.id_asegurado],
+     definicion: "Persona cuyo riesgo cubre la póliza. Puede ser el mismo contratante."}
+  - {id: siniestro, termino: Siniestro, dominio: Póliza, campos: [siniestro.id_siniestro, siniestro.fecha_ocurrencia],
+     definicion: "Evento cubierto por una póliza que el asegurado reporta para recibir una indemnización. Debe ocurrir dentro de la vigencia."}
+  - {id: cuota, termino: Cuota, dominio: Póliza, campos: [pago.nro_cuota, pago.fecha_vencimiento],
+     definicion: "Cada una de las partes en que se fracciona el pago de la prima. Una cuota impaga pasa a VENCIDO después de su vencimiento."}
+  - {id: persona-natural, termino: Persona natural, dominio: Persona, campos: [persona.tipo_documento],
+     definicion: "Cliente individual, identificado con DNI o carné de extranjería."}
+  - {id: persona-juridica, termino: Persona jurídica, dominio: Persona, sinonimos: [Empresa], campos: [persona.razon_social],
+     definicion: "Empresa cliente, identificada con RUC y razón social."}
+  - {id: dni, termino: DNI, dominio: Persona, sinonimos: [Documento Nacional de Identidad], campos: [persona.nro_documento],
+     definicion: "Documento de identidad peruano de 8 dígitos. Los ceros iniciales son parte del número. Es un dato Sensible cifrado."}
+  - {id: ruc, termino: RUC, dominio: Persona, sinonimos: [Registro Único de Contribuyentes], campos: [persona.nro_documento],
+     definicion: "Número tributario de 11 dígitos; las empresas empiezan con 20."}
+  - {id: ubigeo, termino: Ubigeo, dominio: Persona, campos: [persona.ubigeo, ref_ubigeo.ubigeo],
+     definicion: "Código de 6 dígitos del INEI que identifica un distrito: departamento, provincia y distrito."}
+  - {id: fecha-corte, termino: Fecha de corte, dominio: Calidad, campos: [persona.fecha_corte, poliza.fecha_corte],
+     definicion: "Fin de mes al que corresponde cada foto de los datos. Todas las tablas por corte se evalúan y certifican por fecha de corte."}
+  - {id: regla-calidad, termino: Regla de calidad, dominio: Calidad,
+     definicion: "Condición que deben cumplir los registros de una tabla, con su dimensión, nivel, severidad y umbral. Se configura sin tocar código."}
+  - {id: umbral, termino: Umbral, dominio: Calidad,
+     definicion: "Porcentaje mínimo de cumplimiento para que una regla quede en OK. Hasta 2 puntos por debajo queda en ALERTA; más abajo, en FALLA."}
+  - {id: cumplimiento, termino: Cumplimiento, dominio: Calidad, sinonimos: [PASS],
+     definicion: "Filas que cumplen la regla sobre las filas que entran a ella, en porcentaje. Sin filas, la regla queda sin datos."}
+  - {id: severidad, termino: Severidad, dominio: Calidad,
+     definicion: "Peso de una regla: CRÍTICA (3), ALTA (2) o MEDIA (1). Una regla CRÍTICA o ALTA en FALLA impide certificar la tabla."}
+  - {id: niveles, termino: Niveles de calidad, dominio: Calidad, sinonimos: [N1, N2, N3],
+     definicion: "N1 detecta errores básicos de cada registro (completitud, unicidad, validez). N2 aplica reglas de negocio (consistencia, integridad). N3 mide la salud de la carga (oportunidad, volumetría)."}
+  - {id: completitud, termino: Completitud, dominio: Calidad, definicion: "Que los campos obligatorios tengan valor."}
+  - {id: unicidad, termino: Unicidad, dominio: Calidad, definicion: "Que una llave de negocio no se repita dentro de un corte."}
+  - {id: validez, termino: Validez, dominio: Calidad, definicion: "Que cada valor tenga el formato y el dominio esperados."}
+  - {id: consistencia, termino: Consistencia, dominio: Calidad, definicion: "Que los campos de un registro cuadren entre sí, como la prima total con la prima neta."}
+  - {id: integridad, termino: Integridad, dominio: Calidad, definicion: "Que cada referencia apunte a un registro que existe, como el contratante de una póliza."}
+  - {id: oportunidad, termino: Oportunidad, dominio: Calidad, definicion: "Que la carga llegue a tiempo: hasta las 09:00 de Lima del segundo día después del corte."}
+  - {id: volumetria, termino: Volumetría, dominio: Calidad, definicion: "Que el número de filas no varíe más de lo esperado entre cortes ni baje de un mínimo."}
+  - {id: certificacion, termino: Certificación, dominio: Calidad,
+     definicion: "Veredicto del Quality & Privacy Gate por tabla y corte. Solo lo certificado se publica en BUSINESS."}
+  - {id: dac, termino: Taxonomía DAC, dominio: Privacidad, sinonimos: [Datos de Alta Criticidad],
+     definicion: "Clasificación de cada campo como Público, Sensible (visible solo para roles autorizados) o Sensible cifrado (PII que se guarda cifrada)."}
+  - {id: pii, termino: PII, dominio: Privacidad, sinonimos: [Dato personal],
+     definicion: "Información que identifica a una persona: DNI, nombres, correo o celular. Protegida por la Ley N.° 29733."}
+  - {id: cifrado-deterministico, termino: Cifrado determinístico, dominio: Privacidad, campos: [persona.nro_documento],
+     definicion: "Cifrado que produce siempre el mismo resultado para el mismo valor: permite comparar y cruzar sin descifrar."}
+  - {id: cifrado-aleatorio, termino: Cifrado aleatorio, dominio: Privacidad, sinonimos: [Cifrado no determinístico], campos: [persona.email, persona.celular],
+     definicion: "Cifrado que produce un resultado distinto cada vez: más seguro, pero no permite comparar."}
+  - {id: gate, termino: Quality & Privacy Gate, dominio: Privacidad,
+     definicion: "Control que decide si un corte de una tabla se certifica: revisa las reglas de calidad y que no haya PII en texto claro."}
+  - {id: capa-raw, termino: Capa RAW, dominio: Privacidad, definicion: "Zona de aterrizaje: los archivos tal como llegan. Acceso restringido."}
+  - {id: capa-master, termino: Capa MASTER, dominio: Privacidad, definicion: "Modelo estándar homologado, con la PII ya cifrada. Ahí corre el motor de calidad."}
+  - {id: capa-business, termino: Capa BUSINESS, dominio: Privacidad, definicion: "Exposición analítica: solo cortes certificados (tablas p_ y vistas v_). Es lo único que lee el portal."}
+  - {id: linaje, termino: Linaje, dominio: Privacidad, definicion: "Recorrido de un dato desde su archivo de origen hasta BUSINESS, con las transformaciones que sufre."}
