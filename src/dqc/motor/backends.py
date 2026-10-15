@@ -20,6 +20,19 @@ class Backend(Protocol):
     def columnas(self, tabla: str) -> list[tuple[str, str]]: ...
 
 
+# Tipos de DuckDB con su nombre en BigQuery, para que la foto del esquema
+# sea igual en los dos backends.
+TIPOS_BIGQUERY = {
+    "BIGINT": "INT64",
+    "INTEGER": "INT64",
+    "VARCHAR": "STRING",
+    "DOUBLE": "FLOAT64",
+    "BOOLEAN": "BOOL",
+    "DATE": "DATE",
+    "TIMESTAMP WITH TIME ZONE": "TIMESTAMP",
+}
+
+
 class BackendDuckDB:
     def __init__(self, conexion=None):
         import duckdb
@@ -33,11 +46,20 @@ class BackendDuckDB:
         return [dict(zip(nombres, fila)) for fila in cursor.fetchall()]
 
     def columnas(self, tabla: str) -> list[tuple[str, str]]:
-        return self.con.execute(
+        filas = self.con.execute(
             "SELECT column_name, data_type FROM information_schema.columns "
             "WHERE table_name = ? ORDER BY ordinal_position",
             [tabla],
         ).fetchall()
+        return [(columna, TIPOS_BIGQUERY.get(tipo, tipo)) for columna, tipo in filas]
+
+    def probar(self, sql_bigquery: str) -> str | None:
+        """Error de compilación del SQL, o None si es válido (equivale al dry run)."""
+        try:
+            self.con.execute("EXPLAIN " + sqlglot.transpile(sql_bigquery, read="bigquery", write="duckdb")[0])
+        except Exception as e:  # noqa: BLE001 - duckdb lanza varias clases de error
+            return str(e).splitlines()[0]
+        return None
 
     # ── carga local, corte por corte ────────────────────────────────────────
 
@@ -60,7 +82,9 @@ class BackendDuckDB:
             if not self._existe(tabla):
                 self.con.execute(f"CREATE TABLE {tabla} AS SELECT * FROM read_parquet(?)", [archivo])
                 continue
-            actuales = {c for c, _ in self.columnas(tabla)}
+            actuales = {c for c, _ in self.con.execute(
+                "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ?", [tabla]
+            ).fetchall()}
             nuevas = self.con.execute(
                 "SELECT column_name, column_type FROM (DESCRIBE SELECT * FROM read_parquet(?))", [archivo]
             ).fetchall()

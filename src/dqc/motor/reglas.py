@@ -175,6 +175,16 @@ def desde_dict(datos: dict) -> Regla:
     return Regla(**datos)
 
 
+def a_documento(regla: Regla) -> dict:
+    """La regla como dict, sin atributos vacíos (así se guarda en Firestore)."""
+    return {k: v for k, v in regla.__dict__.items() if v is not None and v != []}
+
+
+def desde_documento(doc: dict) -> Regla:
+    """Ignora los metadatos (actualizado_en, actualizado_por) que no son parte de la regla."""
+    return desde_dict({k: v for k, v in doc.items() if k in CAMPOS_REGLA})
+
+
 def expandir(reglas: list[Regla]) -> list[Regla]:
     """Reemplaza cada regla con tabla '*' por una regla por cada tabla por corte."""
     expandidas = []

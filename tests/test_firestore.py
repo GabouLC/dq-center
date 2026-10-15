@@ -1,16 +1,16 @@
 from pathlib import Path
 
-from dqc.gcp.firestore import cargar_contratos, doc_a_regla, regla_a_doc
+from dqc.gcp.firestore import cargar_contratos
 from dqc.modelo import ESQUEMAS, TABLAS_CORTE
-from dqc.motor.reglas import cargar_yaml
+from dqc.motor.reglas import a_documento, cargar_yaml, desde_documento
 
 CONFIG = Path(__file__).parents[1] / "config"
 
 
 def test_las_reglas_sobreviven_el_viaje_a_firestore():
     for regla in cargar_yaml(CONFIG / "reglas_iniciales.yaml"):
-        doc = {**regla_a_doc(regla), "actualizado_en": "2026-10-15", "actualizado_por": "semilla"}
-        assert doc_a_regla(doc) == regla
+        doc = {**a_documento(regla), "actualizado_en": "2026-10-15", "actualizado_por": "semilla"}
+        assert desde_documento(doc) == regla
 
 
 def test_los_contratos_cubren_las_tablas_con_sus_tipos_reales():

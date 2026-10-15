@@ -72,6 +72,35 @@ class Motor:
         return ejecucion
 
 
+def filas_de_ejecucion(e: Ejecucion) -> dict[str, list[dict]]:
+    """Filas de las tablas de dq_engine (ejecuciones, resultados, fallidos, esquemas)."""
+    base = {"id_ejecucion": e.id_ejecucion, "fecha_corte": e.fecha_corte}
+    return {
+        "ejecuciones": [{
+            **base, "origen": e.origen, "iniciada_en": e.iniciada_en,
+            "terminada_en": e.terminada_en, "reglas": len(e.resultados),
+        }],
+        "resultados": [
+            {
+                **base, "id_regla": r.id_regla, "tabla": r.tabla, "dimension": r.dimension,
+                "severidad": r.severidad, "tipo": r.tipo, "umbral": r.umbral, "universo": r.universo,
+                "cumplen": r.cumplen, "cumplimiento": r.cumplimiento, "estado": r.estado,
+            }
+            for r in e.resultados
+        ],
+        "fallidos": [
+            {**base, "id_regla": r.id_regla, "tabla": r.tabla, "llave": llave, "detalle": r.muestra.get(llave)}
+            for r in e.resultados
+            for llave in r.fallidos
+        ],
+        "esquemas": [
+            {**base, "tabla": tabla, "posicion": i, "columna": columna, "tipo": tipo}
+            for tabla, columnas in e.esquemas.items()
+            for i, (columna, tipo) in enumerate(columnas, start=1)
+        ],
+    }
+
+
 def comparar_con_manifiesto(
     ejecuciones: list[Ejecucion], manifiesto: list[dict]
 ) -> tuple[set[tuple], set[tuple]]:

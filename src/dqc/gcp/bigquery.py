@@ -20,7 +20,7 @@ from google.api_core.exceptions import Conflict
 from google.cloud import bigquery
 
 from dqc.modelo import ESQUEMAS, TABLAS_CORTE, TABLAS_REF
-from dqc.motor.motor import Ejecucion
+from dqc.motor.motor import Ejecucion, filas_de_ejecucion
 
 DATASET_RAW = "dq_raw"
 DATASET_ENGINE = "dq_engine"
@@ -172,29 +172,10 @@ class AlmacenBigQuery:
         self.cliente.load_table_from_json(filas, f"{self.engine}.{tabla}", job_config=config).result()
 
     def guardar(self, e: Ejecucion) -> None:
-        base = {"id_ejecucion": e.id_ejecucion, "fecha_corte": e.fecha_corte}
-        self._agregar("ejecuciones", [{
-            **base, "origen": e.origen, "iniciada_en": e.iniciada_en,
-            "terminada_en": e.terminada_en, "reglas": len(e.resultados),
-        }])
-        self._agregar("resultados", [
-            {
-                **base, "id_regla": r.id_regla, "tabla": r.tabla, "dimension": r.dimension,
-                "severidad": r.severidad, "tipo": r.tipo, "umbral": r.umbral, "universo": r.universo,
-                "cumplen": r.cumplen, "cumplimiento": r.cumplimiento, "estado": r.estado,
-            }
-            for r in e.resultados
-        ])
-        self._agregar("fallidos", [
-            {**base, "id_regla": r.id_regla, "tabla": r.tabla, "llave": llave, "detalle": r.muestra.get(llave)}
-            for r in e.resultados
-            for llave in r.fallidos
-        ])
-        self._agregar("esquemas", [
-            {**base, "tabla": tabla, "posicion": i, "columna": columna, "tipo": tipo}
-            for tabla, columnas in e.esquemas.items()
-            for i, (columna, tipo) in enumerate(columnas, start=1)
-        ])
+        # La ejecución va al final: el portal solo ve una corrida cuando ya está completa.
+        filas = filas_de_ejecucion(e)
+        for tabla in ("resultados", "fallidos", "esquemas", "ejecuciones"):
+            self._agregar(tabla, filas[tabla])
 
 
 def leer_manifiesto(cliente: bigquery.Client) -> list[dict]:
