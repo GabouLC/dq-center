@@ -51,9 +51,12 @@ def _pct_pass(resultados: list[dict]) -> float | None:
 
 def resumen(ultimas: dict[date, dict], resultados: list[dict], certificaciones: list[dict]) -> dict:
     """Score global, por tabla y dimensión, % de reglas en PASS y certificación de cada corte."""
+    por_ejecucion: dict[str, list[dict]] = {}
+    for r in resultados:
+        por_ejecucion.setdefault(r["id_ejecucion"], []).append(r)
     cortes = []
     for corte, e in ultimas.items():
-        filas = de_la_ejecucion(resultados, e["id_ejecucion"])
+        filas = por_ejecucion.get(e["id_ejecucion"], [])
         s = scores([_a_resultado(r) for r in filas])
         cortes.append({
             "fecha_corte": corte,
@@ -61,6 +64,7 @@ def resumen(ultimas: dict[date, dict], resultados: list[dict], certificaciones: 
             "terminada_en": e["terminada_en"],
             "global": s.global_,
             "pct_pass": _pct_pass(filas),
+            "pct_pass_tabla": {t: _pct_pass([r for r in filas if r["tabla"] == t]) for t in TABLAS_CORTE},
             "por_tabla": {t: s.por_tabla.get(t) for t in TABLAS_CORTE},
             "por_dimension": {
                 t: {d: s.por_dimension[t, d] for d in DIMENSIONES if (t, d) in s.por_dimension}

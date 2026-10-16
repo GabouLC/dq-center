@@ -5,7 +5,10 @@ const entero = new Intl.NumberFormat('es-PE')
 const horaLima = new Intl.DateTimeFormat('es-PE', {
   timeZone: 'America/Lima', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
 })
-const mes = new Intl.DateTimeFormat('es-PE', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+const diaLargo = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const diaCorto = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const diaMedio = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+const relativoFmt = new Intl.RelativeTimeFormat('es-PE', { numeric: 'auto', style: 'short' })
 
 export const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${pct1.format(v)} %`)
 /** Variación con signo: +2.2 % / −1.3 pts. */
@@ -13,8 +16,21 @@ export const signo = (v: number | null | undefined, sufijo = ' %') =>
   v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}${pct1.format(Math.abs(v))}${sufijo}`
 export const num = (v: number | null | undefined) => (v === null || v === undefined ? '—' : entero.format(v))
 export const hora = (iso: string | null | undefined) => (iso ? horaLima.format(new Date(iso)) : '—')
-/** "2026-07-31" -> "jul. 2026" */
-export const corte = (iso: string) => mes.format(new Date(`${iso}T00:00:00Z`))
+/** "2026-07-14" -> "mar., 14 jul. 2026" */
+export const corte = (iso: string) => diaLargo.format(new Date(`${iso}T00:00:00Z`))
+/** "2026-07-14" -> "14 jul." */
+export const corteCorto = (iso: string) => diaCorto.format(new Date(`${iso}T00:00:00Z`))
+/** "2026-07-14" -> "mar., 14 jul." */
+export const corteMedio = (iso: string) => diaMedio.format(new Date(`${iso}T00:00:00Z`))
+/** Fin de semana: los sistemas de origen casi no generan movimiento. */
+export const esFinDeSemana = (iso: string) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay())
+/** "hace 3 min", "hace 20 s" */
+export function relativo(iso: string, ahora = Date.now()): string {
+  const segundos = Math.round((new Date(iso).getTime() - ahora) / 1000)
+  if (Math.abs(segundos) < 45) return relativoFmt.format(segundos, 'second')
+  if (Math.abs(segundos) < 2700) return relativoFmt.format(Math.round(segundos / 60), 'minute')
+  return relativoFmt.format(Math.round(segundos / 3600), 'hour')
+}
 
 export const NOMBRE_TABLA: Record<string, string> = {
   persona: 'Persona',

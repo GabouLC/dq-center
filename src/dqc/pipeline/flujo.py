@@ -51,7 +51,8 @@ class Flujo:
     def preparar(self) -> None:
         preparar_almacen(self.plataforma)
 
-    def _ingerir(self, entregas: list[Entrega], corte: date, primero: bool) -> tuple[list[Carga], dict[str, Carga]]:
+    def ingerir(self, entregas: list[Entrega], corte: date, primero: bool) -> tuple[list[Carga], dict[str, Carga]]:
+        """Valida y carga en RAW las entregas de un corte; devuelve todas las cargas y las aceptadas por tabla."""
         cargas, aceptadas = [], {}
         for entrega in entregas:
             fuente = self.fuentes[entrega.tabla]
@@ -63,7 +64,8 @@ class Flujo:
             cargas.append(carga)
         return cargas, aceptadas
 
-    def _homologar(self, aceptadas: dict[str, Carga], corte: date, primero: bool) -> list[dict]:
+    def homologar(self, aceptadas: dict[str, Carga], corte: date, primero: bool) -> list[dict]:
+        """RAW -> MASTER con cifrado; devuelve las incidencias de los registros que no se pudieron homologar."""
         incidencias = []
         for tabla, carga in aceptadas.items():
             fuente = self.fuentes[tabla]
@@ -113,7 +115,7 @@ class Flujo:
     ) -> ResultadoCorte:
         """Procesa las entregas de un corte (en orden de llegada) y lo evalúa."""
         del_corte = [e for e in entregas if e.fecha_corte == corte]
-        cargas, aceptadas = self._ingerir(del_corte, corte, primero)
-        incidencias = self._homologar(aceptadas, corte, primero)
+        cargas, aceptadas = self.ingerir(del_corte, corte, primero)
+        incidencias = self.homologar(aceptadas, corte, primero)
         ejecucion, certificaciones = self.evaluar(corte, origen, primero)
         return ResultadoCorte(corte, cargas, incidencias, ejecucion, certificaciones)

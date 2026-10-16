@@ -6,7 +6,7 @@ import BarraCumplimiento from '@/componentes/BarraCumplimiento.vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { corte as nombreCorte, NOMBRE_DIMENSION, NOMBRE_TABLA, num, pct, signo, TABLAS } from '@/formato'
+import { corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_TABLA, num, pct, signo, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -43,6 +43,15 @@ const filtroTabla = ref(String(ruta.query.tabla ?? ''))
 const filtroNivel = ref('')
 const filtroEstado = ref('')
 const compararCon = ref('')
+// Atajos para comparar: el día anterior, una semana antes y el inicio del período.
+const atajos = computed(() => {
+  const i = cortes.lista.findIndex((c) => c.fecha_corte === cortes.elegido)
+  return [
+    { nombre: 'Día anterior', k: i - 1 },
+    { nombre: 'Hace 7 días', k: i - 7 },
+    { nombre: 'Inicio del período', k: 0 },
+  ].flatMap((a) => (a.k >= 0 && a.k < i ? [{ nombre: a.nombre, fecha: cortes.lista[a.k].fecha_corte }] : []))
+})
 const elegida = ref<Regla | null>(null)
 
 const { datos, cargando, error, recargar } = usarCarga(
@@ -98,10 +107,15 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
       <label class="fila comparar">
         <GitCompareArrows :size="17" />
         <select v-model="compararCon" aria-label="Comparar con otro corte">
-          <option value="">Comparar con otro corte…</option>
-          <option v-for="c in cortes.lista.filter((x) => x.fecha_corte !== cortes.elegido)" :key="c.fecha_corte" :value="c.fecha_corte">
-            {{ nombreCorte(c.fecha_corte) }}
-          </option>
+          <option value="">Comparar con otro día…</option>
+          <optgroup label="Atajos">
+            <option v-for="a in atajos" :key="a.fecha" :value="a.fecha">{{ a.nombre }} · {{ corteCorto(a.fecha) }}</option>
+          </optgroup>
+          <optgroup label="Todos los días">
+            <option v-for="c in cortes.lista.filter((x) => x.fecha_corte !== cortes.elegido)" :key="c.fecha_corte" :value="c.fecha_corte">
+              {{ nombreCorte(c.fecha_corte) }}
+            </option>
+          </optgroup>
         </select>
       </label>
     </div>

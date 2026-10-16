@@ -1,10 +1,21 @@
-"""Genera las tablas sintéticas por corte y el manifiesto de errores sembrados.
+"""Genera las tablas sintéticas de cada día y el manifiesto de errores sembrados.
 
 Cada entidad (persona, póliza, vehículo, siniestro, cuota) nace una sola vez,
-con su fecha de alta y como mucho un defecto sembrado. Cada corte es una foto
-de las entidades que ya existen a esa fecha; los campos que cambian con el
+con su fecha de alta y como mucho un defecto persistente. Cada corte diario es
+una foto de las entidades que ya existen ese día; los campos que cambian con el
 tiempo (estado de la póliza, de la cuota y del siniestro) se calculan para cada
 corte. Así un defecto persiste entre cortes como en una base real.
+
+Para que la historia se parezca a una operación real, la calidad se mueve:
+
+  - tendencias: una campaña de contactos corrige celulares, la cobranza
+    actualiza cuotas vencidas, se limpian los vehículos, y cada vez más pólizas
+    vencidas quedan como VIGENTE porque el proceso de bajas no las alcanza;
+  - ruido diario: errores transitorios que aparecen un día y se corrigen al
+    siguiente, más los lunes (lo acumulado del fin de semana) y menos el domingo;
+  - incidentes con fecha: un archivo tardío, una carga con documentos nulos, un
+    archivo rechazado, una fuga de PII, un reproceso que infla pólizas, importes
+    con otro formato y una columna nueva sin clasificar.
 
 Los datos limpios cumplen todas las reglas. Cada fila sembrada entra al
 manifiesto una vez por cada regla que rompe en ese corte; el motor tiene que
@@ -13,6 +24,7 @@ detectar exactamente esas filas.
 
 from __future__ import annotations
 
+import math
 import random
 import unicodedata
 from bisect import bisect_left, bisect_right
@@ -28,16 +40,35 @@ from dqc.modelo import (  # noqa: F401 (INGESTA se reexporta)
 )
 
 SEMILLA = 20260930
-CRECIMIENTO_MENSUAL = 0.02
 # Perú no tiene horario de verano: America/Lima es siempre UTC-5.
 ZONA_LIMA = timezone(timedelta(hours=-5), "America/Lima")
 UN_DIA = timedelta(days=1)
+INICIO = CORTES[0]
 
-N_PERSONAS_BASE = 4900
-N_POLIZAS_BASE = 8000
-N_SINIESTROS_BASE = 600
+# Cartera al 30 de junio y altas por día hábil, con escala 1.
+N_PERSONAS_BASE = 1500
+N_POLIZAS_BASE = 2400
+N_SINIESTROS_BASE = 200
+ALTAS_DIARIAS = {"persona": 1.8, "poliza": 3.8, "siniestro": 1.3}
+# Lunes a domingo: el fin de semana casi no hay altas.
+FACTOR_ALTAS = [1.0, 1.0, 1.0, 1.0, 1.0, 0.35, 0.1]
+# Errores transitorios: los lunes llega lo acumulado del fin de semana.
+FACTOR_RUIDO = [2.0, 1.0, 1.0, 1.0, 1.0, 0.6, 0.4]
 
-JUNIO, JULIO, AGOSTO, SEPTIEMBRE = CORTES[2], CORTES[3], CORTES[4], CORTES[5]
+# Incidentes del período.
+PERSONA_TARDE = date(2026, 7, 14)
+DOCUMENTO_NULO = date(2026, 7, 22)
+RECHAZO_SINIESTRO = date(2026, 7, 28)
+FUGA_PII = {date(2026, 8, 7): 5, date(2026, 8, 8): 3}
+REPROCESO = date(2026, 8, 20)
+PICO_IMPORTES = (date(2026, 9, 2), date(2026, 9, 4))
+CANAL_VENTA = COLUMNAS_NUEVAS["poliza"][0]
+PRODUCTO_INACTIVO_DESDE = date(2026, 9, 16)
+CORRECCION_DNI = date(2026, 9, 15)
+# Campañas de mejora.
+CAMPANA_COBRANZA = date(2026, 8, 3)
+CAMPANA_CONTACTOS = date(2026, 8, 17)
+LIMPIEZA_VEHICULOS = (date(2026, 8, 24), date(2026, 9, 11))
 
 DESCRIPCIONES = {
     "DUPLICADA": "Persona duplicada con el mismo documento",
@@ -46,24 +77,27 @@ DESCRIPCIONES = {
     "CELULAR_INVALIDO": "Celular de 8 dígitos o teléfono fijo",
     "EMAIL_SIN_DOMINIO": "Email sin dominio",
     "UBIGEO_INEXISTENTE": "Ubigeo que no existe",
-    "DOCUMENTO_NULO_JULIO": "Carga de julio: nro_documento nulo",
-    "PERSONA_TARDE_JULIO": "Carga de julio de persona llegó 2 días tarde",
+    "SIN_CONTACTO": "Persona sin email ni celular",
+    "DOCUMENTO_NULO": "Carga del 22 de julio: nro_documento nulo",
+    "PERSONA_TARDE": "El archivo de personas del 14 de julio llegó con más de dos días de retraso",
     "ESTADO_SUCIO": "Estado de póliza con minúsculas o espacios",
     "FIN_ANTES_DEL_INICIO": "Póliza con fin de vigencia antes del inicio",
-    "VIGENTE_VENCIDA": "Póliza VIGENTE con la vigencia ya vencida",
+    "VIGENTE_VENCIDA": "Póliza VIGENTE con la vigencia ya vencida: el proceso de bajas no la alcanzó",
     "PRIMA_SIN_IGV": "prima_total calculada sin IGV",
-    "DUPLICADA_REPROCESO": "Reproceso de agosto: póliza duplicada",
-    "VOLUMEN_REPROCESO": "Reproceso de agosto: el volumen de poliza sube 22 %",
+    "DUPLICADA_REPROCESO": "Reproceso del 20 de agosto: póliza duplicada",
+    "VOLUMEN_REPROCESO": "Reproceso del 20 de agosto: el volumen de pólizas sube 22 %",
     "PRODUCTO_INACTIVO": "Póliza nueva con un producto inactivo",
     "PLACA_SIN_GUION": "Placa sin guion",
+    "ANIO_INVALIDO": "Año de fabricación fuera de rango",
     "POLIZA_NO_VEHICULAR": "Vehículo colgado de una póliza que no es vehicular",
     "FUERA_DE_VIGENCIA": "Siniestro fuera de la vigencia de su póliza",
     "SIN_POLIZA": "Siniestro sin póliza",
+    "MONTO_PAGADO_EXCEDE": "Monto pagado mayor que el reclamado",
     "PAGADO_SIN_FECHA": "Cuota PAGADO sin fecha_pago",
     "PENDIENTE_VENCIDA": "Cuota PENDIENTE ya vencida",
     "IMPORTE_NO_CONVERTIBLE": "IMPORTE con formato de moneda: no se puede convertir a número",
     "AVISO_NO_CONVERTIBLE": "FEC_AVISO en formato DD/MM/AAAA: no se puede convertir a fecha",
-    "DNI_EN_CAUSA": "Carga de junio: el DNI del reportante quedó escrito en la causa del siniestro",
+    "DNI_EN_CAUSA": "El DNI del reportante quedó escrito en la causa del siniestro",
 }
 
 # Campo que el exportador escribe con un formato que la homologación no acepta.
@@ -73,6 +107,22 @@ NO_CONVERTIBLE = "_no_convertible"
 def _slug(texto: str) -> str:
     ascii_ = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return "".join(c for c in ascii_.lower() if c.isalnum())
+
+
+def _poisson(rnd: random.Random, media: float) -> int:
+    """Conteo de eventos de un día (Knuth; las medias son chicas)."""
+    if media <= 0:
+        return 0
+    limite, k, p = math.exp(-media), 0, 1.0
+    while True:
+        p *= rnd.random()
+        if p <= limite:
+            return k
+        k += 1
+
+
+def _activo(defecto: str | None, corregido: date | None, corte: date) -> bool:
+    return defecto is not None and (corregido is None or corte < corregido)
 
 
 @dataclass
@@ -88,9 +138,11 @@ class Persona:
     sexo: str | None
     email: str | None
     celular: str | None
+    celular_valido: str | None
     ubigeo: str | None
     fecha_alta: date
     defecto: str | None = None
+    corregido: date | None = None
     id_original: int | None = None
 
 
@@ -116,7 +168,6 @@ class Poliza:
     hasta: date | None = None
     origen: str = "NORMAL"
     defecto: str | None = None
-    estilo_sucio: int = 0
 
     def presente(self, corte: date) -> bool:
         return self.desde <= corte and (self.hasta is None or corte <= self.hasta)
@@ -139,7 +190,12 @@ class Vehiculo:
     uso: str
     valor_comercial: float
     desde: date
+    hasta: date | None = None
     defecto: str | None = None
+    corregido: date | None = None
+
+    def presente(self, corte: date) -> bool:
+        return self.desde <= corte and (self.hasta is None or corte <= self.hasta)
 
 
 @dataclass
@@ -174,6 +230,7 @@ class Pago:
     medio_pago: str
     desde: date
     defecto: str | None = None
+    corregido: date | None = None
 
 
 @dataclass
@@ -186,7 +243,9 @@ class Resultado:
 
 
 class Generador:
-    def __init__(self, semilla: int = SEMILLA):
+    def __init__(self, semilla: int = SEMILLA, escala: float = 1.0):
+        self.semilla = semilla
+        self.escala = escala
         self.rnd = random.Random(semilla)
         self.fake = Faker("es_MX")
         self.fake.seed_instance(semilla)
@@ -199,6 +258,7 @@ class Generador:
         self._vins: set[str] = set()
         self._secuencia_poliza: dict[int, int] = {}
         self._productos_activos = [p for p in cat.PRODUCTOS if p[3]]
+        self._productos_inactivos = [p for p in cat.PRODUCTOS if not p[3]]
         self._ubigeos_por_prefijo: dict[str, list[str]] = {}
         for ubigeo, *_ in cat.UBIGEOS:
             self._ubigeos_por_prefijo.setdefault(ubigeo[:4], []).append(ubigeo)
@@ -208,8 +268,11 @@ class Generador:
     def _fecha_entre(self, desde: date, hasta: date) -> date:
         return desde + timedelta(days=self.rnd.randint(0, (hasta - desde).days))
 
-    def _n_nuevas(self, existentes: int) -> int:
-        return round(existentes * CRECIMIENTO_MENSUAL * self.rnd.uniform(0.85, 1.15))
+    def _escalar(self, n: float, minimo: int = 1) -> int:
+        return max(minimo, round(n * self.escala))
+
+    def _altas_del_dia(self, tabla: str, dia: date) -> int:
+        return _poisson(self.rnd, ALTAS_DIARIAS[tabla] * self.escala * FACTOR_ALTAS[dia.weekday()])
 
     def _documento_unico(self, tipo: str, generar) -> str:
         while True:
@@ -231,21 +294,14 @@ class Generador:
         self._generar_vehiculos()
         self._generar_siniestros()
         self._generar_pagos()
-        # Junio: el sistema de siniestros escribe el DNI del reportante en la causa
-        # de 6 registros (fuga de PII que el Privacy Gate debe detectar).
-        candidatos = [s for s in self.siniestros if s.defecto is None and s.fecha_aviso <= JUNIO]
-        self._dni_en_causa = {
-            s.id_siniestro: f"{self.rnd.randint(10000000, 79999999)}" for s in self.rnd.sample(candidatos, 6)
-        }
         return self
 
     def _generar_personas(self) -> None:
-        for _ in range(N_PERSONAS_BASE):
-            self._agregar_persona(self._fecha_entre(date(2015, 1, 1), CORTES[0]))
-        for desde, hasta in zip(CORTES, CORTES[1:]):
-            existentes = sum(p.fecha_alta <= desde for p in self.personas)
-            for _ in range(self._n_nuevas(existentes)):
-                self._agregar_persona(self._fecha_entre(desde + UN_DIA, hasta))
+        for _ in range(self._escalar(N_PERSONAS_BASE)):
+            self._agregar_persona(self._fecha_entre(date(2015, 1, 1), INICIO - UN_DIA))
+        for dia in CORTES:
+            for _ in range(self._altas_del_dia("persona", dia)):
+                self._agregar_persona(dia)
 
         # Duplicadas: la copia entra después con otro id y el mismo documento.
         candidatas = [p for p in self.personas if p.defecto is None]
@@ -259,34 +315,35 @@ class Generador:
                 id_original=original.id_persona,
             ))
 
-        # Julio: 40 personas llegan con nro_documento nulo (solo en ese corte).
-        candidatas = [
-            p for p in self.personas
-            if p.defecto is None and p.tipo_documento == "DNI" and p.fecha_alta <= JULIO
-        ]
-        for p in self.rnd.sample(candidatas, 40):
-            p.defecto = "DOCUMENTO_NULO_JULIO"
-
     def _agregar_persona(self, alta: date) -> None:
         r = self.rnd
         tipo = r.choices(["DNI", "CE", "RUC"], [85, 5, 10])[0]
         u = r.random()
-        tiene_email = u >= 0.08
-        tiene_celular = not 0.08 <= u < 0.16  # nunca faltan los dos (PER-COM-02)
+        sin_contacto = u < 0.047
+        tiene_email = not sin_contacto and u >= 0.127
+        tiene_celular = not sin_contacto and not 0.127 <= u < 0.207
         tiene_ubigeo = r.random() >= 0.03
 
+        # Un solo defecto persistente por persona. Los datos de contacto son los más flojos.
         u = r.random()
-        defecto = None
-        if u < 0.012:
-            defecto = "DNI_7_DIGITOS" if tipo == "DNI" and alta <= AGOSTO else None
-        elif u < 0.018:
+        defecto = corregido = None
+        if sin_contacto:
+            defecto = "SIN_CONTACTO"
+        elif u < 0.012:
+            if tipo == "DNI" and alta < CORRECCION_DNI:
+                defecto, corregido = "DNI_7_DIGITOS", CORRECCION_DNI
+        elif u < 0.020:
             defecto = "NACIMIENTO_1900" if tipo != "RUC" else None
-        elif u < 0.060:
-            defecto = "CELULAR_INVALIDO" if tiene_celular else None
-        elif u < 0.081:
+        elif u < 0.180:
+            if tiene_celular:
+                defecto = "CELULAR_INVALIDO"
+                # La campaña de actualización de contactos corrige poco más de la mitad.
+                if r.random() < 0.6:
+                    corregido = CAMPANA_CONTACTOS + timedelta(days=r.randint(0, 75))
+        elif u < 0.260:
             defecto = "EMAIL_SIN_DOMINIO" if tiene_email else None
-        elif u < 0.097:
-            defecto = "UBIGEO_INEXISTENTE"
+        elif u < 0.270:
+            defecto = "UBIGEO_INEXISTENTE" if tiene_ubigeo else None
 
         if tipo == "RUC":
             nro = self._documento_unico(tipo, lambda: f"20{r.randint(100000000, 999999999)}")
@@ -315,7 +372,7 @@ class Generador:
             dominio = r.choice(cat.DOMINIOS_EMAIL)
 
         email = f"{local}@{dominio}" if tiene_email else None
-        celular = f"9{r.randint(10000000, 99999999)}" if tiene_celular else None
+        celular = celular_valido = f"9{r.randint(10000000, 99999999)}" if tiene_celular else None
         ubigeo = self._ubigeo() if tiene_ubigeo else None
         if defecto == "CELULAR_INVALIDO":
             celular = r.choice([
@@ -340,55 +397,54 @@ class Generador:
             sexo=sexo,
             email=email,
             celular=celular,
+            celular_valido=celular_valido,
             ubigeo=ubigeo,
             fecha_alta=alta,
             defecto=defecto,
+            corregido=corregido,
         ))
 
     def _generar_polizas(self) -> None:
         self._personas_por_alta = sorted(self.personas, key=lambda p: (p.fecha_alta, p.id_persona))
         self._altas = [p.fecha_alta for p in self._personas_por_alta]
 
-        for _ in range(N_POLIZAS_BASE):
-            self._agregar_poliza(self._fecha_entre(date(2024, 5, 1), CORTES[0]))
-        for desde, hasta in zip(CORTES, CORTES[1:]):
-            existentes = sum(p.presente(desde) for p in self.polizas)
-            for _ in range(self._n_nuevas(existentes)):
-                self._agregar_poliza(self._fecha_entre(desde + UN_DIA, hasta))
+        for _ in range(self._escalar(N_POLIZAS_BASE)):
+            self._agregar_poliza(self._fecha_entre(date(2025, 5, 1), INICIO - UN_DIA))
+        for dia in CORTES:
+            for _ in range(self._altas_del_dia("poliza", dia)):
+                inactivo = dia >= PRODUCTO_INACTIVO_DESDE and self.rnd.random() < 0.2
+                self._agregar_poliza(
+                    dia,
+                    producto=self.rnd.choice(self._productos_inactivos) if inactivo else None,
+                    origen="PRODUCTO_INACTIVO" if inactivo else "NORMAL",
+                )
 
-        # Agosto: un reproceso duplica 12 pólizas (otro id técnico, mismo
-        # nro_poliza) y carga pólizas históricas vencidas hasta subir el volumen 22 %.
+        # 20 de agosto: un reproceso duplica pólizas (otro id técnico, mismo nro_poliza)
+        # y carga pólizas históricas vencidas hasta subir el volumen 22 %. Al día
+        # siguiente se borran los duplicados; las históricas se quedan.
         normales = list(self.polizas)
-        n_julio = sum(p.presente(JULIO) for p in normales)
-        n_agosto = sum(p.presente(AGOSTO) for p in normales)
+        n_antes = sum(p.presente(REPROCESO - UN_DIA) for p in normales)
+        n_dia = sum(p.presente(REPROCESO) for p in normales)
         candidatas = [
             p for p in normales
-            if p.presente(JULIO) and p.defecto is None and p.estado_fijo is None
+            if p.presente(REPROCESO - UN_DIA) and p.defecto is None and p.estado_fijo is None
         ]
-        for original in self.rnd.sample(candidatas, 12):
+        n_duplicadas = self._escalar(12, 3)
+        for original in self.rnd.sample(candidatas, n_duplicadas):
             original.defecto = "DUPLICADA_REPROCESO_ORIGINAL"
             self.polizas.append(replace(
                 original,
                 id_poliza=len(self.polizas) + 1,
                 origen="COPIA_REPROCESO",
-                desde=AGOSTO,
-                hasta=AGOSTO,
+                desde=REPROCESO,
+                hasta=REPROCESO,
                 defecto="DUPLICADA_REPROCESO_COPIA",
             ))
-        for _ in range(round(n_julio * 1.22) - n_agosto - 12):
+        for _ in range(round(n_antes * 1.22) - n_dia - n_duplicadas):
             historica = self._agregar_poliza(
-                self._fecha_entre(date(2022, 6, 1), date(2024, 4, 30)), origen="HISTORICO"
+                self._fecha_entre(date(2023, 6, 1), date(2025, 4, 30)), origen="HISTORICO"
             )
-            historica.desde = AGOSTO
-
-        # Septiembre: 30 pólizas nuevas usan un producto inactivo.
-        inactivos = [p for p in cat.PRODUCTOS if not p[3]]
-        for _ in range(30):
-            self._agregar_poliza(
-                self._fecha_entre(AGOSTO + UN_DIA, SEPTIEMBRE),
-                producto=self.rnd.choice(inactivos),
-                origen="PRODUCTO_INACTIVO",
-            )
+            historica.desde = REPROCESO
 
     def _persona_al(self, fecha: date) -> Persona:
         return self._personas_por_alta[self.rnd.randrange(bisect_right(self._altas, fecha))]
@@ -432,15 +488,20 @@ class Generador:
         if origen == "NORMAL":
             u = r.random()
             estado_fijo = "ANULADA" if u < 0.04 else "SUSPENDIDA" if u < 0.06 else None
+            # Pólizas vencidas que siguen como VIGENTE: hay un rezago heredado y, dentro
+            # del período, el proceso de bajas se atrasa cada semana un poco más.
+            atraso = 0.0
+            if fin < INICIO:
+                atraso = 0.07
+            elif fin <= CORTES[-1]:
+                atraso = 0.03 + 0.16 * (fin - INICIO).days / (CORTES[-1] - INICIO).days
             u = r.random()
-            if u < 0.003:
-                defecto = "ESTADO_SUCIO"
-            elif u < 0.007:
+            if u < 0.004:
                 defecto = "FIN_ANTES_DEL_INICIO" if estado_fijo is None else None
-            elif u < 0.022:
-                defecto = "VIGENTE_VENCIDA" if estado_fijo is None else None
-            elif u < 0.032:
+            elif u < 0.012:
                 defecto = "PRIMA_SIN_IGV"
+            elif u < 0.012 + atraso:
+                defecto = "VIGENTE_VENCIDA" if estado_fijo is None else None
         elif origen == "PRODUCTO_INACTIVO":
             defecto = "PRODUCTO_INACTIVO"
 
@@ -468,20 +529,33 @@ class Generador:
             desde=emision,
             origen=origen,
             defecto=defecto,
-            estilo_sucio=r.randrange(3),
         )
         self.polizas.append(poliza)
         return poliza
 
     def _generar_vehiculos(self) -> None:
+        limpieza_inicio, limpieza_fin = LIMPIEZA_VEHICULOS
         for p in self.polizas:
             if p.origen == "NORMAL" and p.ramo in cat.RAMOS_VEHICULARES:
-                self._agregar_vehiculo(p, "PLACA_SIN_GUION" if self.rnd.random() < 0.03 else None)
+                sin_guion = self.rnd.random() < 0.03
+                self._agregar_vehiculo(p, "PLACA_SIN_GUION" if sin_guion else None)
+        # Vehículos colgados de pólizas que no son vehiculares: la limpieza de fines de
+        # agosto los da de baja. Después de la limpieza no aparecen nuevos.
         no_vehiculares = [
-            p for p in self.polizas if p.origen == "NORMAL" and p.ramo not in cat.RAMOS_VEHICULARES
+            p for p in self.polizas
+            if p.origen == "NORMAL" and p.ramo not in cat.RAMOS_VEHICULARES and p.desde < limpieza_inicio
         ]
-        for p in self.rnd.sample(no_vehiculares, round(len(self.vehiculos) * 0.005)):
+        for p in self.rnd.sample(no_vehiculares, max(2, round(len(self.vehiculos) * 0.005))):
             self._agregar_vehiculo(p, "POLIZA_NO_VEHICULAR")
+        for v in self.vehiculos:
+            if v.defecto == "POLIZA_NO_VEHICULAR":
+                v.hasta = self._fecha_entre(limpieza_inicio, limpieza_fin)
+            elif v.defecto == "PLACA_SIN_GUION":
+                # Las placas se corrigen en la limpieza; las nuevas, a los pocos días.
+                v.corregido = (
+                    self._fecha_entre(limpieza_inicio, limpieza_fin) if v.desde < limpieza_inicio
+                    else v.desde + timedelta(days=self.rnd.randint(2, 6))
+                )
 
     def _agregar_vehiculo(self, poliza: Poliza, defecto: str | None) -> None:
         r = self.rnd
@@ -490,8 +564,6 @@ class Generador:
         marca = r.choice(sorted(marcas))
         letras = "ABCDEFGHJKLMNPRSTUVWXYZ"
         placa = f"{r.choice(letras)}{r.choice(letras + '0123456789')}{r.choice(letras)}-{r.randint(100, 999)}"
-        if defecto == "PLACA_SIN_GUION":
-            placa = placa.replace("-", "")
         while True:
             vin = "".join(r.choice(cat.ALFABETO_VIN) for _ in range(17))
             if vin not in self._vins:
@@ -525,17 +597,17 @@ class Generador:
         self._emisiones = [p.fecha_emision for p in self._elegibles]
         self._polizas_fantasma = 0
 
-        for _ in range(N_SINIESTROS_BASE):
-            self._agregar_siniestro(self._fecha_entre(date(2024, 6, 1), CORTES[0]))
-        for desde, hasta in zip(CORTES, CORTES[1:]):
-            existentes = sum(s.fecha_aviso <= desde for s in self.siniestros)
-            for _ in range(self._n_nuevas(existentes)):
-                self._agregar_siniestro(self._fecha_entre(desde + UN_DIA, hasta))
+        # El mínimo de filas de la volumetría (GEN-VOL-02) es 100: la tabla nunca baja de 150.
+        for _ in range(max(150, round(N_SINIESTROS_BASE * self.escala))):
+            self._agregar_siniestro(self._fecha_entre(date(2025, 7, 1), INICIO - UN_DIA))
+        for dia in CORTES:
+            for _ in range(self._altas_del_dia("siniestro", dia)):
+                self._agregar_siniestro(dia)
 
     def _agregar_siniestro(self, aviso: date) -> None:
         r = self.rnd
         u = r.random()
-        if u < 0.005:
+        if u < 0.004:
             defecto = "SIN_POLIZA"
             self._polizas_fantasma += 1
             id_poliza = 9_000_000 + self._polizas_fantasma
@@ -549,7 +621,7 @@ class Generador:
                 p for p in self._elegibles[desde:hasta]
                 if p.fecha_fin_real >= aviso - timedelta(days=30)
             ]
-            if u < 0.012:
+            if u < 0.011:
                 defecto = "FUERA_DE_VIGENCIA"
                 recientes = [p for p in candidatas if p.fecha_emision >= aviso - timedelta(days=60)]
                 poliza = r.choice(recientes or candidatas)
@@ -583,18 +655,23 @@ class Generador:
         for p in self.polizas:
             if p.origen not in ("NORMAL", "PRODUCTO_INACTIVO"):
                 continue
-            n_cuotas = r.choices([1, 4, 6, 12], [35, 25, 20, 20])[0]
+            n_cuotas = r.choices([1, 2, 4, 12], [40, 20, 25, 15])[0]
             monto = round(p.prima_total / n_cuotas, 2)
             medio = r.choice(cat.MEDIOS_PAGO)
             for k in range(1, n_cuotas + 1):
                 vencimiento = p.fecha_inicio_vigencia + relativedelta(months=(k - 1) * (12 // n_cuotas))
-                if r.random() < 0.07:
+                corregido = None
+                if r.random() < 0.15:
                     pago_real = None
-                    defecto = "PENDIENTE_VENCIDA" if r.random() < 0.55 else None
+                    # Nadie pasa la cuota impaga a VENCIDO. La campaña de cobranza de
+                    # agosto la actualiza en tres de cada cuatro casos.
+                    defecto = "PENDIENTE_VENCIDA" if r.random() < 0.75 else None
+                    if defecto and r.random() < 0.75:
+                        corregido = CAMPANA_COBRANZA + timedelta(days=r.randint(0, 70))
                 else:
                     pago_real = max(p.fecha_emision, vencimiento + timedelta(days=r.randint(-20, 20)))
                     u = r.random()
-                    defecto = "PAGADO_SIN_FECHA" if u < 0.004 else "IMPORTE_NO_CONVERTIBLE" if u < 0.006 else None
+                    defecto = "PAGADO_SIN_FECHA" if u < 0.0045 else "IMPORTE_NO_CONVERTIBLE" if u < 0.0075 else None
                 self.pagos.append(Pago(
                     id_pago=len(self.pagos) + 1,
                     id_poliza=p.id_poliza,
@@ -605,6 +682,7 @@ class Generador:
                     medio_pago=medio,
                     desde=p.desde,
                     defecto=defecto,
+                    corregido=corregido,
                 ))
 
     # ── fotos por corte ─────────────────────────────────────────────────────
@@ -612,6 +690,7 @@ class Generador:
     def foto(self, corte: date) -> tuple[dict[str, list[dict]], list[dict]]:
         """Filas de cada tabla en un corte y filas del manifiesto de ese corte."""
         manifiesto: list[dict] = []
+        con_error: set[tuple[str, int]] = set()
 
         def error(regla: str, tabla: str, llave: int | str, defecto: str) -> None:
             manifiesto.append({
@@ -621,6 +700,7 @@ class Generador:
                 "llave": str(llave),
                 "descripcion": DESCRIPCIONES[defecto],
             })
+            con_error.add((tabla, llave))
 
         filas: dict[str, list[dict]] = {t: [] for t in TABLAS_CORTE}
 
@@ -628,17 +708,23 @@ class Generador:
             p.id_original for p in self.personas
             if p.defecto == "DUPLICADA_COPIA" and p.fecha_alta <= corte
         }
+        dni_presentes = [p for p in self.personas if p.fecha_alta <= corte and p.tipo_documento == "DNI" and p.defecto is None]
+        nulos = set()
+        if corte == DOCUMENTO_NULO:
+            # Una carga mal mapeada deja sin documento a una de cada 22 personas con DNI.
+            nulos = {p.id_persona for p in random.Random(f"{self.semilla}-nulos").sample(
+                dni_presentes, max(3, round(len(dni_presentes) * 0.045)))}
         for p in self.personas:
             if p.fecha_alta > corte:
                 continue
-            nro = p.nro_documento
-            d = p.defecto
-            if d == "DNI_7_DIGITOS" and corte < SEPTIEMBRE:
-                nro = nro[1:]
-                error("PER-VAL-01", "persona", p.id_persona, d)
-            elif d == "DOCUMENTO_NULO_JULIO" and corte == JULIO:
+            nro, celular, email = p.nro_documento, p.celular, p.email
+            d = p.defecto if _activo(p.defecto, p.corregido, corte) else None
+            if p.id_persona in nulos:
                 nro = None
-                error("PER-COM-01", "persona", p.id_persona, d)
+                error("PER-COM-01", "persona", p.id_persona, "DOCUMENTO_NULO")
+                error("PER-VAL-01", "persona", p.id_persona, "DOCUMENTO_NULO")
+            elif d == "DNI_7_DIGITOS":
+                nro = nro[1:]
                 error("PER-VAL-01", "persona", p.id_persona, d)
             elif d == "NACIMIENTO_1900":
                 error("PER-VAL-04", "persona", p.id_persona, d)
@@ -648,8 +734,12 @@ class Generador:
                 error("PER-VAL-05", "persona", p.id_persona, d)
             elif d == "UBIGEO_INEXISTENTE":
                 error("PER-INT-01", "persona", p.id_persona, d)
+            elif d == "SIN_CONTACTO":
+                error("PER-COM-02", "persona", p.id_persona, d)
             elif d == "DUPLICADA_COPIA" or (d == "DUPLICADA_ORIGINAL" and p.id_persona in copias_presentes):
                 error("PER-UNI-01", "persona", p.id_persona, "DUPLICADA")
+            if p.defecto == "CELULAR_INVALIDO" and d is None:
+                celular = p.celular_valido
             filas["persona"].append({
                 "fecha_corte": corte,
                 "id_persona": p.id_persona,
@@ -661,13 +751,12 @@ class Generador:
                 "razon_social": p.razon_social,
                 "fecha_nacimiento": p.fecha_nacimiento,
                 "sexo": p.sexo,
-                "email": p.email,
-                "celular": p.celular,
+                "email": email,
+                "celular": celular,
                 "ubigeo": p.ubigeo,
                 "fecha_alta": p.fecha_alta,
             })
 
-        desde_canal, _ = COLUMNAS_NUEVAS["poliza"]
         for p in self.polizas:
             if not p.presente(corte):
                 continue
@@ -676,9 +765,6 @@ class Generador:
             if d == "VIGENTE_VENCIDA" and estado == "VENCIDA":
                 estado = "VIGENTE"
                 error("POL-CON-03", "poliza", p.id_poliza, d)
-            elif d == "ESTADO_SUCIO":
-                estado = [estado.capitalize() + " ", estado.lower(), " " + estado][p.estilo_sucio]
-                error("POL-VAL-01", "poliza", p.id_poliza, d)
             elif d == "FIN_ANTES_DEL_INICIO":
                 error("POL-CON-01", "poliza", p.id_poliza, d)
                 if estado == "VIGENTE":
@@ -687,7 +773,7 @@ class Generador:
                 error("POL-CON-02", "poliza", p.id_poliza, d)
             elif d == "PRODUCTO_INACTIVO":
                 error("POL-INT-02", "poliza", p.id_poliza, d)
-            elif d and d.startswith("DUPLICADA_REPROCESO") and corte == AGOSTO:
+            elif d and d.startswith("DUPLICADA_REPROCESO") and corte == REPROCESO:
                 error("POL-UNI-01", "poliza", p.id_poliza, "DUPLICADA_REPROCESO")
             fila = {
                 "fecha_corte": corte,
@@ -705,14 +791,16 @@ class Generador:
                 "prima_total": p.prima_total,
                 "estado": estado,
             }
-            if corte >= desde_canal:
+            if corte >= CANAL_VENTA:
                 fila["canal_venta"] = p.canal_venta
             filas["poliza"].append(fila)
 
         for v in self.vehiculos:
-            if v.desde > corte:
+            if not v.presente(corte):
                 continue
-            if v.defecto == "PLACA_SIN_GUION":
+            placa = v.placa
+            if _activo(v.defecto, v.corregido, corte) and v.defecto == "PLACA_SIN_GUION":
+                placa = placa.replace("-", "")
                 error("VEH-VAL-01", "vehiculo", v.id_vehiculo, v.defecto)
             elif v.defecto == "POLIZA_NO_VEHICULAR":
                 error("VEH-INT-01", "vehiculo", v.id_vehiculo, v.defecto)
@@ -720,7 +808,7 @@ class Generador:
                 "fecha_corte": corte,
                 "id_vehiculo": v.id_vehiculo,
                 "id_poliza": v.id_poliza,
-                "placa": v.placa,
+                "placa": placa,
                 "nro_serie": v.nro_serie,
                 "marca": v.marca,
                 "modelo": v.modelo,
@@ -729,6 +817,13 @@ class Generador:
                 "valor_comercial": v.valor_comercial,
             })
 
+        fugas = set()
+        if corte in FUGA_PII:
+            # El sistema de siniestros escribe el DNI del reportante en la causa.
+            candidatos = [s for s in self.siniestros if s.fecha_aviso <= corte and s.defecto is None]
+            elegir = random.Random(f"{self.semilla}-fuga-{corte}")
+            fugas = {s.id_siniestro: f"{elegir.randint(10000000, 79999999)}"
+                     for s in elegir.sample(candidatos, FUGA_PII[corte])}
         for s in self.siniestros:
             if s.fecha_aviso > corte:
                 continue
@@ -739,8 +834,8 @@ class Generador:
             elif s.defecto == "AVISO_NO_CONVERTIBLE":
                 error(HOMOLOGACION, "siniestro", s.id_siniestro, s.defecto)
             causa = s.causa
-            if corte == JUNIO and s.id_siniestro in self._dni_en_causa:
-                causa = f"{s.causa} - reportado por DNI {self._dni_en_causa[s.id_siniestro]}"
+            if s.id_siniestro in fugas:
+                causa = f"{s.causa} - reportado por DNI {fugas[s.id_siniestro]}"
                 error(PRIVACIDAD, "siniestro", s.id_siniestro, "DNI_EN_CAUSA")
             estado = s.estado(corte)
             fila = {
@@ -770,7 +865,7 @@ class Generador:
                     fecha_pago = c.fecha_pago_real
             elif c.fecha_vencimiento >= corte:
                 estado = "PENDIENTE"
-            elif c.defecto == "PENDIENTE_VENCIDA":
+            elif _activo(c.defecto, c.corregido, corte) and c.defecto == "PENDIENTE_VENCIDA":
                 # Nadie actualizó el estado de la cuota impaga.
                 estado = "PENDIENTE"
                 error("PAG-CON-02", "pago", c.id_pago, c.defecto)
@@ -792,20 +887,70 @@ class Generador:
                 fila[NO_CONVERTIBLE] = "monto"
             filas["pago"].append(fila)
 
+        self._ruido(corte, filas, error, con_error)
         return filas, manifiesto
 
+    def _ruido(self, corte: date, filas: dict[str, list[dict]], error, con_error: set) -> None:
+        """Errores transitorios del día: aparecen en la foto de hoy y se corrigen mañana."""
+        r = random.Random(f"{self.semilla}-ruido-{corte}")
+        factor = FACTOR_RUIDO[corte.weekday()]
+        # Algunos días una fuente tiene un mal día y triplica sus errores.
+        mal_dia = r.choice(TABLAS_CORTE) if r.random() < 0.06 else None
+
+        def elegir(tabla: str, media: float, condicion) -> list[dict]:
+            media *= self.escala * factor * (3.5 if tabla == mal_dia else 1.0)
+            llave = {"persona": "id_persona", "poliza": "id_poliza", "vehiculo": "id_vehiculo",
+                     "siniestro": "id_siniestro", "pago": "id_pago"}[tabla]
+            libres = [f for f in filas[tabla] if (tabla, f[llave]) not in con_error and condicion(f)]
+            return r.sample(libres, min(len(libres), _poisson(r, media)))
+
+        for f in elegir("persona", 2.0, lambda f: f["tipo_documento"] != "RUC"):
+            f["fecha_nacimiento"] = date(1900, 1, 1)
+            error("PER-VAL-04", "persona", f["id_persona"], "NACIMIENTO_1900")
+        for f in elegir("persona", 2.5, lambda f: f["email"] or f["celular"]):
+            f["email"] = f["celular"] = None
+            error("PER-COM-02", "persona", f["id_persona"], "SIN_CONTACTO")
+        for f in elegir("persona", 1.5, lambda f: f["ubigeo"] is not None):
+            f["ubigeo"] = r.choice(cat.UBIGEOS_INVALIDOS)
+            error("PER-INT-01", "persona", f["id_persona"], "UBIGEO_INEXISTENTE")
+        for f in elegir("poliza", 1.3, lambda f: True):
+            estado = f["estado"]
+            f["estado"] = r.choice([estado.capitalize() + " ", estado.lower(), " " + estado])
+            error("POL-VAL-01", "poliza", f["id_poliza"], "ESTADO_SUCIO")
+        for f in elegir("poliza", 2.0, lambda f: True):
+            f["prima_total"] = round(f["prima_neta"] * 1.03, 2)
+            error("POL-CON-02", "poliza", f["id_poliza"], "PRIMA_SIN_IGV")
+        for f in elegir("vehiculo", 0.6, lambda f: True):
+            f["anio_fabricacion"] = r.choice([1975, 2035])
+            error("VEH-VAL-02", "vehiculo", f["id_vehiculo"], "ANIO_INVALIDO")
+        for f in elegir("siniestro", 0.7, lambda f: f["estado"] == "PAGADO"):
+            f["monto_pagado"] = round(f["monto_reclamado"] * 1.12, 2)
+            error("SIN-CON-03", "siniestro", f["id_siniestro"], "MONTO_PAGADO_EXCEDE")
+        for f in elegir("pago", 5.0, lambda f: f["estado"] == "PAGADO"):
+            f["fecha_pago"] = None
+            error("PAG-CON-01", "pago", f["id_pago"], "PAGADO_SIN_FECHA")
+        if PICO_IMPORTES[0] <= corte <= PICO_IMPORTES[1]:
+            # El banco cambia el formato del importe durante tres días.
+            for f in elegir("pago", len(filas["pago"]) * 0.04 / self.escala, lambda f: True):
+                f[NO_CONVERTIBLE] = "monto"
+                error(HOMOLOGACION, "pago", f["id_pago"], "IMPORTE_NO_CONVERTIBLE")
+
     def llegada(self, tabla: str, corte: date) -> datetime:
-        """Hora en que el archivo llega: el día siguiente al corte, de madrugada."""
-        if tabla == "persona" and corte == JULIO:
-            local = datetime.combine(corte + timedelta(days=3), time(10, 20), ZONA_LIMA)
+        """Hora en que llega el archivo: el día siguiente, de madrugada, con algún retraso."""
+        r = random.Random(f"{self.semilla}-llegada-{tabla}-{corte}")
+        if tabla == "persona" and corte == PERSONA_TARDE:
+            local = datetime.combine(corte + timedelta(days=2), time(10, 20), ZONA_LIMA)
         else:
-            local = datetime.combine(corte + UN_DIA, time(6, 0), ZONA_LIMA)
-            local += timedelta(minutes=self.rnd.randint(0, 150))
+            local = datetime.combine(corte + UN_DIA, time(5, 30), ZONA_LIMA)
+            local += timedelta(minutes=r.randint(0, 170))
+            if r.random() < 0.05:
+                # Llega tarde, pero dentro del plazo de dos días.
+                local += timedelta(hours=r.randint(4, 22))
         return local.astimezone(timezone.utc)
 
 
-def generar(semilla: int = SEMILLA) -> Resultado:
-    g = Generador(semilla).generar()
+def generar(semilla: int = SEMILLA, escala: float = 1.0) -> Resultado:
+    g = Generador(semilla, escala).generar()
     ref = {
         "ref_producto": [
             {"cod_producto": c, "nombre": n, "ramo": r, "activo": a} for c, n, r, a, _ in cat.PRODUCTOS
@@ -817,7 +962,7 @@ def generar(semilla: int = SEMILLA) -> Resultado:
     por_corte: dict[str, dict[date, list[dict]]] = {t: {} for t in TABLAS_CORTE}
     # Las referencias llegan una vez, antes que las tablas del primer corte.
     llegadas = {
-        (tabla, CORTES[0]): datetime.combine(CORTES[0] + UN_DIA, time(5, 0), ZONA_LIMA).astimezone(timezone.utc)
+        (tabla, INICIO): datetime.combine(INICIO + UN_DIA, time(5, 0), ZONA_LIMA).astimezone(timezone.utc)
         for tabla in ref
     }
     manifiesto: list[dict] = []
@@ -829,8 +974,8 @@ def generar(semilla: int = SEMILLA) -> Resultado:
             llegadas[tabla, corte] = g.llegada(tabla, corte)
 
     for regla, tabla, corte, defecto in [
-        ("GEN-OPO-01", "persona", JULIO, "PERSONA_TARDE_JULIO"),
-        ("GEN-VOL-01", "poliza", AGOSTO, "VOLUMEN_REPROCESO"),
+        ("GEN-OPO-01", "persona", PERSONA_TARDE, "PERSONA_TARDE"),
+        ("GEN-VOL-01", "poliza", REPROCESO, "VOLUMEN_REPROCESO"),
     ]:
         manifiesto.append({
             "id_regla": regla,

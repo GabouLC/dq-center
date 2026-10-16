@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Fingerprint, Lock, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
-import EstadoChip from '@/componentes/EstadoChip.vue'
+import MapaDias from '@/componentes/MapaDias.vue'
 import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { corte as nombreCorte, hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
+import { hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -47,6 +48,13 @@ const HALLAZGO: Record<string, string> = {
   CAMPO_SIN_CIFRAR: 'Campo sensible sin cifrar',
   COLUMNA_SIN_CLASIFICAR: 'Columna sin clasificación DAC',
 }
+const filasHistoria = computed(() =>
+  TABLAS.map((tabla) => ({
+    clave: tabla,
+    nombre: NOMBRE_TABLA[tabla],
+    estados: Object.fromEntries(Object.entries(datos.value?.historia ?? {}).map(([dia, estados]) => [dia, estados[tabla]])),
+  })),
+)
 const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
 const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b) => a + b, 0) || 1
 </script>
@@ -66,22 +74,16 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="datos">
         <section class="panel pila">
-          <h2>Historia de los sellos</h2>
-          <div class="tabla-envoltura">
-            <table class="historia">
-              <thead>
-                <tr><th>Tabla</th><th v-for="c in Object.keys(datos.historia)" :key="c" class="centro" :class="{ actual: c === datos.fecha_corte }">{{ nombreCorte(c) }}</th></tr>
-              </thead>
-              <tbody>
-                <tr v-for="t in TABLAS" :key="t">
-                  <th scope="row">{{ NOMBRE_TABLA[t] }}</th>
-                  <td v-for="(estados, c) in datos.historia" :key="c" class="centro" :class="{ actual: c === datos.fecha_corte }">
-                    <EstadoChip :estado="estados[t] ?? 'SIN_DATOS'" compacto />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="fila entre">
+            <h2>Historia de los sellos</h2>
+            <span class="tenue pequeno">Días certificados · con observaciones · sin certificar</span>
           </div>
+          <MapaDias
+            :dias="Object.keys(datos.historia)"
+            :filas="filasHistoria"
+            :elegido="datos.fecha_corte"
+            @elegir="(d) => (cortes.elegido = d)"
+          />
         </section>
 
         <article v-for="t in datos.tablas" :key="t.tabla" class="panel ficha" :class="t.estado">
@@ -148,9 +150,7 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
 </template>
 
 <style scoped>
-.historia th[scope="row"] { color: var(--tinta); font-size: 14px; }
-.historia .actual { background: var(--marca-suave); }
-.historia thead .actual { color: var(--marca); }
+.pequeno { font-size: 12.5px; }
 .ficha { display: grid; grid-template-columns: 180px repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; border-left: 5px solid var(--aviso); }
 .ficha.CERTIFICADO { border-left-color: var(--bien); }
 .ficha.NO_CERTIFICADO { border-left-color: var(--critico); }

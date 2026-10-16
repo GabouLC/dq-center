@@ -1,15 +1,11 @@
 """Constantes del modelo de datos compartidas por el generador, el motor y la API."""
 
-from datetime import date
+from datetime import date, timedelta
 
-CORTES = [
-    date(2026, 4, 30),
-    date(2026, 5, 31),
-    date(2026, 6, 30),
-    date(2026, 7, 31),
-    date(2026, 8, 31),
-    date(2026, 9, 30),
-]
+# Un corte por día, del 1 de julio al 30 de septiembre de 2026: cada día los
+# sistemas de origen entregan la foto de sus tablas y el motor la evalúa.
+INICIO_PERIODO, FIN_PERIODO = date(2026, 7, 1), date(2026, 9, 30)
+CORTES = [INICIO_PERIODO + timedelta(days=i) for i in range((FIN_PERIODO - INICIO_PERIODO).days + 1)]
 
 TABLAS_REF = ["ref_producto", "ref_ubigeo"]
 TABLAS_CORTE = ["persona", "poliza", "vehiculo", "siniestro", "pago"]
@@ -162,7 +158,7 @@ ESQUEMAS_ENGINE = {
 }
 
 # Columnas que una tabla estrena desde un corte; Fuentes > Estructura debe detectarlas.
-COLUMNAS_NUEVAS = {"poliza": (date(2026, 9, 30), [("canal_venta", "STRING")])}
+COLUMNAS_NUEVAS = {"poliza": (date(2026, 9, 9), [("canal_venta", "STRING")])}
 
 
 def esquema(tabla: str, corte: date | None = None) -> list[tuple[str, str]]:

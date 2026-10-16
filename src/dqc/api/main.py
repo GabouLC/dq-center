@@ -10,12 +10,15 @@ Variables de entorno:
   DQC_PROYECTO  proyecto de GCP; DQC_SANDBOX=1 si no tiene facturación
   DQC_JOB       projects/<p>/locations/<r>/jobs/<j>: las corridas a demanda lanzan ese Cloud Run Job
   DQC_ORIGENES  orígenes permitidos por CORS, separados por coma
+  DQC_EN_VIVO   1 en el modo local: las entregas pendientes de data/landing llegan solas (0 para apagar)
+  DQC_EN_VIVO_SEGUNDOS  segundos entre un archivo y el siguiente (por defecto 20)
   DQC_ADMINS    correos con rol admin en el modo local, separados por coma
 """
 
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 
 from dqc.api.app import Servicios, crear_app
@@ -60,15 +63,25 @@ def crear_servicios() -> Servicios:
                 print(f"Contraseña temporal de {email}: {autenticador.asignar_temporal(email)}", flush=True)
     firebase = verificador_firebase(os.environ["DQC_PROYECTO"]) if os.environ.get("DQC_AUTH") == "firebase" else None
     job = os.environ.get("DQC_JOB")
+
+    candado = threading.RLock()
+    fuente = FuenteBusiness(plataforma, candado=candado)
+    vivo = None
+    if modo == "local" and os.environ.get("DQC_EN_VIVO", "1") == "1":
+        from dqc.api.vivo import Simulador
+
+        vivo = Simulador(plataforma, config, fuentes, datos / "landing", float(os.environ.get("DQC_EN_VIVO_SEGUNDOS", "20")),
+                         candado, fuente.invalidar)
     return Servicios(
         plataforma=plataforma,
-        fuente=FuenteBusiness(plataforma),
+        fuente=fuente,
         config=config,
         fuentes_homologacion=fuentes,
         verificar_token=verificador(autenticador, firebase),
-        lanzar=lanzador_job(job) if job else lanzador_en_proceso(plataforma, config, fuentes),
+        lanzar=lanzador_job(job) if job else lanzador_en_proceso(plataforma, config, fuentes, candado),
         origenes=lista_env("DQC_ORIGENES") or ["http://localhost:5173"],
         autenticador=autenticador,
+        vivo=vivo,
     )
 
 

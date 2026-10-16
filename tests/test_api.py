@@ -12,10 +12,14 @@ from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import USUARIOS_DEMO, ConfiguracionLocal
 from dqc.api.datos import FuenteBusiness
 from dqc.api.servicios import lanzador_en_proceso, verificador
-from dqc.datagen.generador import AGOSTO, JULIO, JUNIO, SEPTIEMBRE
+from datetime import timedelta
+
+from dqc.datagen import generador as g
 from dqc.modelo import BUSINESS
 
-from conftest import CONFIG
+from conftest import CONFIG, CORTES_PRUEBA
+
+PRIMERO, ANTES_DEL_RETRASO = CORTES_PRUEBA[0], g.PERSONA_TARDE - timedelta(days=1)
 
 ADMIN, GOBIERNO, LECTOR = "admin@demo.local", "gobierno@demo.local", "lector@demo.local"
 SIN_ROL = "sinrol@demo.local"
@@ -144,8 +148,8 @@ def test_un_lector_no_puede_administrar(cliente, config):
 
 def test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno(cliente, config):
     ruta = "/api/v1/validaciones/PER-VAL-04/persona/fallidos"
-    lector = get(cliente, ruta, LECTOR, corte=str(JULIO))
-    gobierno = get(cliente, ruta, GOBIERNO, corte=str(JULIO))
+    lector = get(cliente, ruta, LECTOR, corte=str(PRIMERO))
+    gobierno = get(cliente, ruta, GOBIERNO, corte=str(PRIMERO))
     fila_l, fila_g = lector["muestras"][0]["fila"], gobierno["muestras"][0]["fila"]
     assert fila_l["fecha_nacimiento"] == "•••• restringido" and fila_g["fecha_nacimiento"] == "1900-01-01"
     assert fila_l["nro_documento"] == fila_g["nro_documento"] == "•••• cifrado"  # PII: nunca en claro
@@ -167,7 +171,7 @@ def test_el_portal_solo_lee_la_capa_business(simulacion):
     fuente = FuenteBusiness(Espia())
     fuente.precargar()
     fuente.fallidos(fuente.ejecuciones()[-1]["id_ejecucion"], "PER-VAL-04", "persona", 5)
-    fuente.incidencias("pago", JULIO, 5)
+    fuente.incidencias("pago", PRIMERO, 5)
     tablas = {t for sql in leidas for t in re.findall(r"\b(?:FROM|JOIN)\s+([\w.]+)", sql)}
     assert tablas and {t.split(".")[0] for t in tablas} == {BUSINESS}
 
@@ -177,22 +181,23 @@ def test_el_portal_solo_lee_la_capa_business(simulacion):
 
 def test_resumen_muestra_tendencia_pass_y_certificacion(cliente):
     cortes = {c["fecha_corte"]: c for c in get(cliente, "/api/v1/resumen")["cortes"]}
-    assert len(cortes) == 6
-    assert cortes[str(JULIO)]["global"] < cortes[str(JUNIO)]["global"] < 100
-    assert 0 < cortes[str(SEPTIEMBRE)]["pct_pass"] < 100
-    assert cortes[str(AGOSTO)]["certificacion"]["poliza"] == "NO_CERTIFICADO"
+    assert len(cortes) == len(CORTES_PRUEBA)
+    assert cortes[str(g.PERSONA_TARDE)]["global"] < cortes[str(ANTES_DEL_RETRASO)]["global"] < 100
+    ultimo = cortes[str(CORTES_PRUEBA[-1])]
+    assert 0 < ultimo["pct_pass"] < 100 and set(ultimo["pct_pass_tabla"]) == set(g.TABLAS_CORTE)
+    assert cortes[str(g.REPROCESO)]["certificacion"]["poliza"] == "NO_CERTIFICADO"
 
 
 def test_validaciones_de_un_corte_empiezan_por_las_fallas(cliente):
-    datos = get(cliente, "/api/v1/validaciones", corte=str(JULIO))
+    datos = get(cliente, "/api/v1/validaciones", corte=str(g.PERSONA_TARDE))
     assert len(datos["reglas"]) == 48
     assert (datos["reglas"][0]["id_regla"], datos["reglas"][0]["estado"]) == ("GEN-OPO-01", "FALLA")
-    solo_n1 = get(cliente, "/api/v1/validaciones", corte=str(JULIO), nivel="N1")["reglas"]
+    solo_n1 = get(cliente, "/api/v1/validaciones", corte=str(g.PERSONA_TARDE), nivel="N1")["reglas"]
     assert solo_n1 and {r["nivel"] for r in solo_n1} == {"N1"}
 
 
 def test_comparar_cortes_muestra_primero_lo_que_empeoro(cliente):
-    filas = get(cliente, "/api/v1/validaciones/comparar", a=str(JUNIO), b=str(JULIO))["reglas"]
+    filas = get(cliente, "/api/v1/validaciones/comparar", a=str(ANTES_DEL_RETRASO), b=str(g.PERSONA_TARDE))["reglas"]
     empeoraron = [(f["id_regla"], f["tabla"]) for f in filas if f["empeoro"]]
     assert ("GEN-OPO-01", "persona") in empeoraron
     assert filas[0]["empeoro"]
@@ -201,17 +206,18 @@ def test_comparar_cortes_muestra_primero_lo_que_empeoro(cliente):
 # ── HU-12: certificación integral ───────────────────────────────────────────
 
 
-def test_certificacion_integral_de_junio(cliente):
-    datos = get(cliente, "/api/v1/certificacion", corte=str(JUNIO))
+def test_certificacion_integral_del_dia_de_la_fuga(cliente):
+    dia, registros = next(iter(g.FUGA_PII.items()))
+    datos = get(cliente, "/api/v1/certificacion", corte=str(dia))
     siniestro = next(t for t in datos["tablas"] if t["tabla"] == "siniestro")
     assert siniestro["estado"] == "NO_CERTIFICADO"
     assert siniestro["calidad"]["ok"] and not siniestro["privacidad"]["ok"]
-    assert siniestro["privacidad"]["hallazgos"] == [{"tipo": "PII_EN_CLARO", "columna": "causa", "bloqueante": True, "registros": 6}]
+    assert siniestro["privacidad"]["hallazgos"] == [{"tipo": "PII_EN_CLARO", "columna": "causa", "bloqueante": True, "registros": registros}]
     assert siniestro["trazabilidad"]["publicado"] is False
     persona = next(t for t in datos["tablas"] if t["tabla"] == "persona")
     assert all(c["protegido"] for c in persona["privacidad"]["campos_cifrados"])
     assert persona["trazabilidad"]["objeto_business"] == "dq_business.p_persona"
-    assert datos["historia"][str(JULIO)]["persona"] == "NO_CERTIFICADO"
+    assert datos["historia"][str(g.PERSONA_TARDE)]["persona"] == "NO_CERTIFICADO"
 
 
 # ── fuentes y contrato ──────────────────────────────────────────────────────
@@ -221,14 +227,15 @@ def test_fuentes_muestran_rechazos_volumen_e_incidencias(cliente):
     tablas = {t["tabla"]: t for t in get(cliente, "/api/v1/fuentes")}
     rechazada = [c for c in tablas["siniestro"]["cargas"] if c["estado"] == "RECHAZADA"]
     assert [c["detalle"] for c in rechazada] == ["faltan columnas: ESTADO_SINIESTRO"]
-    agosto = next(c for c in tablas["poliza"]["cargas"] if c["fecha_corte"] == str(AGOSTO))
-    assert agosto["variacion_pct"] == pytest.approx(22, abs=0.1)
+    reproceso = next(c for c in tablas["poliza"]["cargas"] if c["fecha_corte"] == str(g.REPROCESO))
+    assert reproceso["variacion_pct"] == pytest.approx(22, abs=0.3)
     assert all(c["incidencias"] > 0 for c in tablas["pago"]["cargas"])
 
 
 def test_estructura_detecta_columna_nueva(cliente):
-    cortes = get(cliente, "/api/v1/fuentes/poliza/estructura")["cortes"]
-    assert cortes[-1]["agregadas"] == ["canal_venta"]
+    cortes = {c["fecha_corte"]: c for c in get(cliente, "/api/v1/fuentes/poliza/estructura")["cortes"]}
+    assert cortes[str(g.CANAL_VENTA)]["agregadas"] == ["canal_venta"]
+    assert cortes[str(CORTES_PRUEBA[-1])]["agregadas"] == []
 
 
 def test_contrato_con_dac_y_columna_fuera_de_contrato(cliente):
@@ -246,7 +253,7 @@ def test_linaje_de_persona_de_raw_a_business(cliente):
     assert [n["capa"] for n in datos["nodos"]] == ["RAW", "MASTER", "BUSINESS", "BUSINESS"]
     documento = next(c for c in datos["campos"] if c["master"] == "nro_documento")
     assert documento["raw"] == "NUM_DOC" and "cifrado determinístico" in documento["transformacion"]
-    assert datos["cortes_retenidos"] == [str(JULIO)]
+    assert datos["cortes_retenidos"] == [str(g.PERSONA_TARDE), str(g.DOCUMENTO_NULO)]
 
 
 # ── HU-10: glosario ─────────────────────────────────────────────────────────
@@ -333,3 +340,8 @@ def test_una_solicitud_lenta_queda_registrada_en_la_auditoria(cliente, config, m
 def test_sondas_de_salud(cliente):
     assert cliente.get("/health/liveness").json()["estado"] == "ok"
     assert cliente.get("/health/readiness").json()["estado"] == "ok"
+
+
+def test_sin_simulacion_en_vivo_el_estado_dice_inactivo(cliente):
+    assert get(cliente, "/api/v1/vivo") == {"activo": False, "version": 0, "eventos": []}
+    assert cliente.post("/api/v1/vivo/adelantar", headers=como(ADMIN)).status_code == 404

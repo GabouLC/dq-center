@@ -5,12 +5,17 @@ import {
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import IndicadorVivo from '@/componentes/IndicadorVivo.vue'
 import LineaCortes from '@/componentes/LineaCortes.vue'
 import { useSesion } from '@/stores/sesion'
 import { useTema } from '@/stores/tema'
+import { useVivo } from '@/stores/vivo'
 
 const sesion = useSesion()
 const tema = useTema()
+const vivo = useVivo()
+// La simulación en vivo se consulta mientras haya sesión.
+watch(() => sesion.activa, (activa) => (activa ? vivo.iniciar() : vivo.detener()), { immediate: true })
 const ruta = useRoute()
 const router = useRouter()
 const menuAbierto = ref(false)
@@ -86,6 +91,7 @@ async function salir() {
         <LineaCortes v-if="conCorte" />
         <span v-else class="espacio" />
         <div class="fila acciones">
+          <IndicadorVivo />
           <button
             type="button"
             class="icono fantasma"

@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
 from dqc.datagen.exportar import exportar
+from dqc.datagen import generador as g
 from dqc.datagen.generador import generar
 from dqc.modelo import CORTES
 from dqc.motor.reglas import cargar_yaml
@@ -14,6 +15,15 @@ from dqc.pipeline.ingesta import leer_entregas
 from dqc.plataforma.local import PlataformaDuckDB
 
 CONFIG = Path(__file__).parents[1] / "config"
+
+# Las pruebas usan una cartera más chica y procesan solo los días que cuentan la historia:
+# cada incidente con el día anterior, la columna nueva, la corrección de DNI y el cierre.
+ESCALA = 0.25
+_DIAS = {
+    CORTES[0], g.PERSONA_TARDE, g.DOCUMENTO_NULO, g.RECHAZO_SINIESTRO, *g.FUGA_PII, g.REPROCESO,
+    g.REPROCESO + timedelta(days=1), g.CANAL_VENTA, g.CORRECCION_DNI, *CORTES[-4:],
+}
+CORTES_PRUEBA = sorted(_DIAS | {d - timedelta(days=1) for d in _DIAS if d != CORTES[0]})
 
 
 @dataclass
@@ -31,7 +41,7 @@ class Simulacion:
 @pytest.fixture(scope="session")
 def resultado():
     """Datos sintéticos con la semilla fija; se generan una sola vez por sesión."""
-    return generar()
+    return generar(escala=ESCALA)
 
 
 @pytest.fixture(scope="session")
@@ -62,7 +72,7 @@ def simulacion(datos, fuentes, contratos, reglas) -> Simulacion:
     flujo = Flujo(plataforma, fuentes, contratos, reglas, datos.landing)
     flujo.preparar()
     entregas = leer_entregas(datos.landing)
-    resultados = {c: flujo.procesar_corte(c, entregas, primero=i == 0) for i, c in enumerate(CORTES)}
+    resultados = {c: flujo.procesar_corte(c, entregas, primero=i == 0) for i, c in enumerate(CORTES_PRUEBA)}
     return Simulacion(plataforma, resultados)
 
 

@@ -78,6 +78,7 @@ class Servicios:
     lanzar: Callable[[date | None, str], dict]
     origenes: list[str] = field(default_factory=list)
     autenticador: Autenticador | None = None
+    vivo: object | None = None  # dqc.api.vivo.Simulador
 
 
 class PedidoEjecucion(BaseModel):
@@ -86,6 +87,10 @@ class PedidoEjecucion(BaseModel):
 
 class PedidoRol(BaseModel):
     rol: Literal["admin", "gobierno", "lector"]
+
+
+class PedidoPausa(BaseModel):
+    pausado: bool
 
 
 class PedidoSesion(BaseModel):
@@ -110,6 +115,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         # El primer usuario no debería esperar la lectura en frío de BigQuery.
         if precargar:
             threading.Thread(target=_precargar, daemon=True).start()
+        if s.vivo:
+            s.vivo.iniciar()
         yield
 
     def _precargar():
@@ -261,6 +268,32 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
             "modulos": [{"clave": c, "nombre": n} for c, n, p in MODULOS if p in permisos],
             "debe_cambiar": bool(s.autenticador and s.autenticador.debe_cambiar(u.email)),
         }
+
+    # ── simulación en vivo ─────────────────────────────────────────────────
+
+    @app.get("/api/v1/vivo")
+    def vivo(desde: int = Query(0, ge=0), _: Usuario = Depends(lector)):
+        """Estado de la simulación en vivo y los eventos posteriores a `desde`."""
+        if s.vivo is None:
+            return {"activo": False, "version": 0, "eventos": []}
+        return s.vivo.estado(desde)
+
+    @app.post("/api/v1/vivo/pausa")
+    def pausar_vivo(pedido: PedidoPausa, u: Usuario = Depends(configurar)):
+        if s.vivo is None:
+            raise HTTPException(404, "La simulación en vivo no está activa")
+        s.vivo.pausar(pedido.pausado)
+        s.config.auditar({"accion": "EJECUTAR", "email": u.email, "recurso": "vivo",
+                          "detalle": "pausa" if pedido.pausado else "reanuda"})
+        return s.vivo.estado(10**9)
+
+    @app.post("/api/v1/vivo/adelantar")
+    def adelantar_vivo(_: Usuario = Depends(configurar)):
+        """Hace llegar el siguiente archivo ahora."""
+        if s.vivo is None:
+            raise HTTPException(404, "La simulación en vivo no está activa")
+        s.vivo.adelantar()
+        return {"estado": "ok"}
 
     # ── HU-09: resumen ─────────────────────────────────────────────────────
 

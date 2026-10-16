@@ -12,6 +12,7 @@ from __future__ import annotations
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from datetime import date
 
 from dqc.modelo import BUSINESS
@@ -31,8 +32,10 @@ CONSULTAS = {
 
 
 class FuenteBusiness:
-    def __init__(self, plataforma, vigencia: float = 600):
+    def __init__(self, plataforma, vigencia: float = 600, candado: threading.RLock | None = None):
         self.plataforma = plataforma
+        # Con la simulación en vivo, no leer mientras un corte se está publicando.
+        self.candado = candado or nullcontext()
         self.vigencia = vigencia
         self._datos: dict[str, list[dict]] = {}
         self._vence = 0.0
@@ -40,7 +43,7 @@ class FuenteBusiness:
 
     def precargar(self) -> None:
         """Lee todas las vistas a la vez: el tiempo total es el de la consulta más lenta."""
-        with ThreadPoolExecutor(len(CONSULTAS)) as pool:
+        with self.candado, ThreadPoolExecutor(len(CONSULTAS)) as pool:
             leidas = dict(zip(CONSULTAS, pool.map(self.plataforma.consultar, CONSULTAS.values())))
         with self._lock:
             self._datos = leidas

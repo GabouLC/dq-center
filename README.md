@@ -50,9 +50,38 @@ BUSINESS los tienen descifrados. El motor los descifra solo dentro de su propia 
 
 El generador siembra errores conocidos y los anota en un manifiesto: archivos mal
 formados, valores no convertibles, defectos para cada regla y una fuga de PII. La
-prueba de aceptación corre los 6 cortes y exige que la ingesta, la homologación, las
-reglas y la revisión de privacidad detecten **exactamente** lo sembrado. Pasa igual en
-DuckDB (local y CI) y en BigQuery.
+prueba de aceptación corre los 92 cortes diarios y exige que la ingesta, la
+homologación, las reglas y la revisión de privacidad detecten **exactamente** lo
+sembrado. Pasa igual en DuckDB y en BigQuery. En el CI corre sobre 22 días elegidos
+y una cartera más chica, para que tarde menos de un minuto.
+
+### La historia de los datos
+
+Un corte por día, del 1 de julio al 30 de septiembre de 2026 (92 cortes). Cada día
+llegan cinco archivos con la foto de la cartera: unas 1 500 personas, 2 400 a 3 200
+pólizas, 900 vehículos, 250 siniestros y 9 000 cuotas. La calidad no es perfecta ni
+constante:
+
+- **Ruido diario:** errores transitorios que aparecen un día y se corrigen al siguiente,
+  más los lunes y menos el fin de semana; algún día una fuente tiene un mal día.
+- **Tendencias:** una campaña de contactos corrige celulares desde el 17 de agosto, la
+  cobranza actualiza cuotas vencidas desde el 3 de agosto, los vehículos se limpian entre
+  el 24 de agosto y el 11 de septiembre (desde ahí Vehículo certifica sin observaciones),
+  y el proceso de bajas se atrasa: cada semana más pólizas vencidas siguen como VIGENTE,
+  hasta que POL-CON-03 cruza su umbral el 28 de septiembre.
+- **Incidentes:**
+
+  | Fecha | Qué pasa | Qué lo detecta |
+  |---|---|---|
+  | 14 jul | El archivo de personas llega con dos días de retraso | GEN-OPO-01: Persona no certifica |
+  | 22 jul | Una carga mal mapeada deja sin documento al 4.5 % de las personas con DNI | PER-COM-01: Persona no certifica |
+  | 28 jul | El archivo de siniestros llega sin una columna; se reenvía tres horas después | Ingesta: rechazo registrado |
+  | 7 y 8 ago | El DNI del reportante queda escrito en la causa del siniestro | Privacy Gate: Siniestro retenido |
+  | 20 ago | Un reproceso duplica pólizas e infla el volumen 22 % | GEN-VOL-01: Póliza no certifica |
+  | 2 al 4 set | El banco cambia el formato del importe | Homologación: incidencias en Pago |
+  | 9 set | Aparece la columna `canal_venta`, sin clasificación DAC | Gate: observación |
+  | 15 set | Se corrigen los DNI que habían perdido el cero inicial | PER-VAL-01 vuelve a OK |
+  | 16 set | Se venden pólizas de un producto inactivo | POL-INT-02 en alerta |
 
 ## Correrlo en local
 
@@ -63,11 +92,19 @@ python -m venv .venv
 .venv/Scripts/pip install -e ".[datagen,local,api,dev]"     # en Linux/Mac: .venv/bin/pip
 
 .venv/Scripts/python -m dqc.datagen                          # genera data/landing y el manifiesto
-.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb     # flujo completo + verificación
+.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # unos 8 minutos
 .venv/Scripts/python -m dqc.api                              # API en http://127.0.0.1:8000
 
 cd web && npm install && npm run dev                         # portal en http://localhost:5173
 ```
+
+**Simulación en vivo.** Con `--hasta`, los días posteriores quedan pendientes en
+`data/landing`. Mientras la API está levantada, llega un archivo cada 20 segundos
+(`DQC_EN_VIVO_SEGUNDOS`): se carga en RAW y, cuando llegan los cinco del día, el corte se
+homologa, se evalúa, se certifica y se publica. El portal muestra «En vivo», la actividad
+y avisos, y se actualiza solo. Un administrador puede pausarla o adelantar el siguiente
+archivo. Para volver a empezar la demo, detén la API y repite `dqc.pipeline --hasta`.
+Sin `--hasta` se procesan los 92 días y no queda nada en vivo (`DQC_EN_VIVO=0` la apaga).
 
 **Inicio de sesión.** Se entra con correo y contraseña (ADR 0011). En local hay tres
 cuentas de demostración, una por rol, con la contraseña `SmartDQ-2026` (se cambia con
@@ -87,7 +124,7 @@ La configuración local vive en `data/config_local.json` y el secreto que firma 
 sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
 detenla antes de volver a correr `dqc.pipeline`.
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (107 pruebas) y `npm run build` en `web/`.
+Pruebas: `.venv/Scripts/python -m pytest -q` (114 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -101,7 +138,7 @@ gcloud auth login --update-adc
 
 python -m dqc.gcp preparar                        # datasets y llaves de cifrado
 python -m dqc.gcp sembrar --admin tu@correo.com   # reglas, contratos, glosario y admins (imprime su clave temporal)
-python -m dqc.gcp simular                         # 6 cortes desde cero + verificación
+python -m dqc.gcp simular                         # 92 cortes diarios desde cero + verificación
 python -m dqc.gcp ejecutar                        # reevalúa el último corte
 
 DQC_MODO=gcp DQC_SECRETO=... python -m dqc.api    # API sobre BigQuery + Firestore
@@ -166,7 +203,7 @@ src/dqc/
   api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           107 pruebas, incluida la de aceptación contra el manifiesto
+tests/           114 pruebas, incluida la de aceptación contra el manifiesto
 docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 ```
 

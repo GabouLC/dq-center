@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Table2, TrendingUp } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { corte, pct } from '@/formato'
+import { corte, corteCorto, esFinDeSemana, pct } from '@/formato'
 
 /**
- * Tendencia por corte (dataviz): líneas de 2 px, una sola escala, crosshair que se
- * ajusta al corte más cercano con un tooltip de todas las series, leyenda que
- * activa/desactiva series (el color sigue a la serie), etiquetas directas al final
- * y vista de tabla como alternativa accesible.
+ * Tendencia diaria (dataviz): líneas de 2 px en una sola escala, crosshair que se
+ * ajusta al día más cercano con un tooltip de todas las series, leyenda que
+ * activa/desactiva series (el color sigue a la serie), etiquetas directas al final,
+ * fines de semana sombreados, días sin certificar marcados y vista de tabla.
  */
 type Serie = { clave: string; nombre: string; color: string; valores: (number | null)[]; destacada?: boolean }
-const props = defineProps<{ etiquetas: string[]; series: Serie[]; elegido?: string | null }>()
+const props = defineProps<{ etiquetas: string[]; series: Serie[]; elegido?: string | null; alertas?: boolean[]; unidad?: string }>()
 const emit = defineEmits<{ elegir: [fecha: string] }>()
 
 const contenedor = ref<HTMLDivElement | null>(null)
@@ -35,20 +35,22 @@ function alternar(clave: string) {
 }
 
 const angosto = computed(() => ancho.value < 560)
-const ALTO = 280
-const M = computed(() => ({ arriba: 18, derecha: angosto.value ? 76 : 104, abajo: 30, izquierda: 38 }))
+const ALTO = 300
+const M = computed(() => ({ arriba: 18, derecha: angosto.value ? 76 : 104, abajo: 34, izquierda: 38 }))
+const n = computed(() => props.etiquetas.length)
+const paso = computed(() => (ancho.value - M.value.izquierda - M.value.derecha) / Math.max(1, n.value - 1))
 
 // Una sola escala, con pasos redondos que terminan en 100.
 const escala = computed(() => {
   const valores = visibles.value.flatMap((s) => s.valores).filter((v): v is number => v !== null)
   const menor = valores.length ? Math.min(...valores) : 0
-  const paso = [1, 2, 5, 10, 20, 25].find((p) => Math.max(1, 100 - menor) / p <= 5) ?? 25
-  const minimo = Math.max(0, Math.floor(menor / paso) * paso)
+  const pasoY = [0.5, 1, 2, 5, 10, 20, 25].find((p) => Math.max(1, 100 - menor) / p <= 5) ?? 25
+  const minimo = Math.max(0, Math.floor(menor / pasoY) * pasoY)
   const ticks: number[] = []
-  for (let t = minimo; t <= 100; t += paso) ticks.push(t)
+  for (let t = minimo; t <= 100 + 1e-9; t += pasoY) ticks.push(Math.round(t * 10) / 10)
   return { minimo, ticks }
 })
-const x = (i: number) => M.value.izquierda + (i * (ancho.value - M.value.izquierda - M.value.derecha)) / Math.max(1, props.etiquetas.length - 1)
+const x = (i: number) => M.value.izquierda + i * paso.value
 const y = (v: number) => M.value.arriba + ((100 - v) / (100 - escala.value.minimo)) * (ALTO - M.value.arriba - M.value.abajo)
 const camino = (valores: (number | null)[]) =>
   valores
@@ -56,7 +58,16 @@ const camino = (valores: (number | null)[]) =>
     .filter(Boolean)
     .map((p, i) => `${i ? 'L' : 'M'}${p}`)
     .join(' ')
-const etiqueta = (iso: string) => (angosto.value ? corte(iso).split(' ')[0] : corte(iso))
+
+// Marcas del eje: el 1 y el 15 de cada mes (en pantallas angostas, solo el 1).
+const marcas = computed(() =>
+  props.etiquetas.flatMap((e, i) => {
+    const dia = e.slice(8)
+    return dia === '01' || (dia === '15' && !angosto.value) || i === 0 ? [{ i, texto: corteCorto(e) }] : []
+  }),
+)
+const findes = computed(() => props.etiquetas.flatMap((e, i) => (esFinDeSemana(e) ? [i] : [])))
+const iElegido = computed(() => props.etiquetas.indexOf(props.elegido ?? ''))
 
 // Etiquetas directas al final, separadas para que no se encimen.
 const leyendas = computed(() => {
@@ -69,18 +80,17 @@ const leyendas = computed(() => {
   return items
 })
 
-// Crosshair: el puntero busca el corte más cercano; con teclado, flechas.
+// Crosshair: el puntero busca el día más cercano; con teclado, flechas.
 const foco = ref<number | null>(null)
 function mover(evento: PointerEvent) {
   const caja = (evento.currentTarget as SVGElement).getBoundingClientRect()
   const px = evento.clientX - caja.left
-  const paso = (ancho.value - M.value.izquierda - M.value.derecha) / Math.max(1, props.etiquetas.length - 1)
-  foco.value = Math.max(0, Math.min(props.etiquetas.length - 1, Math.round((px - M.value.izquierda) / paso)))
+  foco.value = Math.max(0, Math.min(n.value - 1, Math.round((px - M.value.izquierda) / paso.value)))
 }
 function teclado(evento: KeyboardEvent) {
-  const actual = foco.value ?? props.etiquetas.length - 1
+  const actual = foco.value ?? (iElegido.value >= 0 ? iElegido.value : n.value - 1)
   if (evento.key === 'ArrowLeft') foco.value = Math.max(0, actual - 1)
-  else if (evento.key === 'ArrowRight') foco.value = Math.min(props.etiquetas.length - 1, actual + 1)
+  else if (evento.key === 'ArrowRight') foco.value = Math.min(n.value - 1, actual + 1)
   else if (evento.key === 'Enter' && foco.value !== null) emit('elegir', props.etiquetas[foco.value])
   else return
   evento.preventDefault()
@@ -92,8 +102,9 @@ const tooltip = computed(() => {
     .map((s) => ({ nombre: s.nombre, color: s.color, valor: s.valores[i] }))
     .sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0))
   const izquierda = x(i) > ancho.value / 2
-  return { i, filas, estilo: { top: '12px', [izquierda ? 'right' : 'left']: `${izquierda ? ancho.value - x(i) + 14 : x(i) + 14}px` } }
+  return { i, filas, alerta: props.alertas?.[i], estilo: { top: '12px', [izquierda ? 'right' : 'left']: `${izquierda ? ancho.value - x(i) + 14 : x(i) + 14}px` } }
 })
+const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value - 1].filter((i): i is number => i !== null && i >= 0))])
 </script>
 
 <template>
@@ -125,7 +136,7 @@ const tooltip = computed(() => {
         :height="ALTO"
         :viewBox="`0 0 ${ancho} ${ALTO}`"
         role="img"
-        aria-label="Tendencia del score por fecha de corte. Usa las flechas para recorrer los cortes y Enter para elegir uno."
+        :aria-label="`Tendencia diaria por fecha de corte${unidad ? ` (${unidad})` : ''}. Usa las flechas para recorrer los días y Enter para elegir uno.`"
         tabindex="0"
         @pointermove="mover"
         @pointerleave="foco = null"
@@ -133,31 +144,41 @@ const tooltip = computed(() => {
         @keydown="teclado"
         @blur="foco = null"
       >
+        <rect
+          v-for="i in findes"
+          :key="`f-${i}`"
+          :x="x(i) - paso / 2"
+          :y="M.arriba"
+          :width="paso"
+          :height="ALTO - M.arriba - M.abajo"
+          class="finde"
+        />
+        <rect
+          v-if="iElegido >= 0"
+          :x="x(iElegido) - Math.max(5, paso) / 2"
+          :y="M.arriba - 6"
+          :width="Math.max(5, paso)"
+          :height="ALTO - M.arriba - M.abajo + 6"
+          rx="3"
+          class="elegido"
+        />
         <g v-for="t in escala.ticks" :key="t">
           <line :x1="M.izquierda" :x2="ancho - M.derecha" :y1="y(t)" :y2="y(t)" class="guia" />
           <text :x="M.izquierda - 8" :y="y(t) + 4" text-anchor="end" class="eje num">{{ t }}</text>
         </g>
-        <template v-for="(e, i) in etiquetas" :key="e">
-          <rect
-            v-if="e === elegido"
-            :x="x(i) - 22"
-            :y="M.arriba - 6"
-            width="44"
-            :height="ALTO - M.arriba - M.abajo + 6"
-            rx="8"
-            class="elegido"
-          />
-          <text :x="x(i)" :y="ALTO - 8" text-anchor="middle" class="eje" :class="{ fuerte: e === elegido }">{{ etiqueta(e) }}</text>
+        <text v-for="m in marcas" :key="m.i" :x="x(m.i)" :y="ALTO - 10" text-anchor="middle" class="eje">{{ m.texto }}</text>
+        <template v-for="(a, i) in alertas ?? []" :key="`a-${i}`">
+          <circle v-if="a" :cx="x(i)" :cy="ALTO - M.abajo + 7" r="2.6" class="alerta" />
         </template>
         <line v-if="foco !== null" :x1="x(foco)" :x2="x(foco)" :y1="M.arriba" :y2="ALTO - M.abajo" class="cruz" />
         <g v-for="s in visibles" :key="s.clave">
-          <path :d="camino(s.valores)" fill="none" :stroke="s.color" :stroke-width="s.destacada ? 3.2 : 2" stroke-linejoin="round" stroke-linecap="round" />
-          <template v-for="(v, j) in s.valores" :key="j">
+          <path :d="camino(s.valores)" fill="none" :stroke="s.color" :stroke-width="s.destacada ? 3 : 1.8" stroke-linejoin="round" stroke-linecap="round" />
+          <template v-for="j in puntos" :key="j">
             <circle
-              v-if="v !== null"
+              v-if="s.valores[j] !== null && s.valores[j] !== undefined"
               :cx="x(j)"
-              :cy="y(v)"
-              :r="foco === j ? (s.destacada ? 6 : 5) : s.destacada ? 4.5 : 3.2"
+              :cy="y(s.valores[j]!)"
+              :r="j === foco ? (s.destacada ? 5.5 : 4.5) : s.destacada ? 4.5 : 3.2"
               :fill="s.color"
               stroke="var(--superficie)"
               stroke-width="2"
@@ -180,19 +201,20 @@ const tooltip = computed(() => {
           <span class="secundario">{{ f.nombre }}</span>
           <strong>{{ pct(f.valor) }}</strong>
         </div>
-        <div class="t-pie tenue">Clic para ver este corte</div>
+        <div v-if="tooltip.alerta" class="t-alerta">Alguna tabla quedó sin certificar</div>
+        <div class="t-pie tenue">Clic para ver este día</div>
       </div>
     </div>
 
-    <div v-if="vistaTabla" class="tabla-envoltura">
+    <div v-if="vistaTabla" class="tabla-envoltura alta">
       <table>
         <thead>
-          <tr><th>Serie</th><th v-for="e in etiquetas" :key="e" class="der">{{ corte(e) }}</th></tr>
+          <tr><th>Día</th><th v-for="s in series" :key="s.clave" class="der">{{ s.nombre }}</th></tr>
         </thead>
         <tbody>
-          <tr v-for="s in series" :key="s.clave">
-            <td><span class="clave" :style="{ background: s.color }" /> {{ s.nombre }}</td>
-            <td v-for="(v, i) in s.valores" :key="i" class="der num">{{ pct(v) }}</td>
+          <tr v-for="(e, i) in etiquetas" :key="e" :class="{ marcado: e === elegido }">
+            <td>{{ corte(e) }}</td>
+            <td v-for="s in series" :key="s.clave" class="der num">{{ pct(s.valores[i]) }}</td>
           </tr>
         </tbody>
       </table>
@@ -210,9 +232,13 @@ const tooltip = computed(() => {
 svg { display: block; max-width: 100%; cursor: crosshair; outline-offset: 4px; border-radius: 8px; }
 .guia { stroke: var(--linea); stroke-width: 1; }
 .cruz { stroke: var(--tinta-2); stroke-width: 1; }
+.finde { fill: var(--superficie-2); }
 .elegido { fill: var(--marca-suave); }
+.alerta { fill: var(--critico); }
 .eje { fill: var(--tenue); font-size: 11.5px; font-weight: 600; }
-.eje.fuerte { fill: var(--marca); font-weight: 800; }
 .directa { fill: var(--tinta-2); font-size: 12px; }
 .t-pie { margin-top: 6px; font-size: 11.5px; }
+.t-alerta { margin-top: 6px; font-size: 11.5px; font-weight: 700; color: var(--critico-texto); }
+.alta { max-height: 320px; overflow-y: auto; }
+tr.marcado td { background: var(--marca-suave); }
 </style>

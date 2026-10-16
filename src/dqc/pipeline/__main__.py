@@ -1,13 +1,16 @@
 """Corre el flujo completo en local (DuckDB), corte por corte, y lo verifica.
 
-Uso: python -m dqc.pipeline [--datos data] [--db data/dq.duckdb]
+Uso: python -m dqc.pipeline [--datos data] [--db data/dq.duckdb] [--hasta AAAA-MM-DD]
 
 Ingesta (CSV -> RAW), homologación y cifrado (RAW -> MASTER) y motor de
 calidad. Al final compara cada etapa con el manifiesto de errores sembrados.
+Con --hasta, los cortes posteriores quedan pendientes en la zona de aterrizaje:
+la API los procesa en vivo, uno por uno (DQC_EN_VIVO).
 """
 
 import argparse
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 import pyarrow.parquet as pq
@@ -21,6 +24,8 @@ from dqc.pipeline.ingesta import RECHAZADA, leer_entregas
 from dqc.pipeline.verificacion import verificar
 from dqc.plataforma.local import PlataformaDuckDB
 
+ESTADOS = {"CERTIFICADO": "certificada", "CERTIFICADO_CON_OBSERVACIONES": "con observaciones", "NO_CERTIFICADO": "no certificada"}
+
 
 def _pct(valor: float | None) -> str:
     return "   s/d" if valor is None else f"{valor:6.1f}"
@@ -31,6 +36,7 @@ def main() -> None:
     parser.add_argument("--datos", type=Path, default=Path("data"))
     parser.add_argument("--db", default=":memory:", help="archivo DuckDB donde dejar el resultado")
     parser.add_argument("--config", type=Path, default=Path("config"))
+    parser.add_argument("--hasta", type=date.fromisoformat, default=CORTES[-1], help="último corte a procesar")
     args = parser.parse_args()
 
     plataforma = PlataformaDuckDB(args.db)
@@ -44,11 +50,12 @@ def main() -> None:
     )
     flujo.preparar()
     entregas = leer_entregas(args.datos / "landing")
+    cortes = [c for c in CORTES if c <= args.hasta]
 
     print(f"{'corte':<12}{'global':>8}" + "".join(f"{t:>11}" for t in TABLAS_CORTE)
           + "   OK ALERTA FALLA  rechazos incidencias")
     resultados = []
-    for i, corte in enumerate(CORTES):
+    for i, corte in enumerate(cortes):
         r = flujo.procesar_corte(corte, entregas, primero=i == 0)
         resultados.append(r)
         s = scores(r.ejecucion.resultados)
@@ -57,33 +64,34 @@ def main() -> None:
         print(
             f"{corte.isoformat():<12}{_pct(s.global_):>8}"
             + "".join(f"{_pct(s.por_tabla.get(t)):>11}" for t in TABLAS_CORTE)
-            + f"{estados['OK']:>5}{estados['ALERTA']:>7}{estados['FALLA']:>6}{rechazos:>10}{len(r.incidencias):>12}"
+            + f"{estados['OK']:>5}{estados['ALERTA']:>7}{estados['FALLA']:>6}{rechazos:>10}{len(r.incidencias):>12}",
+            flush=True,
         )
 
-    print("\nReglas fuera de OK (cumplimiento y estado por corte):")
+    print("\nReglas fuera de OK: días en cada estado y cumplimiento del primer y el último corte")
+    print(f"  {'regla':<11}{'tabla':<10}{'umbral':>7}{'OK':>5}{'ALERTA':>7}{'FALLA':>6}{'primero':>9}{'último':>8}")
     for regla in flujo.motor.reglas:
-        por_corte = {
-            r.fecha_corte: x for r in resultados for x in r.ejecucion.resultados
-            if (x.id_regla, x.tabla) == (regla.id, regla.tabla)
-        }
-        if all(x.estado in ("OK", "SIN_DATOS") for x in por_corte.values()):
+        serie = [
+            x for r in resultados for x in r.ejecucion.resultados if (x.id_regla, x.tabla) == (regla.id, regla.tabla)
+        ]
+        dias = Counter(x.estado for x in serie)
+        if dias["ALERTA"] + dias["FALLA"] == 0:
             continue
-        celdas = "".join(f"{_pct(por_corte[c].cumplimiento)}{por_corte[c].estado[0]:>2}" for c in CORTES)
-        print(f"  {regla.id:<11}{regla.tabla:<10}umbral {regla.umbral:>5}  {celdas}")
+        print(f"  {regla.id:<11}{regla.tabla:<10}{regla.umbral:>7}{dias['OK']:>5}{dias['ALERTA']:>7}{dias['FALLA']:>6}"
+              f"{_pct(serie[0].cumplimiento):>9}{_pct(serie[-1].cumplimiento):>8}")
 
-    print("\nCertificación (C certificada, O con observaciones, X no certificada):")
-    print(f"  {'tabla':<10}" + "".join(f"{c.isoformat():>12}" for c in CORTES))
-    marca = {"CERTIFICADO": "C", "CERTIFICADO_CON_OBSERVACIONES": "O", "NO_CERTIFICADO": "X"}
+    print("\nCertificación: días en cada estado")
     for tabla in TABLAS_CORTE:
-        celdas = [next(c for c in r.certificaciones if c.tabla == tabla) for r in resultados]
-        print(f"  {tabla:<10}" + "".join(f"{marca[c.estado]:>12}" for c in celdas))
+        conteo = Counter(c.estado for r in resultados for c in r.certificaciones if c.tabla == tabla)
+        print(f"  {tabla:<10}" + "  ".join(f"{conteo[e]:>3} {nombre}" for e, nombre in ESTADOS.items()))
+    print("\nCortes no certificados y su motivo:")
     for r in resultados:
         for c in r.certificaciones:
             if not c.certificado:
                 motivo = ", ".join(c.reglas_bloqueantes) or "privacidad: " + ", ".join(
                     sorted({f"{h.tipo} en {h.columna}" for h in c.hallazgos if h.bloqueante})
                 )
-                print(f"  {r.fecha_corte} {c.tabla}: {motivo}")
+                print(f"  {r.fecha_corte} {c.tabla:<10} {motivo}")
 
     manifiesto = pq.read_table(args.datos / "manifiesto_errores.parquet").to_pylist()
     print("\nVerificación contra el manifiesto:")

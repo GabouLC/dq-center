@@ -18,14 +18,14 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from dqc.datagen.generador import INGESTA, JULIO, NO_CONVERTIBLE, Resultado
+from dqc.datagen.generador import INGESTA, NO_CONVERTIBLE, RECHAZO_SINIESTRO, Resultado
 from dqc.modelo import CORTES, ESQUEMAS, TABLAS_CORTE
 from dqc.pipeline.configuracion import ColumnaFuente, Fuente
 from dqc.tipos import esquema_arrow
 
-# La primera entrega de siniestros de julio llega sin esta columna: se rechaza
-# y el sistema de origen la reenvía corregida tres horas después.
-RECHAZO = ("siniestro", JULIO, "ESTADO_SINIESTRO")
+# La primera entrega de siniestros del 28 de julio llega sin esta columna: se
+# rechaza y el sistema de origen la reenvía corregida tres horas después.
+RECHAZO = ("siniestro", RECHAZO_SINIESTRO, "ESTADO_SINIESTRO")
 
 
 def _formatear(valor, c: ColumnaFuente) -> str:

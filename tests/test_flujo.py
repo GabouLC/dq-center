@@ -2,12 +2,16 @@
 
 import csv
 
-from dqc.datagen.generador import JULIO
+from dqc.datagen.generador import RECHAZO_SINIESTRO
 from dqc.modelo import CORTES, ESQUEMAS, MASTER, RAW, TABLAS_CORTE
 from dqc.pipeline.configuracion import cifrados, clasificacion
 from dqc.pipeline.funciones import SQL_LLAVES
 from dqc.pipeline.ingesta import RECHAZADA
 from dqc.pipeline.verificacion import verificar
+
+from conftest import CORTES_PRUEBA
+
+PRIMERO = CORTES_PRUEBA[0]
 
 
 def test_cada_etapa_detecta_exactamente_lo_sembrado(simulacion, datos):
@@ -21,32 +25,35 @@ def test_cada_etapa_detecta_exactamente_lo_sembrado(simulacion, datos):
 
 
 def test_archivo_mal_formado_se_rechaza_con_su_motivo(simulacion):
-    rechazos = [c for c in simulacion.resultados[JULIO].cargas if c.estado == RECHAZADA]
+    rechazos = [c for c in simulacion.resultados[RECHAZO_SINIESTRO].cargas if c.estado == RECHAZADA]
     assert [(c.entrega.nombre, c.detalle) for c in rechazos] == [
-        ("siniestros_20260731_01.csv", "faltan columnas: ESTADO_SINIESTRO")
+        ("siniestros_20260728_01.csv", "faltan columnas: ESTADO_SINIESTRO")
     ]
 
 
 def test_lo_rechazado_no_llega_a_raw_y_queda_registrado(simulacion):
     p = simulacion.plataforma
-    archivos = p.consultar(f"SELECT DISTINCT archivo FROM {RAW}.siniestros WHERE fecha_corte = DATE '{JULIO}'")
-    assert [a["archivo"] for a in archivos] == ["siniestros_20260731_02.csv"]
+    archivos = p.consultar(f"SELECT DISTINCT archivo FROM {RAW}.siniestros WHERE fecha_corte = DATE '{RECHAZO_SINIESTRO}'")
+    assert [a["archivo"] for a in archivos] == ["siniestros_20260728_02.csv"]
     estados = p.consultar(
-        f"SELECT archivo, estado FROM {RAW}.registro_cargas WHERE tabla = 'siniestro' AND fecha_corte = DATE '{JULIO}' "
+        f"SELECT archivo, estado FROM {RAW}.registro_cargas WHERE tabla = 'siniestro' AND fecha_corte = DATE '{RECHAZO_SINIESTRO}' "
         "ORDER BY cargado_en"
     )
     assert [e["estado"] for e in estados] == ["RECHAZADA", "EXITOSA"]
 
 
 def test_raw_conserva_los_valores_tal_cual_vienen(simulacion, datos):
-    with open(datos.landing / "2026-04-30" / "polizas_20260430_01.csv", encoding="utf-8") as f:
+    with open(datos.landing / PRIMERO.isoformat() / f"polizas_{PRIMERO:%Y%m%d}_01.csv", encoding="utf-8") as f:
         en_csv = {fila["ID_POLIZA"]: fila["ESTADO_POLIZA"] for fila in csv.DictReader(f)}
     en_raw = {
         f["ID_POLIZA"]: f["ESTADO_POLIZA"]
-        for f in simulacion.plataforma.consultar(f"SELECT ID_POLIZA, ESTADO_POLIZA FROM {RAW}.polizas WHERE fecha_corte = DATE '2026-04-30'")
+        for f in simulacion.plataforma.consultar(f"SELECT ID_POLIZA, ESTADO_POLIZA FROM {RAW}.polizas WHERE fecha_corte = DATE '{PRIMERO}'")
     }
     assert en_raw == en_csv
-    assert any(e != e.strip() for e in en_raw.values())  # los espacios sembrados siguen ahí
+    con_espacios = simulacion.plataforma.consultar(
+        f"SELECT COUNT(*) AS n FROM {RAW}.polizas WHERE ESTADO_POLIZA != TRIM(ESTADO_POLIZA)"
+    )
+    assert con_espacios[0]["n"] > 0  # los espacios sembrados siguen ahí
 
 
 # ── HU-14: homologación ─────────────────────────────────────────────────────
@@ -99,11 +106,11 @@ def test_el_dni_en_master_no_coincide_con_raw_pero_se_descifra_igual(simulacion)
     p = simulacion.plataforma
     raw = {
         f["COD_CLIENTE"]: f["NUM_DOC"]
-        for f in p.consultar(f"SELECT COD_CLIENTE, NUM_DOC FROM {RAW}.clientes WHERE fecha_corte = DATE '2026-04-30' LIMIT 200")
+        for f in p.consultar(f"SELECT COD_CLIENTE, NUM_DOC FROM {RAW}.clientes WHERE fecha_corte = DATE '{PRIMERO}' LIMIT 200")
     }
     descifrado = p.consultar(
         f"SELECT CAST(x.id_persona AS STRING) AS id, {p.funciones.descifrar('x.nro_documento', 'deterministico', 'persona', 'nro_documento')} AS doc "
-        f"FROM {MASTER}.persona AS x CROSS JOIN {SQL_LLAVES} AS k WHERE x.fecha_corte = DATE '2026-04-30'"
+        f"FROM {MASTER}.persona AS x CROSS JOIN {SQL_LLAVES} AS k WHERE x.fecha_corte = DATE '{PRIMERO}'"
     )
     comparados = [d for d in descifrado if d["id"] in raw]
     assert len(comparados) == len(raw)

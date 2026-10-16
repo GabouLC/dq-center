@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from contextlib import nullcontext
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -71,14 +72,17 @@ def preparar_demo(autenticador: Autenticador, clave: str) -> None:
             autenticador.fijar(email, clave, debe_cambiar=False)
 
 
-def lanzador_en_proceso(plataforma, config, fuentes):
+def lanzador_en_proceso(plataforma, config, fuentes, candado=None):
     """Corre el motor y el Gate dentro de la API (modo local y sandbox sin Cloud Run Jobs)."""
 
     def lanzar(corte: date | None, email: str) -> dict:
+        with candado or nullcontext():
+            return _lanzar(corte, email)
+
+    def _lanzar(corte: date | None, email: str) -> dict:
         if corte is None:
-            corte = plataforma.consultar(
-                f"SELECT MAX(fecha_corte) AS corte FROM {BUSINESS}.v_calidad_cargas WHERE estado = 'EXITOSA'"
-            )[0]["corte"]
+            # El último corte ya evaluado: el de hoy puede estar a medio llegar (simulación en vivo).
+            corte = plataforma.consultar(f"SELECT MAX(fecha_corte) AS corte FROM {BUSINESS}.v_calidad_ejecuciones")[0]["corte"]
         reglas = [desde_documento(d) for d in config.reglas()]
         flujo = Flujo(plataforma, fuentes, config.contratos(), reglas)
         ejecucion, certificaciones = flujo.evaluar(corte, origen=f"manual:{email}")
