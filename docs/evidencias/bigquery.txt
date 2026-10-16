@@ -1,0 +1,137 @@
+Evidencia en BigQuery · proyecto dq-center-gabou (sandbox, datos sintéticos)
+Generada: 2026-10-16 00:12 UTC
+
+## HU-01 · Registro de cargas en RAW (por estado)
+
+estado     cargas  filas
+---------  ------  ------
+EXITOSA    32      356259
+RECHAZADA  1       636
+
+## HU-01 · Cargas rechazadas, con su motivo (no llegan a RAW)
+
+fecha_corte  tabla      archivo                     detalle
+-----------  ---------  --------------------------  ---------------------------------
+2026-07-31   siniestro  siniestros_20260731_01.csv  faltan columnas: ESTADO_SINIESTRO
+
+## HU-14 · Incidencias de homologación (registros excluidos de MASTER)
+
+fecha_corte  tabla      columnas   registros
+-----------  ---------  ---------  ---------
+2026-04-30   pago       IMPORTE    75
+2026-04-30   siniestro  FEC_AVISO  5
+2026-05-31   pago       IMPORTE    76
+2026-05-31   siniestro  FEC_AVISO  5
+2026-06-30   pago       IMPORTE    81
+2026-06-30   siniestro  FEC_AVISO  5
+2026-07-31   pago       IMPORTE    81
+2026-07-31   siniestro  FEC_AVISO  5
+2026-08-31   pago       IMPORTE    81
+2026-08-31   siniestro  FEC_AVISO  6
+2026-09-30   pago       IMPORTE    82
+2026-09-30   siniestro  FEC_AVISO  6
+
+## HU-06 · PII en MASTER: los campos sensibles se guardan cifrados (BYTES, AEAD)
+
+id_persona  nro_documento_cifrado      email_cifrado
+----------  -------------------------  -------------------------
+1           Ac5dnmIDq0K98T7Rcu5719aU…  Aa1ma4CJe3NMISotVGL9ZI+H…
+2           Ac5dnmK+a0yHCjiLW8ipkC4F…
+3           Ac5dnmLco1kWqqrC9oiYGb/9…
+
+## HU-06 · Tipo de cada campo PII en MASTER
+
+column_name    data_type
+-------------  ---------
+nro_documento  BYTES
+nombres        BYTES
+email          BYTES
+celular        BYTES
+
+## HU-02 / HU-03 · Reglas por corte, nivel y estado (última ejecución de cada corte)
+
+fecha_corte  nivel  ok  alerta  falla
+-----------  -----  --  ------  -----
+2026-04-30   N1     14  5       0
+2026-04-30   N2     8   6       0
+2026-04-30   N3     10  0       0
+2026-05-31   N1     14  5       0
+2026-05-31   N2     6   8       0
+2026-05-31   N3     15  0       0
+2026-06-30   N1     14  5       0
+2026-06-30   N2     6   8       0
+2026-06-30   N3     15  0       0
+2026-07-31   N1     13  6       0
+2026-07-31   N2     7   7       0
+2026-07-31   N3     14  0       1
+2026-08-31   N1     13  6       0
+2026-08-31   N2     8   6       0
+2026-08-31   N3     14  0       1
+2026-09-30   N1     15  4       0
+2026-09-30   N2     7   7       0
+2026-09-30   N3     15  0       0
+
+## HU-04 / HU-07 · Certificación por corte y tabla (última ejecución de cada corte)
+
+fecha_corte  tabla      estado                         reglas_bloqueantes  hallazgos  publicado
+-----------  ---------  -----------------------------  ------------------  ---------  ---------
+2026-04-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-04-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-04-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-04-30   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-04-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-05-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-05-31   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-05-31   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-05-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-05-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-06-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-06-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-06-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-06-30   siniestro  NO_CERTIFICADO                                     6          False
+2026-06-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-07-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-07-31   persona    NO_CERTIFICADO                 GEN-OPO-01          0          False
+2026-07-31   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-07-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-07-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-08-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-08-31   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-08-31   poliza     NO_CERTIFICADO                 GEN-VOL-01          0          False
+2026-08-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-08-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-09-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-09-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-09-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      1          True
+2026-09-30   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
+2026-09-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+
+## HU-07 · Hallazgos del Privacy Gate
+
+fecha_corte  tabla      tipo                    columna      registros  bloquea
+-----------  ---------  ----------------------  -----------  ---------  -------
+2026-06-30   siniestro  PII_EN_CLARO            causa        6          True
+2026-09-30   poliza     COLUMNA_SIN_CLASIFICAR  canal_venta  1          False
+
+## HU-08 · Objetos publicados en BUSINESS (p_ = tablas certificadas, v_ = vistas)
+
+table_name                      table_type
+------------------------------  ----------
+p_pago                          BASE TABLE
+p_persona                       BASE TABLE
+p_poliza                        BASE TABLE
+p_siniestro                     BASE TABLE
+p_vehiculo                      BASE TABLE
+v_calidad_cargas                VIEW
+v_calidad_certificaciones       VIEW
+v_calidad_ejecuciones           VIEW
+v_calidad_esquemas              VIEW
+v_calidad_fallidos              VIEW
+v_calidad_hallazgos_privacidad  VIEW
+v_calidad_incidencias           VIEW
+v_calidad_resultados            VIEW
+v_pago                          VIEW
+v_persona                       VIEW
+v_poliza                        VIEW
+v_siniestro                     VIEW
+v_vehiculo                      VIEW

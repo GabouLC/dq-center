@@ -1,16 +1,19 @@
 """API del portal (Sprint 3): HU-09 a HU-13 y HU-15, sobre la simulación en DuckDB."""
 
+import re
 import time
 
 import pytest
 from fastapi.testclient import TestClient
 
+from dqc.api import app
 from dqc.api.app import LIMITE_SEGUNDOS, Servicios, crear_app
 from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import USUARIOS_DEMO, ConfiguracionLocal
 from dqc.api.datos import FuenteBusiness
 from dqc.api.servicios import lanzador_en_proceso, verificador
 from dqc.datagen.generador import AGOSTO, JULIO, JUNIO, SEPTIEMBRE
+from dqc.modelo import BUSINESS
 
 from conftest import CONFIG
 
@@ -148,6 +151,25 @@ def test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno(client
     assert fila_l["nro_documento"] == fila_g["nro_documento"] == "•••• cifrado"  # PII: nunca en claro
     assert "fecha_nacimiento" in lector["campos_restringidos"] and gobierno["campos_restringidos"] == []
     assert any(e["accion"] == "ACCESO_RESTRINGIDO" and e["email"] == LECTOR for e in config.auditoria())
+
+
+# ── HU-08: el portal solo lee BUSINESS ──────────────────────────────────────
+
+
+def test_el_portal_solo_lee_la_capa_business(simulacion):
+    leidas = []
+
+    class Espia:
+        def consultar(self, sql):
+            leidas.append(sql)
+            return simulacion.plataforma.consultar(sql)
+
+    fuente = FuenteBusiness(Espia())
+    fuente.precargar()
+    fuente.fallidos(fuente.ejecuciones()[-1]["id_ejecucion"], "PER-VAL-04", "persona", 5)
+    fuente.incidencias("pago", JULIO, 5)
+    tablas = {t for sql in leidas for t in re.findall(r"\b(?:FROM|JOIN)\s+([\w.]+)", sql)}
+    assert tablas and {t.split(".")[0] for t in tablas} == {BUSINESS}
 
 
 # ── HU-09: dashboard ────────────────────────────────────────────────────────
@@ -300,6 +322,12 @@ def test_cada_seccion_responde_en_menos_de_8_segundos(cliente, ruta):
     assert time.perf_counter() - inicio < LIMITE_SEGUNDOS
     assert respuesta.headers["Server-Timing"].startswith("app;dur=")
     assert respuesta.headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_una_solicitud_lenta_queda_registrada_en_la_auditoria(cliente, config, monkeypatch):
+    monkeypatch.setattr(app, "LIMITE_SEGUNDOS", 0.0)  # cualquier solicitud supera el límite
+    cliente.get("/health/liveness")
+    assert any(e["accion"] == "RENDIMIENTO_LENTO" and e["recurso"] == "/health/liveness" for e in config.auditoria())
 
 
 def test_sondas_de_salud(cliente):

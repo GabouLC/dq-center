@@ -1,0 +1,44 @@
+corte         global    persona     poliza   vehiculo  siniestro       pago   OK ALERTA FALLA  rechazos incidencias
+2026-04-30      99.7       99.4       99.7       99.7       99.8       99.7   32     11     0         0          80
+2026-05-31      99.7       99.4       99.7       99.7       99.8       99.8   35     13     0         0          81
+2026-06-30      99.7       99.4       99.7       99.7       99.8       99.7   35     13     0         0          86
+2026-07-31      97.0       86.2       99.7       99.7       99.8       99.7   34     13     1         1          86
+2026-08-31      98.4       99.4       93.2       99.7       99.8       99.7   35     12     1         0          87
+2026-09-30      99.7       99.5       99.7       99.7       99.8       99.7   37     11     0         0          88
+
+Reglas fuera de OK (cumplimiento y estado por corte):
+  PER-COM-01 persona   umbral   100   100.0 O 100.0 O 100.0 O  99.2 A 100.0 O 100.0 O
+  PER-UNI-01 persona   umbral   100    99.3 A  99.3 A  99.3 A  99.3 A  99.3 A  99.3 A
+  PER-VAL-01 persona   umbral  99.5    98.5 A  98.5 A  98.5 A  97.5 A  98.4 A 100.0 O
+  PER-VAL-03 persona   umbral    97    95.5 A  95.5 A  95.5 A  95.5 A  95.4 A  95.5 A
+  PER-INT-01 persona   umbral    99    98.4 A  98.4 A  98.4 A  98.4 A  98.5 A  98.5 A
+  POL-UNI-01 poliza    umbral   100   100.0 O 100.0 O 100.0 O 100.0 O  99.8 A 100.0 O
+  POL-VAL-01 poliza    umbral   100    99.7 A  99.7 A  99.7 A  99.7 A  99.8 A  99.8 A
+  POL-CON-01 poliza    umbral  99.5    99.5 O  99.5 A  99.5 A  99.5 O  99.6 O  99.6 O
+  POL-CON-02 poliza    umbral    99    98.9 A  98.8 A  98.8 A  98.8 A  99.1 O  99.0 O
+  POL-CON-03 poliza    umbral    98    98.1 O  97.8 A  97.6 A  97.4 A  97.1 A  97.0 A
+  POL-INT-02 poliza    umbral   100   100.0 O 100.0 O 100.0 O 100.0 O 100.0 O  99.7 A
+  VEH-VAL-01 vehiculo  umbral    98    96.8 A  96.9 A  96.9 A  96.9 A  96.9 A  96.9 A
+  VEH-INT-01 vehiculo  umbral   100    99.5 A  99.5 A  99.5 A  99.5 A  99.5 A  99.5 A
+  SIN-INT-01 siniestro umbral   100    99.8 A  99.8 A  99.8 A  99.8 A  99.8 A  99.8 A
+  SIN-CON-01 siniestro umbral    99    98.8 A  98.8 A  98.9 A  98.9 A  98.8 A  98.8 A
+  PAG-CON-02 pago      umbral    98    97.0 A  96.8 A  96.8 A  96.7 A  96.6 A  96.5 A
+  GEN-OPO-01 persona   umbral   100   100.0 O 100.0 O 100.0 O   0.0 F 100.0 O 100.0 O
+  GEN-VOL-01 poliza    umbral   100     s/d S 100.0 O 100.0 O 100.0 O   0.0 F 100.0 O
+
+Certificación (C certificada, O con observaciones, X no certificada):
+  tabla       2026-04-30  2026-05-31  2026-06-30  2026-07-31  2026-08-31  2026-09-30
+  persona              O           O           O           X           O           O
+  poliza               O           O           O           O           X           O
+  vehiculo             O           O           O           O           O           O
+  siniestro            O           O           X           O           O           O
+  pago                 O           O           O           O           O           O
+  2026-06-30 siniestro: privacidad: PII_EN_CLARO en causa
+  2026-07-31 persona: GEN-OPO-01
+  2026-08-31 poliza: GEN-VOL-01
+
+Verificación contra el manifiesto:
+  ingesta          0 sin detectar     0 detectados de más
+  homologacion     0 sin detectar     0 detectados de más
+  reglas           0 sin detectar     0 detectados de más
+  privacidad       0 sin detectar     0 detectados de más

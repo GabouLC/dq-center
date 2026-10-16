@@ -87,7 +87,7 @@ La configuración local vive en `data/config_local.json` y el secreto que firma 
 sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
 detenla antes de volver a correr `dqc.pipeline`.
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (105 pruebas) y `npm run build` en `web/`.
+Pruebas: `.venv/Scripts/python -m pytest -q` (107 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -143,6 +143,17 @@ job a demanda.
 El Documento de Arquitectura estimaba USD 30 a 45, sobre todo por Cloud SQL. Los ADR
 0002 a 0005 explican cada sustitución.
 
+## Sprints y evidencia
+
+- [docs/sprints](docs/sprints/README.md): planificación, sprint backlog, seguimiento, revisión y
+  retrospectiva de los Sprints 1, 2 y 3, con la priorización y el burndown del release.
+- [docs/evidencias](docs/evidencias/README.md): capturas del portal por historia, la corrida del
+  pipeline, las consultas en BigQuery y el reporte de las pruebas.
+- Cada historia es un issue cerrado en su milestone:
+  [Sprint 1](https://github.com/GabouLC/dq-center/milestone/1),
+  [Sprint 2](https://github.com/GabouLC/dq-center/milestone/3) y
+  [Sprint 3](https://github.com/GabouLC/dq-center/milestone/4).
+
 ## Estructura
 
 ```
@@ -155,8 +166,8 @@ src/dqc/
   api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           105 pruebas, incluida la de aceptación contra el manifiesto
-docs/            brief original y decisiones de arquitectura (ADR)
+tests/           107 pruebas, incluida la de aceptación contra el manifiesto
+docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 ```
 
 ## Equipo
