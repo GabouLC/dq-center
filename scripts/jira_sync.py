@@ -2,7 +2,8 @@
 
 Refleja en Jira lo que está en docs/sprints: una épica por sprint, cada historia en
 su sprint y su épica, las tareas del sprint backlog como subtareas, el responsable de
-cada historia, enlaces a su issue de GitHub y a su evidencia, y los sprints cerrados.
+cada historia (con --asignar), enlaces a su issue de GitHub y a su evidencia, y los sprints
+cerrados. Con --revision publica en cada historia sus criterios, pruebas y capturas.
 Se puede correr varias veces: lo que ya existe no se duplica.
 
 Credenciales en ~/.jira-usmp.env (JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN); nunca en el repo.
@@ -10,6 +11,7 @@ Credenciales en ~/.jira-usmp.env (JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN); nunca 
   python scripts/jira_sync.py                          # muestra lo que haría, sin escribir
   python scripts/jira_sync.py --aplicar                # lo hace
   python scripts/jira_sync.py --sprint 1 --sin-epicas  # solo el Sprint 1, sin tocar épicas
+  python scripts/jira_sync.py --sprint 1 --revision    # comentario de revisión y capturas en cada historia
 """
 
 from __future__ import annotations
@@ -102,6 +104,24 @@ class Jira:
     def escribir(self, descripcion: str, metodo: str, ruta: str, cuerpo=None):
         print(("  hecho: " if self.aplicar else "  haría: ") + descripcion)
         return self.pedir(metodo, ruta, cuerpo) if self.aplicar else None
+
+    def adjuntar(self, clave: str, archivo: Path) -> None:
+        """Sube un archivo como adjunto del issue (multipart, como lo pide la API de Jira)."""
+        print(("  hecho: " if self.aplicar else "  haría: ") + f"adjuntar {archivo.name} a {clave}")
+        if not self.aplicar:
+            return
+        limite = "dqc" + base64.b16encode(archivo.name.encode()).decode()[:24]
+        tipo = "image/png" if archivo.suffix == ".png" else "text/plain"
+        cuerpo = (
+            f'--{limite}\r\nContent-Disposition: form-data; name="file"; filename="{archivo.name}"\r\n'
+            f"Content-Type: {tipo}\r\n\r\n"
+        ).encode() + archivo.read_bytes() + f"\r\n--{limite}--\r\n".encode()
+        cabeceras = {**self.cabeceras, "Content-Type": f"multipart/form-data; boundary={limite}", "X-Atlassian-Token": "no-check"}
+        pedido = urllib.request.Request(f"{self.sitio}/rest/api/3/issue/{clave}/attachments", data=cuerpo, method="POST", headers=cabeceras)
+        try:
+            urllib.request.urlopen(pedido).read()
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"adjuntar {archivo.name} -> {e.code}: {e.read().decode()[:300]}") from None
 
     def buscar(self, jql: str, campos: str = "summary") -> list[dict]:
         issues, token = [], None
@@ -279,6 +299,66 @@ def sincronizar(jira: Jira, numeros: list[int], con_epicas: bool, con_responsabl
             jira.escribir(f"cerrar {sprint['nombre']}", "POST", f"/rest/agile/1.0/sprint/{sp['id']}", {"state": "closed"})
 
 
+# ── revisión del sprint: criterios, pruebas y evidencia en cada historia ───
+
+
+def revision_del_sprint(numero: int) -> dict[str, list[list[str]]]:
+    """Filas (criterio, prueba, evidencia) de la revisión de cada historia en docs/sprints/sprint-N.md."""
+    texto = (RAIZ / "docs" / "sprints" / f"sprint-{numero}.md").read_text(encoding="utf-8")
+    seccion = texto.split("## 4.", 1)[1].split("## 5.", 1)[0]
+    revision = {}
+    for bloque in re.split(r"\n### ", seccion)[1:]:
+        hu = re.match(r"(HU-\d{2})", bloque)
+        if hu:
+            filas = [linea for linea in bloque.splitlines() if linea.startswith("| ") and not linea.startswith("|---")]
+            revision[hu[1]] = [[c.strip() for c in fila.strip().strip("|").split(" | ")] for fila in filas[1:]]
+    return revision
+
+
+def texto_plano(celda: str) -> str:
+    return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", celda).replace("`", "").replace("*", "").strip() or "—"
+
+
+def comentario_de_revision(numero: int, hu: str, filas: list[list[str]]) -> dict:
+    def celda(texto: str, encabezado: bool = False) -> dict:
+        return {"type": "tableHeader" if encabezado else "tableCell",
+                "content": [{"type": "paragraph", "content": [{"type": "text", "text": texto}]}]}
+
+    tabla = {"type": "table", "content": [
+        {"type": "tableRow", "content": [celda(t, True) for t in ("Criterio de aceptación", "Prueba automatizada", "Evidencia")]},
+        *({"type": "tableRow", "content": [celda(texto_plano(c)) for c in fila]} for fila in filas),
+    ]}
+    return {"type": "doc", "version": 1, "content": [
+        {"type": "paragraph", "content": [{"type": "text", "text": f"Revisión del Sprint {numero} · {hu} aceptada", "marks": [{"type": "strong"}]}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": (
+            "Cada criterio de aceptación con su prueba automatizada y su evidencia. Las capturas van adjuntas a esta "
+            "historia; el detalle está en docs/sprints/sprint-%d.md del repositorio." % numero)}]},
+        tabla,
+        {"type": "paragraph", "content": [{"type": "text", "text": (
+            "Definition of Done: código en main con el CI en verde, cada criterio con prueba automatizada, "
+            "0 diferencias contra el manifiesto de errores sembrados y evidencia adjunta.")}]},
+    ]}
+
+
+def publicar_revision(jira: Jira, numeros: list[int]) -> None:
+    for sprint in (s for s in SPRINTS if s["numero"] in numeros):
+        n = sprint["numero"]
+        revision = revision_del_sprint(n)
+        print(f"\nRevisión del Sprint {n}:")
+        for hu in sprint["historias"]:
+            clave, _ = HISTORIAS[hu]
+            filas = revision.get(hu, [])
+            comentarios = jira.leer(f"/rest/api/3/issue/{clave}/comment", maxResults=100)["comments"]
+            if not any(f"Revisión del Sprint {n}" in json.dumps(c["body"], ensure_ascii=False) for c in comentarios):
+                jira.escribir(f"comentario de revisión en {clave} ({hu}, {len(filas)} criterios)", "POST",
+                              f"/rest/api/3/issue/{clave}/comment", {"body": comentario_de_revision(n, hu, filas)})
+            adjuntos = {a["filename"] for a in jira.leer(f"/rest/api/3/issue/{clave}", fields="attachment")["fields"]["attachment"]}
+            imagenes = sorted({m for fila in filas for m in re.findall(r"\(\.\./evidencias/portal/([\w-]+\.png)\)", " ".join(fila))})
+            for nombre in imagenes:
+                if nombre not in adjuntos:
+                    jira.adjuntar(clave, RAIZ / "docs" / "evidencias" / "portal" / nombre)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--aplicar", action="store_true", help="escribir en Jira (sin esto, solo muestra el plan)")
@@ -286,9 +366,14 @@ def main() -> None:
                         help="sprint a sincronizar (repetible; por defecto, todos)")
     parser.add_argument("--sin-epicas", action="store_true", help="no crear épicas ni cambiar la épica de las historias")
     parser.add_argument("--asignar", action="store_true", help="asignar cada historia a su responsable (envía correos)")
+    parser.add_argument("--revision", action="store_true",
+                        help="solo publicar la revisión: criterios, pruebas y capturas en cada historia")
     args = parser.parse_args()
     jira = Jira(args.aplicar)
-    sincronizar(jira, args.sprint or [1, 2, 3], not args.sin_epicas, args.asignar)
+    if args.revision:
+        publicar_revision(jira, args.sprint or [1, 2, 3])
+    else:
+        sincronizar(jira, args.sprint or [1, 2, 3], not args.sin_epicas, args.asignar)
     if not jira.aplicar:
         print("\nNada se escribió. Para hacerlo: python scripts/jira_sync.py --aplicar")
 
