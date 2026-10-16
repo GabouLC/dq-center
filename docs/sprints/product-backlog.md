@@ -18,24 +18,24 @@ Owner lo confirma.*
 El orden aplica los criterios de [README.md](README.md#cómo-se-priorizó): dependencias, riesgo y
 valor.
 
-| Orden | Historia | Rol del backlog | SP | Sprint | Estado | Issue |
-|---|---|---|---|---|---|---|
-| 1 | HU-01 · Ingestar datos sintéticos en la capa RAW | Data Engineer | 3 | 1 | Terminada | [#1](https://github.com/GabouLC/dq-center/issues/1) |
-| 2 | HU-14 · Homologar el modelo de datos hacia la capa MASTER | Data Architect | 5 | 1 | Terminada | [#14](https://github.com/GabouLC/dq-center/issues/14) |
-| 3 | HU-05 · Clasificar datos según la taxonomía DAC | Data Architect | 3 | 1 | Terminada | [#5](https://github.com/GabouLC/dq-center/issues/5) |
-| 4 | HU-02 · Ejecutar validaciones de calidad de Nivel 1 | Data Engineer | 3 | 1 | Terminada | [#2](https://github.com/GabouLC/dq-center/issues/2) |
-| 5 | HU-06 · Cifrar automáticamente los datos sensibles | Data Architect | 8 | 1 | Terminada | [#6](https://github.com/GabouLC/dq-center/issues/6) |
-| 6 | HU-03 · Ejecutar reglas de calidad de Nivel 2 | QA Specialist | 5 | 2 | Terminada | [#3](https://github.com/GabouLC/dq-center/issues/3) |
-| 7 | HU-04 · Certificar la calidad de los datos | QA Specialist | 5 | 2 | Terminada | [#4](https://github.com/GabouLC/dq-center/issues/4) |
-| 8 | HU-07 · Ejecutar el Quality & Privacy Gate | Data Owner | 8 | 2 | En curso | [#7](https://github.com/GabouLC/dq-center/issues/7) |
-| 9 | HU-08 · Publicar datos certificados en BUSINESS | Data Owner | 5 | 2 | Por hacer | [#8](https://github.com/GabouLC/dq-center/issues/8) |
-| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | Planificada | [#13](https://github.com/GabouLC/dq-center/issues/13) |
-| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | Planificada | [#9](https://github.com/GabouLC/dq-center/issues/9) |
-| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | Planificada | [#12](https://github.com/GabouLC/dq-center/issues/12) |
-| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | Planificada | [#11](https://github.com/GabouLC/dq-center/issues/11) |
-| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | Planificada | [#10](https://github.com/GabouLC/dq-center/issues/10) |
-| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | Planificada | [#15](https://github.com/GabouLC/dq-center/issues/15) |
-| | **Total** | | **76** | | | |
+| Orden | Historia | Rol del backlog | SP | Sprint | Estado | Issue | Jira |
+|---|---|---|---|---|---|---|---|
+| 1 | HU-01 · Ingestar datos sintéticos en la capa RAW | Data Engineer | 3 | 1 | Terminada | [#1](https://github.com/GabouLC/dq-center/issues/1) | SDGDCYP-6 |
+| 2 | HU-14 · Homologar el modelo de datos hacia la capa MASTER | Data Architect | 5 | 1 | Terminada | [#14](https://github.com/GabouLC/dq-center/issues/14) | SDGDCYP-7 |
+| 3 | HU-05 · Clasificar datos según la taxonomía DAC | Data Architect | 3 | 1 | Terminada | [#5](https://github.com/GabouLC/dq-center/issues/5) | SDGDCYP-8 |
+| 4 | HU-02 · Ejecutar validaciones de calidad de Nivel 1 | Data Engineer | 3 | 1 | Terminada | [#2](https://github.com/GabouLC/dq-center/issues/2) | SDGDCYP-9 |
+| 5 | HU-06 · Cifrar automáticamente los datos sensibles | Data Architect | 8 | 1 | Terminada | [#6](https://github.com/GabouLC/dq-center/issues/6) | SDGDCYP-10 |
+| 6 | HU-03 · Ejecutar reglas de calidad de Nivel 2 | QA Specialist | 5 | 2 | Terminada | [#3](https://github.com/GabouLC/dq-center/issues/3) | SDGDCYP-12 |
+| 7 | HU-04 · Certificar la calidad de los datos | QA Specialist | 5 | 2 | Terminada | [#4](https://github.com/GabouLC/dq-center/issues/4) | SDGDCYP-13 |
+| 8 | HU-07 · Ejecutar el Quality & Privacy Gate | Data Owner | 8 | 2 | En curso | [#7](https://github.com/GabouLC/dq-center/issues/7) | SDGDCYP-14 |
+| 9 | HU-08 · Publicar datos certificados en BUSINESS | Data Owner | 5 | 2 | Por hacer | [#8](https://github.com/GabouLC/dq-center/issues/8) | SDGDCYP-15 |
+| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | Planificada | [#13](https://github.com/GabouLC/dq-center/issues/13) | SDGDCYP-11 |
+| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | Planificada | [#9](https://github.com/GabouLC/dq-center/issues/9) | SDGDCYP-16 |
+| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | Planificada | [#12](https://github.com/GabouLC/dq-center/issues/12) | SDGDCYP-19 |
+| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | Planificada | [#11](https://github.com/GabouLC/dq-center/issues/11) | SDGDCYP-18 |
+| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | Planificada | [#10](https://github.com/GabouLC/dq-center/issues/10) | SDGDCYP-17 |
+| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | Planificada | [#15](https://github.com/GabouLC/dq-center/issues/15) | SDGDCYP-20 |
+| | **Total** | | **76** | | | | |
 
 Los puntos son los del Product Backlog del equipo en Jira (proyecto SDGDCYP).
 
