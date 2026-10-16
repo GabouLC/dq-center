@@ -8,9 +8,10 @@
 
 ## 1. Sprint Planning
 
-**Fecha, duración y asistentes:** jueves 1 de octubre de 2026; cinco días, hasta el lunes 5.
-Asistentes: completar. La planificación se presentó al docente en el *Sprint 1 Planning*
-(Sprint1_Planning_SMART-DQ.pptx).
+**Fecha y duración:** jueves 1 de octubre de 2026, reunión virtual de una hora; el sprint dura
+cinco días, hasta el lunes 5. **Asistentes:** Gabriel León (Product Owner), Franco Delgado (Scrum Master), Jesus de la Cruz y
+Cristhian Pimentel. No asistió Josue Borda.
+La planificación se presentó al docente en el *Sprint 1 Planning* (Sprint1_Planning_SMART-DQ.pptx).
 
 ### ¿Por qué es valioso este sprint? · Objetivo del sprint
 
@@ -62,7 +63,7 @@ Las tareas de cada historia, con su responsable. Al cierre del sprint el tablero
 | 0 | 0 | 20 tareas de 5 historias |
 
 **HU-01 · Ingesta a RAW** · Cristhian Pimentel
-- [x] Generador de datos sintéticos: 5 tablas y 2 referencias, 6 cortes mensuales y errores sembrados con su manifiesto (`src/dqc/datagen/generador.py`)
+- [x] Generador de datos sintéticos: 5 tablas y 2 referencias, 6 cortes mensuales (en el Sprint 2 pasaron a 92 diarios) y errores sembrados con su manifiesto (`src/dqc/datagen/generador.py`)
 - [x] Zona de aterrizaje: un CSV por fuente y corte, con hora de llegada (`src/dqc/datagen/exportar.py`)
 - [x] Validación de la estructura del CSV y rechazo con motivo (`src/dqc/pipeline/ingesta.py`)
 - [x] Carga a RAW como texto, sin transformar, y registro de cada carga (`dq_raw.registro_cargas`)
@@ -106,19 +107,39 @@ configuración en Firestore (`9098ad4`).
 | `COUNTIF` sobre un conjunto vacío devuelve `NULL` en DuckDB | Cumplimiento indefinido en reglas sin filas | Se trata como 0 | Resuelto |
 
 **Burndown.** El incremento se integró en un solo commit (`369a0d7`), así que el repositorio no
-muestra el avance día a día. La línea real se registra con la plantilla de burndown de
-[plantillas.md](plantillas.md) a partir del tablero del equipo. Resultado: 22 de 22 SP, sin arrastre.
+muestra el avance día a día. La línea real sale de las dailies: SP de las historias que seguían
+abiertas al final de cada día. Resultado: 22 de 22 SP, sin arrastre.
 
-**Registro de Daily Scrum.** Una fila por daily; el acta completa de cada una va con el formato
-de [plantillas.md](plantillas.md).
+| Día | Fecha | SP ideal | SP real | Historias cerradas ese día |
+|---|---|---|---|---|
+| 0 | jueves 1 de octubre | 22 | 22 | |
+| 1 | viernes 2 | 16,5 | 22 | |
+| 2 | sábado 3 | 11 | 22 | |
+| 3 | domingo 4 | 5,5 | 11 | HU-01, HU-14 y HU-05 |
+| 4 | lunes 5 | 0 | 0 | HU-02 y HU-06 |
+
+```mermaid
+xychart-beta
+    title "Burndown del Sprint 1 (ideal y real)"
+    x-axis ["1 oct", "2 oct", "3 oct", "4 oct", "5 oct"]
+    y-axis "SP pendientes" 0 --> 24
+    line [22, 16.5, 11, 5.5, 0]
+    line [22, 22, 22, 11, 0]
+```
+
+La línea real va por encima de la ideal hasta el domingo: las historias se cerraron recién con
+sus pruebas de aceptación, no por tareas sueltas.
+
+**Registro de Daily Scrum.** Virtuales, de 15 minutos, a las 8:00 p. m. Asistieron Gabriel León,
+Franco Delgado, Jesus de la Cruz y Cristhian Pimentel; Josue Borda no asistió. Las actas
+completas, integrante por integrante, están en [dailies.md](dailies.md#sprint-1--1-al-5-de-octubre-de-2026).
 
 | Daily | Fecha | Avance del equipo | Impedimentos nuevos |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | viernes 2 de octubre | Generador con errores sembrados (HU-01), mapa de homologación (HU-14), estrategia de prueba contra el manifiesto, proyecto y datasets de GCP | Facturación de GCP; `SAFE.PARSE_DATE` en DuckDB |
+| 2 | sábado 3 | Rechazo de CSV con motivo, `parsear_fecha` por plataforma, pruebas de ingesta y decisión de usar el sandbox (ADR 0008) | Ninguno; se resolvió el de las fechas |
+| 3 | domingo 4 | HU-01, HU-14 y HU-05 terminadas; catálogo de reglas N1; CI en verde | `COUNTIF` vacío; `duckdb.typing` |
+| 4 | lunes 5 | Motor N1 (HU-02) y cifrado (HU-06); 0 diferencias contra el manifiesto; cortes en el sandbox de BigQuery | Ninguno; se resolvieron los dos del domingo |
 
 ## 4. Sprint Review e Incremento
 
@@ -150,7 +171,7 @@ sin detectar y 0 detectados de más en ingesta, homologación y reglas, tanto en
 |---|---|---|
 | Los datos de RAW se transforman al modelo estándar de MASTER | `test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Póliza](../evidencias/portal/hu14-fuentes-poliza-estructura.png): estructura de MASTER, con `canal_venta` nueva desde el 9 de septiembre |
 | Nombres distintos entre fuentes se unifican | `test_master_usa_los_nombres_estandar` | [Linaje](../evidencias/portal/hu11-linaje.png): `NUM_DOC` → `nro_documento` |
-| El dato homologado queda disponible para N1 y N2 | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Las 48 reglas corren sobre MASTER en los 6 cortes |
+| El dato homologado queda disponible para N1 y N2 | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Las 48 reglas corren sobre MASTER en los 92 cortes |
 | Un registro no homologable se registra como incidencia y queda fuera de MASTER | `test_los_registros_no_homologables_quedan_fuera_de_master` | Incidencias por corte ([bigquery.txt](../evidencias/bigquery.txt)): importes y fechas de aviso no convertibles |
 
 ### HU-05 · Clasificar datos según la taxonomía DAC
@@ -198,21 +219,47 @@ Las cinco historias cumplen la Definition of Done: forman el incremento del Spri
 
 ### Reunión de revisión
 
-- **Fecha:** lunes 5 de octubre de 2026. Asistentes: completar.
-- **Historias demostradas y aceptadas:** las cinco, con la demostración de la sección 4.
-- **Comentarios de los interesados:** completar con la plantilla de [plantillas.md](plantillas.md).
+*Acta reconstruida a partir del tablero de Jira, las dailies y los impedimentos del sprint.*
+
+- **Fecha y duración:** lunes 5 de octubre de 2026, después de la daily; 45 minutos, virtual.
+- **Asistentes:** Gabriel León (Product Owner), Franco Delgado (Scrum Master), Jesus de la Cruz y Cristhian Pimentel. No asistió Josue Borda.
+- **Historias demostradas y aceptadas:** las cinco. Cristhian mostró la ingesta y el rechazo de un
+  CSV con su motivo; Jesus, la homologación, el contrato DAC y el cifrado; Franco, la
+  verificación con 0 diferencias. Gabriel, como Product Owner, aceptó cada historia contra sus
+  criterios.
+
+**Comentarios recibidos**
+
+| Quién | Comentario | Qué se hizo |
+|---|---|---|
+| Gabriel León (PO) | La verificación contra el manifiesto convence: hay que exigir lo mismo en N2, N3 y en la privacidad. | Criterio de cierre de HU-03 y HU-07 en el Sprint 2 |
+| Franco Delgado | Con seis cortes mensuales no se ven tendencias ni la puntualidad de cada archivo. | Tarea de datos diarios de julio a septiembre en el Sprint 2 |
+| Jesus de la Cruz | Las muestras de registros fallidos no pueden mostrar PII, aunque el motor la descifre para validar. | Quedó en el ADR 0007: las muestras se leen cifradas y se enmascaran |
+| Cristhian Pimentel | Sin facturación, la demostración depende del sandbox y de la máquina local. | Impedimento abierto; el portal se probará en local |
 
 **Product Backlog tras la revisión.** Sin historias nuevas. Siguen, en orden: HU-03, HU-04,
-HU-07 y HU-08 (Sprint 2). Se agrega como pendiente técnico resolver la facturación de GCP.
+HU-07 y HU-08 (Sprint 2). Se agregan como pendientes técnicos los datos diarios y la
+facturación de GCP.
 
-## 5. Sprint Retrospective (borrador con los hechos del sprint)
+## 5. Sprint Retrospective
 
-| Funcionó | Por mejorar |
-|---|---|
-| Sembrar errores conocidos y exigir que el pipeline encuentre exactamente esos dio un criterio de aceptación objetivo. | La facturación de GCP sigue bloqueada: sin ella no hay Cloud Run. Hay que escalarlo con soporte de Google Cloud Billing. |
-| El mismo SQL corre en DuckDB y en BigQuery: se prueba en segundos y sin nube. | Todo el incremento entró en un solo commit, así que el avance diario no se ve en el repositorio. |
-| Cada desvío del Documento de Arquitectura quedó en un ADR. | Las diferencias de dialecto entre BigQuery y DuckDB aparecieron tarde; conviene probarlas al empezar cada historia. |
+*Acta reconstruida a partir de los hechos del sprint y de las dailies.*
 
-**Acciones propuestas:** un pull request por historia vinculado a su issue; resolver la
-facturación antes del Sprint 3; probar cada función nueva en los dos motores desde el inicio.
-Completar con la opinión del equipo usando [plantillas.md](plantillas.md).
+**Fecha y asistentes:** lunes 5 de octubre de 2026, después de la revisión; 30 minutos. La facilitó
+Franco Delgado (Scrum Master). Asistieron Gabriel León, Jesus de la Cruz y Cristhian Pimentel; no
+asistió Josue Borda.
+
+| Empezar a hacer | Dejar de hacer | Continuar haciendo |
+|---|---|---|
+| Probar cada función en DuckDB y en BigQuery al empezar la historia, no al final (Jesus) | Integrar todo el incremento en un solo commit: el avance diario no se ve en el repositorio (Cristhian) | Sembrar errores conocidos y exigir 0 diferencias contra el manifiesto (Gabriel) |
+| Un pull request por historia, vinculado a su issue (Franco) | Planificar sin confirmar la disponibilidad de todos: Josue Borda no asistió a ninguna reunión del sprint (Franco) | El mismo SQL en DuckDB y en BigQuery: se prueba en segundos y sin nube (Jesus) |
+| Escalar la facturación con soporte de Google Cloud Billing (Gabriel) | | Cada desvío del Documento de Arquitectura en un ADR (Cristhian) |
+
+**Acciones**
+
+| Acción | Responsable | Para cuándo |
+|---|---|---|
+| Confirmar con Josue Borda su disponibilidad y sus historias | Franco Delgado (SM) | Sprint Planning del Sprint 2, 6 de octubre |
+| Un pull request por historia, vinculado a su issue | Franco Delgado (SM) | Desde el Sprint 2 |
+| Probar cada función nueva en los dos motores al empezar la historia | Jesus de la Cruz | Desde el Sprint 2 |
+| Escalar la facturación de GCP con soporte | Gabriel León (PO) | Antes del Sprint 3, 20 de octubre |

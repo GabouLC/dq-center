@@ -1,5 +1,5 @@
 # Contratos de datos de MASTER, uno por tabla por corte. Dueños y consumidores
-# son ficticios. canal_venta (poliza, desde 2026-09-30) queda fuera del contrato
+# son ficticios. canal_venta (poliza, desde 2026-09-09) queda fuera del contrato
 # a propósito: llegó sin acordarse y el portal debe mostrarlo.
 #
 # dac: clasificación según la taxonomía de Datos de Alta Criticidad (HU-05)
@@ -14,7 +14,7 @@ contratos:
     descripcion: Personas naturales y empresas que contratan o están aseguradas.
     consumidores: [Reporte regulatorio mensual, Tablero comercial, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto diaria}
       - {nombre: id_persona, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
       - {nombre: tipo_documento, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "DNI, CE o RUC"}
       - {nombre: nro_documento, tipo: STRING, obligatorio: true, dac: SENSIBLE_CIFRADO, cifrado: deterministico, descripcion: Número de documento con ceros iniciales}
@@ -33,7 +33,7 @@ contratos:
     descripcion: Pólizas emitidas de todos los ramos.
     consumidores: [Reporte regulatorio mensual, Tablero comercial, Modelo de siniestralidad, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto diaria}
       - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador técnico}
       - {nombre: nro_poliza, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: "Número comercial POL-AAAA-NNNNNN"}
       - {nombre: cod_producto, tipo: STRING, obligatorio: true, dac: PUBLICO, descripcion: Producto vigente de ref_producto}
@@ -52,7 +52,7 @@ contratos:
     descripcion: Vehículos cubiertos por pólizas vehiculares y SOAT.
     consumidores: [Modelo de siniestralidad, Tablero comercial]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto diaria}
       - {nombre: id_vehiculo, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
       - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza vehicular o SOAT que lo cubre}
       - {nombre: placa, tipo: STRING, obligatorio: true, dac: SENSIBLE, descripcion: "Formato ABC-123"}
@@ -67,7 +67,7 @@ contratos:
     descripcion: Siniestros avisados y su estado de atención.
     consumidores: [Modelo de siniestralidad, Reporte regulatorio mensual]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto diaria}
       - {nombre: id_siniestro, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
       - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza afectada}
       - {nombre: fecha_ocurrencia, tipo: DATE, obligatorio: true, dac: SENSIBLE, descripcion: Fecha del evento}
@@ -81,7 +81,7 @@ contratos:
     descripcion: Cuotas de prima por póliza.
     consumidores: [Reporte regulatorio mensual, Campañas de renovación]
     campos:
-      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto mensual}
+      - {nombre: fecha_corte, tipo: DATE, obligatorio: true, dac: PUBLICO, descripcion: Fecha de la foto diaria}
       - {nombre: id_pago, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Identificador interno}
       - {nombre: id_poliza, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Póliza a la que pertenece la cuota}
       - {nombre: nro_cuota, tipo: INT64, obligatorio: true, dac: PUBLICO, descripcion: Número de cuota}

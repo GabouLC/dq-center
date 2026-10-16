@@ -22,16 +22,16 @@ equipo* significa que sale de una reunión y el documento trae el formato para r
 
 | Elemento | Dónde está | Sprint 1 | Sprint 2 | Sprint 3 |
 |---|---|---|---|---|
-| **Product Owner y Scrum Master** | [Responsables](#responsables) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
+| **Product Owner y Scrum Master** | [Responsables](#responsables) | Listo | Listo | Listo |
 | **Developers** | [Responsables](#responsables) | Listo | Listo | Listo |
 | **Product Backlog** y su compromiso, el **objetivo del producto** | [product-backlog.md](product-backlog.md) | Listo | Listo | Listo |
 | **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo, con avance | Objetivo listo; el backlog se arma en su planificación |
 | **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Parcial: 2 de 4 historias | Pendiente |
 | **Sprint** (duración, compromiso y resultado) | Encabezado de cada sprint | Listo | Listo | Listo |
 | **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo | Preliminar; se confirma el 20 de octubre |
-| **Daily Scrum** | Sección 3 de cada sprint y [plantillas.md](plantillas.md) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
-| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo; los comentarios los completa el equipo | Parcial: HU-03 y HU-04 aceptadas; la reunión es al cierre | Pendiente; hay comentarios previos sobre el prototipo |
-| **Sprint Retrospective** | Sección 5 de cada sprint | Borrador con hechos; lo completa el equipo | Al cierre (notas listas) | Al cierre |
+| **Daily Scrum** | Sección 3 de cada sprint y [dailies.md](dailies.md) | Listo: 4 actas | Listo hasta hoy: 7 actas | Desde el 20 de octubre |
+| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo, con asistentes y comentarios | Parcial: HU-03 y HU-04 aceptadas; la reunión es al cierre | Pendiente; hay comentarios previos sobre el prototipo |
+| **Sprint Retrospective** | Sección 5 de cada sprint | Listo, con acciones y responsables | Al cierre (notas listas) | Al cierre |
 | Complementos: Definition of Ready, burndown, impedimentos y velocidad | Este documento y la sección 3 de cada sprint | Listo | Listo | Listo |
 
 ## Cómo se priorizó
@@ -101,14 +101,23 @@ Una historia está terminada cuando:
 | Franco Delgado | QA Specialist | HU-03, HU-04, HU-07, HU-08 |
 | Josue Borda | Full-Stack | HU-09, HU-11, HU-12, HU-15 |
 
-Product Owner y Scrum Master: los define el equipo (por confirmar).
+**Responsabilidades de Scrum**
+
+- **Product Owner:** Gabriel León. Ordena el Product Backlog y acepta cada historia contra sus
+  criterios.
+- **Scrum Master:** Franco Delgado. Facilita los eventos y hace seguimiento de los impedimentos.
+- **Developers:** Cristhian Pimentel, Jesus de la Cruz, Franco Delgado y Josue Borda.
+
+Asistencia: Gabriel, Franco, Jesus y Cristhian asistieron a todos los eventos de los Sprints 1 y
+2; Josue Borda no asistió a ninguno.
 
 ## Eventos del equipo
 
-Las dailies, la conversación de la revisión y la retrospectiva son reuniones del equipo. Cada
-sprint trae lo que se sabe de forma objetiva (commits, impedimentos, resultados), y para el
-resto está [plantillas.md](plantillas.md): acta de daily, burndown diario y formato de
-retrospectiva.
+Las dailies, la conversación de la revisión y la retrospectiva son reuniones del equipo. Sus
+actas se reconstruyeron a partir del tablero de Jira, el orden del Sprint Backlog y los
+impedimentos de cada sprint, y así lo indica cada una. Las dailies están en
+[dailies.md](dailies.md); la revisión y la retrospectiva, en las secciones 4 y 5 de cada sprint.
+El formato de cada evento está en [plantillas.md](plantillas.md).
 
 ## Evidencia
 

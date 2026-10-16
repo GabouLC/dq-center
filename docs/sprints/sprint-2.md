@@ -11,8 +11,9 @@ tareas que el equipo dio por cerradas y las historias que el Product Owner ya ac
 
 ## 1. Sprint Planning
 
-**Fecha, duración y asistentes:** martes 6 de octubre de 2026; dos semanas, hasta el lunes 19 de
-octubre. Asistentes: completar.
+**Fecha y duración:** martes 6 de octubre de 2026, reunión virtual de una hora; el sprint dura dos
+semanas, hasta el lunes 19 de octubre. **Asistentes:** Gabriel León (Product Owner), Franco Delgado (Scrum Master), Jesus de la Cruz y
+Cristhian Pimentel. No asistió Josue Borda.
 
 ### ¿Por qué es valioso este sprint? · Objetivo del sprint
 
@@ -83,6 +84,9 @@ Las tareas de cada historia, con su responsable. Tablero al día de hoy:
 - [ ] Vistas de contrato `v_calidad_*`, la única interfaz del portal con los resultados
 - [ ] Corrida completa en BigQuery: las mismas tablas y vistas en `dq_business`
 
+**Transversal:** datos diarios del 1 de julio al 30 de septiembre, con ruido, tendencias e
+incidentes (Cristhian Pimentel), a partir de un comentario de la revisión del Sprint 1.
+
 ## 3. Seguimiento · Daily Scrum
 
 **Impedimentos registrados**
@@ -94,25 +98,46 @@ Las tareas de cada historia, con su responsable. Tablero al día de hoy:
 | DuckDB necesita `pytz` para las fechas con zona horaria | Fallaba el sello de la certificación en local | `pytz` se agregó a las dependencias locales | Resuelto |
 | Una consulta de prueba combinaba `QUALIFY` con una agregación, que no es SQL válido | Fallaba la prueba de la última certificación por tabla | Se reescribió con una CTE | Resuelto |
 
-**Burndown.** 23 SP comprometidos; quedan 13 (HU-07 y HU-08). La línea diaria real sale del
-tablero de Jira; la plantilla está en [plantillas.md](plantillas.md).
+**Burndown.** 23 SP comprometidos; quedan 13 (HU-07 y HU-08). La línea real sale de las dailies:
+SP de las historias que seguían abiertas al final de cada día hábil.
 
-| Momento | SP pendientes |
-|---|---|
-| Inicio (6 de octubre) | 23 |
-| Hoy | 13 |
-| Cierre (19 de octubre) | 0 previstos |
+| Día | Fecha | SP ideal | SP real | Historias cerradas ese día |
+|---|---|---|---|---|
+| 0 | martes 6 de octubre | 23 | 23 | |
+| 1 | miércoles 7 | 20,4 | 23 | |
+| 2 | jueves 8 | 17,9 | 23 | |
+| 3 | viernes 9 | 15,3 | 18 | HU-03 |
+| 4 | lunes 12 | 12,8 | 18 | |
+| 5 | martes 13 | 10,2 | 13 | HU-04 |
+| 6 | miércoles 14 | 7,7 | 13 | |
+| 7 | jueves 15 (hoy) | 5,1 | 13 | |
+| 9 | lunes 19 (cierre) | 0 | 0 previstos | HU-07 y HU-08 |
 
-**Registro de Daily Scrum.** Una fila por daily; el acta completa de cada una va con el formato
-de [plantillas.md](plantillas.md).
+```mermaid
+xychart-beta
+    title "Burndown del Sprint 2 hasta hoy (ideal y real)"
+    x-axis ["6 oct", "7 oct", "8 oct", "9 oct", "12 oct", "13 oct", "14 oct", "15 oct"]
+    y-axis "SP pendientes" 0 --> 24
+    line [23, 20.4, 17.9, 15.3, 12.8, 10.2, 7.7, 5.1]
+    line [23, 23, 23, 18, 18, 13, 13, 13]
+```
+
+La línea real va unos 8 SP por encima de la ideal: HU-07 (8 SP) es la más grande y se cierra junto con
+HU-08 en los últimos días.
+
+**Registro de Daily Scrum.** Virtuales, de 15 minutos, a las 8:00 p. m. de cada día hábil.
+Asistieron Gabriel León, Franco Delgado, Jesus de la Cruz y Cristhian Pimentel; Josue Borda no
+asistió. Las actas completas están en [dailies.md](dailies.md#sprint-2--6-al-19-de-octubre-de-2026-en-curso).
 
 | Daily | Fecha | Avance del equipo | Impedimentos nuevos |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | miércoles 7 de octubre | Reglas N2 del catálogo; nivel de cada regla según su dimensión; refinamiento de HU-04 y HU-07 | Ninguno |
+| 2 | jueves 8 | Reglas N3; dominio en cada resultado; diseño de la revisión de privacidad | `pytz` en DuckDB |
+| 3 | viernes 9 | Validación de reglas antes de guardarlas; reglas en Firestore; **HU-03 aceptada** | Ninguno; se resolvió `pytz` |
+| 4 | lunes 12 | Certificación en tres estados; hallazgos de privacidad como evidencia | Consulta de prueba con `QUALIFY` |
+| 5 | martes 13 | Bloqueo por severidad; sello con versiones; **HU-04 aceptada** | Ninguno; se resolvió `QUALIFY` |
+| 6 | miércoles 14 | Casos de prueba de privacidad; datos diarios de julio a septiembre | Ninguno |
+| 7 | jueves 15 | Prueba de la fuga de PII sobre los datos diarios; recarga de los 92 cortes en BigQuery en marcha | La recarga en el sandbox tarda horas |
 
 ## 4. Sprint Review e Incremento
 
@@ -162,7 +187,7 @@ cerrar sus tareas y la evidencia de BigQuery.
 
 ### Reunión de revisión
 
-- **Fecha:** lunes 19 de octubre de 2026 (al cierre del sprint). Asistentes: completar.
+- **Fecha:** lunes 19 de octubre de 2026 (al cierre del sprint). Se convoca a todo el equipo.
 - **Historias para demostrar:** las cuatro; HU-03 y HU-04 ya aceptadas.
 - **Comentarios de los interesados:** completar con la plantilla de [plantillas.md](plantillas.md).
 
@@ -176,3 +201,8 @@ para llevar:
 - Los puntos del Jira y los del documento del sprint no coincidían; se unificaron con los del
   equipo.
 - Sin facturación no se puede programar la corrida diaria ni acelerar la recarga en BigQuery.
+- Seguimiento de las acciones del Sprint 1: se prueba en los dos motores desde el inicio (salió
+  el `pytz` el segundo día, no al final); los pull requests por historia no se hicieron: el código
+  siguió entrando directo a `main`; la facturación sigue sin respuesta.
+- Josue Borda no asistió a ninguna daily de este sprint y tiene cuatro historias en el plan del
+  Sprint 3 (HU-09, HU-11, HU-12 y HU-15). Hay que decidir en la Sprint Planning si se reasignan.

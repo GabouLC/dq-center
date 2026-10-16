@@ -54,7 +54,7 @@ fuentes:
       - {origen: PRIMA_NETA, destino: prima_neta, tipo: FLOAT64}
       - {origen: PRIMA_TOTAL, destino: prima_total, tipo: FLOAT64}
       - {origen: ESTADO_POLIZA, destino: estado}
-      # El sistema de pólizas empieza a enviarla el 2026-09-30.
+      # El sistema de pólizas empieza a enviarla el 2026-09-09.
       - {origen: CANAL_VENTA, destino: canal_venta, opcional: true}
   vehiculo:
     archivo: vehiculos
