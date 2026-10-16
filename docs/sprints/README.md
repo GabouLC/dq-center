@@ -7,12 +7,12 @@ seguimiento, revisión con evidencia por criterio de aceptación y retrospectiva
 | Sprint | Objetivo | Historias, en orden de prioridad | SP | Estado | Documento |
 |---|---|---|---|---|---|
 | 1 | Base del pipeline: RAW, MASTER, DAC, calidad N1 y cifrado | HU-01, HU-14, HU-05, HU-02, HU-06 | 22 | Terminado | [sprint-1.md](sprint-1.md) |
-| 2 | Motor y Gate: N2 y N3, certificación, Privacy Gate y BUSINESS | HU-03, HU-04, HU-07, HU-08 | 21 * | Terminado | [sprint-2.md](sprint-2.md) |
-| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 23 * | Terminado | [sprint-3.md](sprint-3.md) |
+| 2 | Motor y Gate: N2 y N3, certificación, Privacy Gate y BUSINESS | HU-03, HU-04, HU-07, HU-08 | 23 | Terminado | [sprint-2.md](sprint-2.md) |
+| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 31 | Terminado | [sprint-3.md](sprint-3.md) |
 
-\* Los puntos del Sprint 1 salen del *Sprint 1 Planning* del equipo. Los de los Sprints 2
-y 3 son una **propuesta** con la misma escala (Fibonacci, velocidad sugerida 20–24 SP)
-y deben confirmarse en la planificación con el equipo.
+Los puntos son los que el equipo estimó en el Product Backlog de Jira (proyecto SDGDCYP),
+en Fibonacci. El Sprint 3 comprometió 31 SP, por encima de la velocidad sugerida de 20 a
+24: la retrospectiva lo registra.
 
 ## Scrum en el proyecto: dónde está cada pieza
 
@@ -28,7 +28,7 @@ equipo* significa que sale de una reunión y el documento trae el formato para r
 | **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo | Listo |
 | **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Listo | Listo |
 | **Sprint** (duración, compromiso y resultado) | Encabezado de cada sprint | Listo | Listo | Listo |
-| **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo (puntos propuestos) | Listo (puntos propuestos) |
+| **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo | Listo |
 | **Daily Scrum** | Sección 3 de cada sprint y [plantillas.md](plantillas.md) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
 | **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo; los comentarios los completa el equipo | Listo; los comentarios los completa el equipo | Listo, con los comentarios recibidos |
 | **Sprint Retrospective** | Sección 5 de cada sprint | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo |
@@ -50,22 +50,22 @@ aplicados en este orden:
 
 ## Burndown del release
 
-Backlog total: 66 SP en 15 historias.
+Backlog total: 76 SP en 15 historias.
 
 ```mermaid
 xychart-beta
     title "SP pendientes del release"
     x-axis ["Inicio", "Sprint 1", "Sprint 2", "Sprint 3"]
-    y-axis "SP" 0 --> 70
-    line [66, 44, 23, 0]
+    y-axis "SP" 0 --> 80
+    line [76, 54, 31, 0]
 ```
 
 | Momento | SP comprometidos | SP terminados | SP pendientes |
 |---|---|---|---|
-| Inicio | | | 66 |
-| Fin del Sprint 1 | 22 | 22 | 44 |
-| Fin del Sprint 2 | 21 | 21 | 23 |
-| Fin del Sprint 3 | 23 | 23 | 0 |
+| Inicio | | | 76 |
+| Fin del Sprint 1 | 22 | 22 | 54 |
+| Fin del Sprint 2 | 23 | 23 | 31 |
+| Fin del Sprint 3 | 31 | 31 | 0 |
 
 ## Definition of Ready
 

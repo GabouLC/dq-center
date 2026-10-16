@@ -5,11 +5,16 @@ de datos sintéticos de una aseguradora ficticia.
 
 ## Datos y pruebas
 
+Los datos cubren 92 cortes diarios, del 1 de julio al 30 de septiembre de 2026.
+
 | Archivo | Qué muestra | Historias |
 |---|---|---|
-| [pipeline-local.txt](pipeline-local.txt) | Corrida completa de los 6 cortes en DuckDB: score por tabla, reglas fuera de OK, matriz de certificación y verificación contra el manifiesto (0 diferencias en las 4 etapas) | HU-01 a HU-08, HU-14 |
+| [pipeline-local.txt](pipeline-local.txt) | Corrida completa de los 92 cortes en DuckDB: score por tabla y día, reglas fuera de OK, días de cada sello, los no certificados con su motivo y la verificación contra el manifiesto (0 diferencias en las 4 etapas) | HU-01 a HU-08, HU-14 |
 | [bigquery.txt](bigquery.txt) | Consultas al proyecto `dq-center-gabou` (sandbox): cargas y rechazos en RAW, incidencias de homologación, PII cifrada en MASTER, reglas por nivel, certificaciones, hallazgos del Gate y objetos de BUSINESS | HU-01 a HU-08, HU-14 |
 | [pruebas.txt](pruebas.txt) | Reporte de pytest con el nombre de cada prueba | Todas |
+
+`bigquery.txt` todavía corresponde a la carga anterior de seis cortes mensuales: la recarga de los
+92 días diarios en BigQuery está en curso y el archivo se regenera cuando termine.
 
 El CI corre las mismas pruebas y el build de la web en cada push:
 [GitHub Actions](https://github.com/GabouLC/dq-center/actions).
@@ -25,17 +30,19 @@ python -m pytest -v > docs/evidencias/pruebas.txt
 
 | Captura | Historias | Qué muestra |
 |---|---|---|
-| [hu01-fuentes-siniestro-rechazo](portal/hu01-fuentes-siniestro-rechazo.png) | HU-01 | Cargas por corte; la de julio rechazada por estructura y su reentrega |
-| [hu14-fuentes-poliza-estructura](portal/hu14-fuentes-poliza-estructura.png) | HU-14 | Estructura de MASTER corte a corte; `canal_venta` aparece en septiembre |
+| [hu01-fuentes-siniestro-rechazo](portal/hu01-fuentes-siniestro-rechazo.png) | HU-01 | Cargas con problemas: el archivo del 28 de julio rechazado por estructura y su reentrega |
+| [hu01-fuentes-persona-llegadas](portal/hu01-fuentes-persona-llegadas.png) | HU-01 | Volumen diario y hora de llegada de cada archivo; el del 14 de julio pasó el límite |
+| [hu14-fuentes-poliza-estructura](portal/hu14-fuentes-poliza-estructura.png) | HU-14 | El salto de volumen del 20 de agosto y `canal_venta` nueva desde el 9 de septiembre |
 | [hu05-contrato-dac](portal/hu05-contrato-dac.png) | HU-05 | Contrato de Persona con su clasificación DAC por campo |
 | [hu06-hu11-linaje-campo-cifrado](portal/hu06-hu11-linaje-campo-cifrado.png) | HU-06, HU-11 | `NUM_DOC` de la fuente pasa a `nro_documento` con cifrado determinístico |
-| [hu02-hu03-validaciones-julio](portal/hu02-hu03-validaciones-julio.png) | HU-02, HU-03 | Reglas N1, N2 y N3 de julio con su estado |
+| [hu02-hu03-validaciones-14-julio](portal/hu02-hu03-validaciones-14-julio.png) | HU-02, HU-03 | Reglas N1, N2 y N3 del 14 de julio con su estado |
 | [hu03-reglas-configurables](portal/hu03-reglas-configurables.png) | HU-03 | Catálogo de reglas editable por el administrador |
-| [hu04-hu07-hu12-certificacion-junio](portal/hu04-hu07-hu12-certificacion-junio.png) | HU-04, HU-07, HU-12 | Siniestro no certificado por PII en claro; retenido por el Gate |
-| [hu04-hu12-certificacion-septiembre](portal/hu04-hu12-certificacion-septiembre.png) | HU-04, HU-12 | Sellos de septiembre con calidad, privacidad y trazabilidad |
+| [hu04-hu07-hu12-certificacion-7-agosto](portal/hu04-hu07-hu12-certificacion-7-agosto.png) | HU-04, HU-07, HU-12 | Siniestro no certificado por PII en claro; retenido por el Gate |
+| [hu04-hu12-certificacion-30-septiembre](portal/hu04-hu12-certificacion-30-septiembre.png) | HU-04, HU-12 | Póliza bloqueada por POL-CON-03 y Vehículo certificado sin observaciones |
 | [hu04-ejecuciones](portal/hu04-ejecuciones.png) | HU-04, HU-09 | Corridas del motor y lanzamiento a demanda |
-| [hu09-resumen](portal/hu09-resumen.png) | HU-09 | Dashboard del último corte |
-| [hu09-resumen-julio](portal/hu09-resumen-julio.png) | HU-09 | Dashboard de julio, con fallas y una tabla no certificada |
+| [hu09-resumen](portal/hu09-resumen.png) | HU-09 | Dashboard del 30 de septiembre: % de reglas en PASS, sellos, tendencia diaria y mapa de certificación |
+| [hu09-resumen-14-julio](portal/hu09-resumen-14-julio.png) | HU-09 | Dashboard del 14 de julio, con Persona no certificada |
+| [hu09-actividad-en-vivo](portal/hu09-actividad-en-vivo.png) · [panel](portal/hu09-panel-en-vivo.png) | HU-09 | Archivos del 25 de septiembre llegando en vivo; el portal se actualiza solo |
 | [hu11-linaje](portal/hu11-linaje.png) | HU-11 | Recorrido RAW → MASTER → BUSINESS de Persona |
 | [hu10-glosario-busqueda](portal/hu10-glosario-busqueda.png) | HU-10 | Búsqueda «dni» en el glosario |
 | [hu13-login](portal/hu13-login.png) · [error](portal/hu13-login-error.png) | HU-13 | Inicio de sesión y mensaje único ante credenciales inválidas |

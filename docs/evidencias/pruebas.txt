@@ -4,7 +4,7 @@ rootdir: .
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, Faker-40.43.0
-collecting ... collected 107 items
+collecting ... collected 114 items
 
 tests/test_api.py::test_sin_token_o_con_token_invalido_responde_401 PASSED
 tests/test_api.py::test_cuenta_sin_rol_responde_403_y_queda_auditada PASSED
@@ -19,7 +19,7 @@ tests/test_api.py::test_el_portal_solo_lee_la_capa_business PASSED
 tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion PASSED
 tests/test_api.py::test_validaciones_de_un_corte_empiezan_por_las_fallas PASSED
 tests/test_api.py::test_comparar_cortes_muestra_primero_lo_que_empeoro PASSED
-tests/test_api.py::test_certificacion_integral_de_junio PASSED
+tests/test_api.py::test_certificacion_integral_del_dia_de_la_fuga PASSED
 tests/test_api.py::test_fuentes_muestran_rechazos_volumen_e_incidencias PASSED
 tests/test_api.py::test_estructura_detecta_columna_nueva PASSED
 tests/test_api.py::test_contrato_con_dac_y_columna_fuera_de_contrato PASSED
@@ -40,6 +40,7 @@ tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/glo
 tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/fuentes/persona/estructura] PASSED
 tests/test_api.py::test_una_solicitud_lenta_queda_registrada_en_la_auditoria PASSED
 tests/test_api.py::test_sondas_de_salud PASSED
+tests/test_api.py::test_sin_simulacion_en_vivo_el_estado_dice_inactivo PASSED
 tests/test_autenticacion.py::test_la_contrasena_se_guarda_con_sal_y_nunca_en_claro PASSED
 tests/test_autenticacion.py::test_reglas_de_una_contrasena_nueva PASSED
 tests/test_autenticacion.py::test_sesion_valida_alterada_y_vencida PASSED
@@ -48,6 +49,7 @@ tests/test_autenticacion.py::test_cambiar_la_contrasena_cierra_las_sesiones_ante
 tests/test_autenticacion.py::test_la_contrasena_temporal_desbloquea_y_obliga_a_cambiarla PASSED
 tests/test_autenticacion.py::test_quitar_el_acceso_cierra_la_sesion PASSED
 tests/test_certificacion.py::test_matriz_de_certificacion PASSED
+tests/test_certificacion.py::test_vehiculo_certifica_sin_observaciones_despues_de_la_limpieza PASSED
 tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean PASSED
 tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien PASSED
 tests/test_certificacion.py::test_columna_nueva_sin_clasificar_es_observacion PASSED
@@ -59,11 +61,15 @@ tests/test_certificacion.py::test_la_vista_de_cada_tabla_muestra_su_ultimo_corte
 tests/test_certificacion.py::test_business_no_expone_pii_en_claro PASSED
 tests/test_certificacion.py::test_las_vistas_de_contrato_responden PASSED
 tests/test_datagen.py::test_es_determinista PASSED
-tests/test_datagen.py::test_solo_poliza_de_agosto_varia_mas_de_15_por_ciento PASSED
-tests/test_datagen.py::test_solo_persona_de_julio_llega_tarde PASSED
+tests/test_datagen.py::test_un_corte_por_dia_de_julio_a_septiembre PASSED
+tests/test_datagen.py::test_solo_el_reproceso_varia_mas_de_15_por_ciento PASSED
+tests/test_datagen.py::test_solo_persona_del_14_de_julio_llega_tarde PASSED
 tests/test_datagen.py::test_las_llaves_del_manifiesto_existen_en_su_corte PASSED
-tests/test_datagen.py::test_canal_venta_aparece_recien_en_septiembre PASSED
-tests/test_datagen.py::test_dni_de_7_digitos_se_corrigen_en_septiembre PASSED
+tests/test_datagen.py::test_canal_venta_aparece_desde_el_9_de_septiembre PASSED
+tests/test_datagen.py::test_los_dni_de_7_digitos_se_corrigen_el_15_de_septiembre PASSED
+tests/test_datagen.py::test_el_fin_de_semana_casi_no_hay_polizas_nuevas PASSED
+tests/test_datagen.py::test_los_errores_transitorios_cambian_de_un_dia_a_otro PASSED
+tests/test_datagen.py::test_las_campanas_mejoran_y_el_atraso_de_bajas_empeora PASSED
 tests/test_firestore.py::test_las_reglas_sobreviven_el_viaje_a_firestore PASSED
 tests/test_firestore.py::test_los_contratos_cubren_las_tablas_con_sus_tipos_reales PASSED
 tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado PASSED
@@ -89,9 +95,9 @@ tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel PASSED
 tests/test_motor.py::test_hay_reglas_en_ok_alerta_y_falla PASSED
 tests/test_motor.py::test_variacion_de_volumen_sin_corte_anterior_es_sin_datos PASSED
 tests/test_motor.py::test_muestras_traen_la_fila_sin_exponer_pii PASSED
-tests/test_motor.py::test_estructura_detecta_canal_venta_en_septiembre PASSED
-tests/test_motor.py::test_resumen_cae_en_julio_agosto_y_se_recupera_en_septiembre PASSED
-tests/test_motor.py::test_septiembre_no_tiene_reglas_en_falla PASSED
+tests/test_motor.py::test_estructura_detecta_canal_venta_el_9_de_septiembre PASSED
+tests/test_motor.py::test_los_incidentes_bajan_el_score_del_dia PASSED
+tests/test_motor.py::test_las_tendencias_del_periodo PASSED
 tests/test_reglas.py::test_regla_valida_no_tiene_errores PASSED
 tests/test_reglas.py::test_regla_invalida[cambios0-requiere 'patron'] PASSED
 tests/test_reglas.py::test_regla_invalida[cambios1-no puede contener ';'] PASSED
@@ -113,6 +119,7 @@ tests/test_reglas.py::test_estado_segun_umbral[98.0-ALERTA] PASSED
 tests/test_reglas.py::test_estado_segun_umbral[97.5-ALERTA] PASSED
 tests/test_reglas.py::test_estado_segun_umbral[97.4-FALLA] PASSED
 tests/test_reglas.py::test_scores_ponderados_por_severidad_e_ignoran_sin_datos PASSED
+tests/test_vivo.py::test_el_dia_siguiente_llega_archivo_por_archivo PASSED
 
 ============================== warnings summary ===============================
 .venv\Lib\site-packages\fastapi\testclient.py:1
@@ -120,4 +127,4 @@ tests/test_reglas.py::test_scores_ponderados_por_severidad_e_ignoran_sin_datos P
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 107 passed, 1 warning in 39.70s =======================
+======================= 114 passed, 1 warning in 51.97s =======================

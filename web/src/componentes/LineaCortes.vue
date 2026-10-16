@@ -101,7 +101,7 @@ function teclado(e: KeyboardEvent) {
 .meses span { position: absolute; font-size: 10px; font-weight: 700; color: var(--tenue); text-transform: capitalize; }
 .elegido { display: grid; line-height: 1.2; min-width: 0; margin-left: 4px; }
 .elegido strong { font-size: 13.5px; white-space: nowrap; text-transform: capitalize; }
-.detalle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--tenue); font-weight: 600; }
+.detalle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--tenue); font-weight: 600; white-space: nowrap; }
 .bien { color: var(--bien); }
 .critico { color: var(--critico); }
 @media (max-width: 1180px) { .franja { display: none; } }

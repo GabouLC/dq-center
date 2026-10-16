@@ -120,8 +120,8 @@ de [plantillas.md](plantillas.md).
 
 ## 4. Sprint Review e Incremento
 
-**Incremento.** Seis cortes mensuales (abril a septiembre de 2026) pasan de CSV a RAW, de RAW a
-MASTER homologado y cifrado, y se evalúan con las reglas N1. Para reproducirlo:
+**Incremento.** 92 cortes diarios (del 1 de julio al 30 de septiembre de 2026) pasan de CSV a RAW, de
+RAW a MASTER homologado y cifrado, y se evalúan con las reglas N1. Para reproducirlo:
 
 ```bash
 python -m dqc.datagen                       # datos sintéticos y manifiesto
@@ -137,16 +137,16 @@ sin detectar y 0 detectados de más en ingesta, homologación y reglas, tanto en
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Un CSV válido se carga en RAW | `test_archivo_valido_se_carga_tal_cual` ([test_ingesta.py](../../tests/test_ingesta.py)) | 32 cargas exitosas en BigQuery ([bigquery.txt](../evidencias/bigquery.txt)) |
+| Un CSV válido se carga en RAW | `test_archivo_valido_se_carga_tal_cual` ([test_ingesta.py](../../tests/test_ingesta.py)) | 462 cargas exitosas en los 92 días: cinco por día más las dos referencias ([pipeline-local.txt](../evidencias/pipeline-local.txt)) |
 | Los registros se conservan sin modificaciones | `test_raw_conserva_los_valores_tal_cual_vienen` ([test_flujo.py](../../tests/test_flujo.py)) | RAW guarda todo como texto, sin transformar |
-| La carga exitosa queda registrada | `test_lo_rechazado_no_llega_a_raw_y_queda_registrado` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Siniestro](../evidencias/portal/hu01-fuentes-siniestro-rechazo.png): estado *Exitosa* por archivo |
-| Un error de estructura o formato rechaza la carga y registra el error | `test_estructura_invalida_se_rechaza`, `test_archivo_mal_formado_se_rechaza_con_su_motivo` | [Fuentes › Siniestro](../evidencias/portal/hu01-fuentes-siniestro-rechazo.png): julio *Rechazada*, «faltan columnas: ESTADO_SINIESTRO» |
+| La carga exitosa queda registrada | `test_lo_rechazado_no_llega_a_raw_y_queda_registrado` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Persona](../evidencias/portal/hu01-fuentes-persona-llegadas.png): estado, filas y hora de llegada de cada archivo |
+| Un error de estructura o formato rechaza la carga y registra el error | `test_estructura_invalida_se_rechaza`, `test_archivo_mal_formado_se_rechaza_con_su_motivo` | [Fuentes › Siniestro](../evidencias/portal/hu01-fuentes-siniestro-rechazo.png): 28 de julio *Rechazada*, «faltan columnas: ESTADO_SINIESTRO» |
 
 ### HU-14 · Homologar el modelo de datos hacia la capa MASTER
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Los datos de RAW se transforman al modelo estándar de MASTER | `test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Póliza](../evidencias/portal/hu14-fuentes-poliza-estructura.png): estructura de MASTER por corte |
+| Los datos de RAW se transforman al modelo estándar de MASTER | `test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Póliza](../evidencias/portal/hu14-fuentes-poliza-estructura.png): estructura de MASTER, con `canal_venta` nueva desde el 9 de septiembre |
 | Nombres distintos entre fuentes se unifican | `test_master_usa_los_nombres_estandar` | [Linaje](../evidencias/portal/hu11-linaje.png): `NUM_DOC` → `nro_documento` |
 | El dato homologado queda disponible para N1 y N2 | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Las 48 reglas corren sobre MASTER en los 6 cortes |
 | Un registro no homologable se registra como incidencia y queda fuera de MASTER | `test_los_registros_no_homologables_quedan_fuera_de_master` | Incidencias por corte ([bigquery.txt](../evidencias/bigquery.txt)): importes y fechas de aviso no convertibles |
@@ -167,8 +167,8 @@ El backlog habla de PASS y FAIL. El motor usa tres estados: **OK** es PASS; **AL
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Las pruebas N1 se ejecutan sobre los registros | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | 19 reglas N1 por corte ([bigquery.txt](../evidencias/bigquery.txt)) |
-| Un registro que cumple se marca PASS | `test_estado_segun_umbral` ([test_reglas.py](../../tests/test_reglas.py)) | [Validaciones de julio](../evidencias/portal/hu02-hu03-validaciones-julio.png) |
+| Las pruebas N1 se ejecutan sobre los registros | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | 19 reglas N1 en cada uno de los 92 cortes ([bigquery.txt](../evidencias/bigquery.txt)) |
+| Un registro que cumple se marca PASS | `test_estado_segun_umbral` ([test_reglas.py](../../tests/test_reglas.py)) | [Validaciones del 14 de julio](../evidencias/portal/hu02-hu03-validaciones-14-julio.png) |
 | Un registro que incumple se marca FAIL con observación | `test_muestras_traen_la_fila_sin_exponer_pii`, `test_cada_etapa_detecta_exactamente_lo_sembrado` | [Detalle de una regla](../evidencias/portal/hu13-validaciones-gobierno.png): registros fallidos con su fila |
 | Al terminar, queda el estado de cada regla | `test_hay_reglas_en_ok_alerta_y_falla` | Tabla de reglas por corte en [pipeline-local.txt](../evidencias/pipeline-local.txt) |
 

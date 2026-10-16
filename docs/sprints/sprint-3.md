@@ -1,6 +1,6 @@
 # Sprint 3 · Portal Smart-DQ
 
-**Estado:** terminado · **Compromiso:** 23 SP (propuesta), 6 historias · **Terminado:** 23 SP,
+**Estado:** terminado · **Compromiso:** 31 SP, 6 historias · **Terminado:** 31 SP,
 6 historias · **Incremento:** commits [`fe181da`](https://github.com/GabouLC/dq-center/commit/fe181da)
 (portal), [`075eccc`](https://github.com/GabouLC/dq-center/commit/075eccc) (rediseño) y
 [`12d0d91`](https://github.com/GabouLC/dq-center/commit/12d0d91) (inicio de sesión) ·
@@ -12,20 +12,20 @@
 y la certificación de los datos, su linaje y su glosario, con acceso controlado y cada sección
 en menos de 8 segundos.
 
-**Capacidad.** Velocidad sugerida de 20 a 24 SP; los sprints anteriores cerraron 22 y 21. Se
-comprometen 23.
+**Capacidad.** Velocidad sugerida de 20 a 24 SP; los sprints anteriores cerraron 22 y 23. Se
+comprometen 31: por encima de la velocidad, porque el portal no se podía partir sin dejar
+historias a medias. La retrospectiva lo registra.
 
-**Historias priorizadas.** Los puntos son una propuesta con la escala del Sprint 1 y se
-confirman con el equipo.
+**Historias priorizadas.** Los puntos son los del Product Backlog del equipo en Jira.
 
 | # | Historia | SP | Complejidad | Rol del backlog | Responsable | Issue |
 |---|---|---|---|---|---|---|
 | 1 | HU-13 · Controlar el acceso a datos sensibles mediante roles | 5 | Media | Data Architect | Jesus de la Cruz | [#13](https://github.com/GabouLC/dq-center/issues/13) |
 | 2 | HU-09 · Visualizar el estado de calidad de los datos | 5 | Media | Oficina de Datos | Josue Borda | [#9](https://github.com/GabouLC/dq-center/issues/9) |
-| 3 | HU-12 · Consultar la certificación integral del dato | 3 | Baja-media | Data Owner | Josue Borda | [#12](https://github.com/GabouLC/dq-center/issues/12) |
-| 4 | HU-11 · Consultar el linaje de los datos | 5 | Media | Oficina de Datos | Josue Borda | [#11](https://github.com/GabouLC/dq-center/issues/11) |
-| 5 | HU-10 · Consultar el glosario de negocio | 2 | Baja | Negocio | Gabriel León | [#10](https://github.com/GabouLC/dq-center/issues/10) |
-| 6 | HU-15 · Garantizar el tiempo de carga del portal | 3 | Baja-media | Negocio | Josue Borda | [#15](https://github.com/GabouLC/dq-center/issues/15) |
+| 3 | HU-12 · Consultar la certificación integral del dato | 5 | Media | Data Owner | Josue Borda | [#12](https://github.com/GabouLC/dq-center/issues/12) |
+| 4 | HU-11 · Consultar el linaje de los datos | 8 | Alta | Oficina de Datos | Josue Borda | [#11](https://github.com/GabouLC/dq-center/issues/11) |
+| 5 | HU-10 · Consultar el glosario de negocio | 3 | Baja-media | Negocio | Gabriel León | [#10](https://github.com/GabouLC/dq-center/issues/10) |
+| 6 | HU-15 · Garantizar el tiempo de carga del portal | 5 | Media | Negocio | Josue Borda | [#15](https://github.com/GabouLC/dq-center/issues/15) |
 
 **Por qué este orden.**
 
@@ -53,6 +53,8 @@ confirman con el equipo.
 - [x] Administración de usuarios: alta, cambio de rol, restablecer contraseña y quitar acceso
 
 **HU-09 · Dashboard**
+- [x] Simulación en vivo: los archivos del día llegan uno por uno, el corte se publica al completarse y el portal se actualiza solo (`src/dqc/api/vivo.py`)
+- [x] Indicador «En vivo», panel de actividad y avisos; línea de tiempo y mapa de certificación por día
 - [x] Resumen: score por corte, tendencia, porcentaje de reglas en PASS y mapa de calor por tabla y dimensión
 - [x] Validaciones: reglas del corte con las fallas primero, filtros y detalle con los registros fallidos
 - [x] Comparación entre dos cortes, con lo que empeoró primero
@@ -87,15 +89,16 @@ confirman con el equipo.
 | Una prueba del motor fallaba al azar: el correo cifrado podía contener el byte de «@» | CI intermitente | La prueba verifica que el valor no tenga forma de correo | Resuelto |
 
 **Burndown.** El sprint tuvo tres integraciones (`fe181da`, `075eccc`, `12d0d91`); la línea
-diaria se registra con [plantillas.md](plantillas.md). Resultado: 23 de 23 SP, sin arrastre.
+diaria se registra con [plantillas.md](plantillas.md). Resultado: 31 de 31 SP, sin arrastre.
 
 **Dailies.** Se registran con el acta de [plantillas.md](plantillas.md).
 
 ## 4. Sprint Review e Incremento
 
-**Incremento.** El Portal Smart-DQ con 11 módulos y tres roles. Para reproducirlo:
+**Incremento.** El Portal Smart-DQ con 11 módulos, tres roles y simulación en vivo sobre 92 cortes diarios. Para reproducirlo:
 
 ```bash
+python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # del 25 al 30 llegan en vivo
 python -m dqc.api               # API en http://127.0.0.1:8000
 cd web && npm run dev           # portal en http://localhost:5173
 ```
@@ -111,6 +114,7 @@ contraseña `SmartDQ-2026`.
 |---|---|---|
 | «El diseño es muy apagado; hazlo más interactivo y atractivo» | Navegación con íconos, tema claro y oscuro, línea de cortes, gráfico con tooltip y vista de tabla, y diseño móvil | `075eccc` |
 | «Tiene que ser un inicio de sesión, no elegir roles» | Inicio de sesión con correo y contraseña, bloqueo por intentos, contraseña temporal y cambio obligatorio (ADR 0011) | `12d0d91` |
+| «Datos de julio a septiembre, con valores y variaciones realistas, y que se sienta vivo» | Cortes diarios con ruido, tendencias e incidentes; simulación en vivo con actividad y avisos; % de reglas en PASS como indicador principal | `a5f625a` |
 
 ### HU-13 · Controlar el acceso a datos sensibles mediante roles
 
@@ -127,18 +131,18 @@ contraseña `SmartDQ-2026`.
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
 | Con ejecuciones, el dashboard muestra el estado de las reglas | `test_resumen_muestra_tendencia_pass_y_certificacion` ([test_api.py](../../tests/test_api.py)) | [Resumen](../evidencias/portal/hu09-resumen.png) |
-| Se identifican las reglas en PASS | `test_resumen_muestra_tendencia_pass_y_certificacion` (porcentaje en PASS) | [Validaciones](../evidencias/portal/hu02-hu03-validaciones-julio.png): chips PASS |
-| Se identifican las reglas en FAIL | `test_validaciones_de_un_corte_empiezan_por_las_fallas`, `test_comparar_cortes_muestra_primero_lo_que_empeoro` | [Resumen de julio](../evidencias/portal/hu09-resumen-julio.png): fallas y tablas no certificadas |
-| Una ejecución nueva se refleja en el dashboard | `test_admin_lanza_una_corrida_y_aparece_en_el_portal` | [Ejecuciones](../evidencias/portal/hu04-ejecuciones.png) |
+| Se identifican las reglas en PASS | `test_resumen_muestra_tendencia_pass_y_certificacion` (porcentaje en PASS) | [Validaciones](../evidencias/portal/hu02-hu03-validaciones-14-julio.png): chips PASS |
+| Se identifican las reglas en FAIL | `test_validaciones_de_un_corte_empiezan_por_las_fallas`, `test_comparar_cortes_muestra_primero_lo_que_empeoro` | [Resumen del 14 de julio](../evidencias/portal/hu09-resumen-14-julio.png): fallas y Persona no certificada |
+| Una ejecución nueva se refleja en el dashboard | `test_admin_lanza_una_corrida_y_aparece_en_el_portal`, `test_el_dia_siguiente_llega_archivo_por_archivo` ([test_vivo.py](../../tests/test_vivo.py)) | [Actividad en vivo](../evidencias/portal/hu09-actividad-en-vivo.png): cada corte nuevo se publica y el portal se actualiza solo |
 
 ### HU-12 · Consultar la certificación integral del dato
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Se ve si el conjunto está certificado o no | `test_certificacion_integral_de_junio` ([test_api.py](../../tests/test_api.py)) | [Certificación de junio](../evidencias/portal/hu04-hu07-hu12-certificacion-junio.png) |
-| Con reglas fallidas, se ve que no está certificado y sus observaciones | `test_certificacion_integral_de_junio` (historia: Persona en julio *No certificado*) | Historia de los sellos y *Con observación* en cada tabla |
-| Los campos PII muestran su protección | `test_certificacion_integral_de_junio` (todos los campos cifrados de Persona protegidos) | Columna *Privacidad* del sello de Persona |
-| Desde la certificación se llega al linaje y a los resultados de calidad | `test_certificacion_integral_de_junio` (objeto en BUSINESS) | Enlace *Ver su linaje* y bloque *Trazabilidad* ([septiembre](../evidencias/portal/hu04-hu12-certificacion-septiembre.png)) |
+| Se ve si el conjunto está certificado o no | `test_certificacion_integral_del_dia_de_la_fuga` ([test_api.py](../../tests/test_api.py)) | [Certificación del 7 de agosto](../evidencias/portal/hu04-hu07-hu12-certificacion-7-agosto.png) |
+| Con reglas fallidas, se ve que no está certificado y sus observaciones | `test_certificacion_integral_del_dia_de_la_fuga` (historia: Persona el 14 de julio *No certificado*) | Historia de los sellos y *Con observación* en cada tabla |
+| Los campos PII muestran su protección | `test_certificacion_integral_del_dia_de_la_fuga` (todos los campos cifrados de Persona protegidos) | Columna *Privacidad* del sello de Persona |
+| Desde la certificación se llega al linaje y a los resultados de calidad | `test_certificacion_integral_del_dia_de_la_fuga` (objeto en BUSINESS) | Enlace *Ver su linaje* y bloque *Trazabilidad* ([30 de septiembre](../evidencias/portal/hu04-hu12-certificacion-30-septiembre.png)) |
 
 ### HU-11 · Consultar el linaje de los datos
 
@@ -175,6 +179,7 @@ contraseña `SmartDQ-2026`.
 | Revisar el portal con capturas encontró problemas que las pruebas no ven: desbordes en móvil, ejes del gráfico y textos. | El modo demo sin contraseña no cumplía la idea de control de acceso; salió en la revisión, no en la planificación. |
 | Medir el tiempo en BigQuery antes de cerrar evitó incumplir HU-15. | El portal sigue sin desplegarse por la facturación. |
 | Los comentarios de la revisión se resolvieron dentro del mismo sprint. | Una prueba intermitente llegó al CI. |
+| | Se comprometieron 31 SP, por encima de la velocidad de 20 a 24: el sprint quedó cargado. |
 
 **Acciones propuestas:** incluir criterios de seguridad explícitos (inicio de sesión, bloqueo) en
 las historias de acceso; resolver la facturación y desplegar en Cloud Run; correr la suite

@@ -40,7 +40,8 @@ const tarde = (c: Carga) => horasDeHolgura(c) < 0
 // Lo normal es que llegue de madrugada el día siguiente; después de las 09:00 ya va con retraso.
 const conRetraso = (c: Carga) => !tarde(c) && horasDeHolgura(c) < 24
 const fueraDeRango = (c: Carga) => Math.abs(c.variacion_pct ?? 0) > 15
-const conProblema = (c: Carga) => c.estado !== 'EXITOSA' || tarde(c) || fueraDeRango(c) || (c.incidencias ?? 0) > 0
+// Las incidencias de homologación son parte de la operación diaria; aquí cuentan rechazos, demoras y saltos de volumen.
+const conProblema = (c: Carga) => c.estado !== 'EXITOSA' || tarde(c) || conRetraso(c) || fueraDeRango(c)
 
 // Volumen diario: la escala arranca cerca del mínimo para que se vea el crecimiento.
 const escalaVolumen = computed(() => {
