@@ -1,4 +1,4 @@
-"""Configuración del portal: reglas, contratos, glosario, usuarios y auditoría.
+"""Configuración del portal: reglas, contratos, glosario, usuarios, credenciales y auditoría.
 
 Dos implementaciones con la misma interfaz:
   ConfiguracionLocal      un archivo JSON, sembrado desde config/*.yaml (modo local)
@@ -19,7 +19,7 @@ from dqc.pipeline.configuracion import cargar_contratos
 
 ROLES = ("admin", "gobierno", "lector")
 
-# Usuarios de demostración del modo local (no existen en GCP).
+# Usuarios de demostración del modo local (no existen en GCP); entran con DQC_CLAVE_DEMO.
 USUARIOS_DEMO = {"admin@demo.local": "admin", "gobierno@demo.local": "gobierno", "lector@demo.local": "lector"}
 
 
@@ -44,6 +44,7 @@ class ConfiguracionLocal:
             "contratos": cargar_contratos(config / "contratos.yaml"),
             "glosario": {t["id"]: t for t in cargar_glosario(config / "glosario.yaml")},
             "usuarios": {**USUARIOS_DEMO, **{a.lower(): "admin" for a in admins or []}},
+            "credenciales": {},
             "auditoria": [],
         }
         self._guardar()
@@ -86,8 +87,20 @@ class ConfiguracionLocal:
             self._guardar()
 
     def borrar_usuario(self, email: str) -> None:
+        """Quita el rol y la contraseña: las sesiones abiertas de la cuenta dejan de valer."""
         with self._lock:
             self._datos["usuarios"].pop(email, None)
+            self._datos.setdefault("credenciales", {}).pop(email, None)
+            self._guardar()
+
+    # credenciales (dqc.api.autenticacion): hash de la contraseña, intentos y bloqueo
+    def credencial(self, email: str) -> dict | None:
+        return self._datos.get("credenciales", {}).get(email)
+
+    def guardar_credencial(self, email: str, cambios: dict) -> None:
+        with self._lock:
+            credenciales = self._datos.setdefault("credenciales", {})
+            credenciales[email] = {**credenciales.get(email, {}), **cambios}
             self._guardar()
 
     # auditoría

@@ -4,6 +4,7 @@
       Crea los datasets de cada capa y las llaves de cifrado.
   python -m dqc.gcp sembrar --admin correo@dominio [--reemplazar]
       Carga en Firestore las reglas, los contratos (con su clasificación DAC) y los administradores.
+      A cada administrador sin contraseña le imprime una temporal, que debe cambiar al entrar.
   python -m dqc.gcp simular [--datos data]
       Corre los 6 cortes desde cero (ingesta, homologación, motor) y verifica contra el manifiesto.
   python -m dqc.gcp ejecutar [--corte AAAA-MM-DD] [--origen programada]
@@ -14,6 +15,7 @@
 
 import argparse
 import os
+import secrets
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -21,8 +23,9 @@ from pathlib import Path
 import pyarrow.parquet as pq
 from google.cloud import bigquery, firestore
 
+from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import cargar_glosario
-from dqc.gcp.firestore import CONTRATOS, cargar_reglas, sembrar
+from dqc.gcp.firestore import CONTRATOS, ConfiguracionFirestore, cargar_reglas, sembrar
 from dqc.modelo import CORTES, RAW
 from dqc.motor.motor import Ejecucion
 from dqc.motor.puntuacion import scores
@@ -81,6 +84,11 @@ def main() -> None:
             args.reemplazar,
         )
         print("Documentos escritos: " + ", ".join(f"{c} {n}" for c, n in escritos.items()))
+        # Solo se asignan contraseñas: el secreto de sesión de la API no hace falta aquí.
+        autenticador = Autenticador(ConfiguracionFirestore(db), Sesiones(secrets.token_bytes(32)))
+        for email in (a.lower() for a in args.admin):
+            if autenticador.config.credencial(email) is None:
+                print(f"Contraseña temporal de {email}: {autenticador.asignar_temporal(email)}")
         return
 
     reglas = cargar_yaml(args.config / "reglas_iniciales.yaml") if args.reglas_yaml else cargar_reglas(db)

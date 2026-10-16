@@ -6,14 +6,18 @@ import pytest
 from fastapi.testclient import TestClient
 
 from dqc.api.app import LIMITE_SEGUNDOS, Servicios, crear_app
+from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import USUARIOS_DEMO, ConfiguracionLocal
 from dqc.api.datos import FuenteBusiness
-from dqc.api.servicios import lanzador_en_proceso, verificador_demo
+from dqc.api.servicios import lanzador_en_proceso, verificador
 from dqc.datagen.generador import AGOSTO, JULIO, JUNIO, SEPTIEMBRE
 
 from conftest import CONFIG
 
 ADMIN, GOBIERNO, LECTOR = "admin@demo.local", "gobierno@demo.local", "lector@demo.local"
+SIN_ROL = "sinrol@demo.local"
+CLAVE = "clave-de-prueba"
+TOKENS: dict[str, str] = {}
 
 
 @pytest.fixture(scope="module")
@@ -22,22 +26,42 @@ def config(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def cliente(simulacion, config, fuentes):
-    usuarios = list(USUARIOS_DEMO) + ["sinrol@demo.local"]
+def autenticador(config):
+    a = Autenticador(config, Sesiones(b"secreto-de-pruebas".ljust(32, b"-")), iteraciones=1_000)
+    for email in [*USUARIOS_DEMO, SIN_ROL]:
+        a.fijar(email, CLAVE, debe_cambiar=False)
+    return a
+
+
+@pytest.fixture(scope="module")
+def cliente(simulacion, config, fuentes, autenticador):
     servicios = Servicios(
         plataforma=simulacion.plataforma,
         fuente=FuenteBusiness(simulacion.plataforma),
         config=config,
         fuentes_homologacion=fuentes,
-        verificar_token=verificador_demo(usuarios),
+        verificar_token=verificador(autenticador),
         lanzar=lanzador_en_proceso(simulacion.plataforma, config, fuentes),
-        usuarios_demo=list(USUARIOS_DEMO),
+        autenticador=autenticador,
     )
-    return TestClient(crear_app(servicios))
+    cliente = TestClient(crear_app(servicios))
+    for email in USUARIOS_DEMO:
+        TOKENS[email] = entrar(cliente, email, CLAVE).json()["token"]
+    # Una cuenta sin rol no puede entrar; su token se firma a mano para probar el 403.
+    TOKENS[SIN_ROL] = autenticador.sesiones.emitir(SIN_ROL, config.credencial(SIN_ROL)["clave"])[0]
+    return cliente
+
+
+def entrar(cliente, email: str, clave: str):
+    return cliente.post("/api/v1/auth/sesion", json={"email": email, "clave": clave})
+
+
+def con_token(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
 
 
 def como(email: str) -> dict:
-    return {"Authorization": f"Bearer demo:{email}"}
+    return con_token(TOKENS[email])
 
 
 def get(cliente, ruta, email=LECTOR, **params):
@@ -51,14 +75,55 @@ def get(cliente, ruta, email=LECTOR, **params):
 
 def test_sin_token_o_con_token_invalido_responde_401(cliente):
     assert cliente.get("/api/v1/resumen").status_code == 401
-    respuesta = cliente.get("/api/v1/resumen", headers={"Authorization": "Bearer demo:nadie@x.com"})
+    respuesta = cliente.get("/api/v1/resumen", headers=con_token(TOKENS[LECTOR][:-2] + "xx"))
     assert respuesta.status_code == 401
     assert set(respuesta.json()) == {"statusCode", "error", "message"}
 
 
 def test_cuenta_sin_rol_responde_403_y_queda_auditada(cliente, config):
-    assert cliente.get("/api/v1/resumen", headers=como("sinrol@demo.local")).status_code == 403
-    assert any(e["accion"] == "ACCESO_DENEGADO" and e["email"] == "sinrol@demo.local" for e in config.auditoria())
+    assert cliente.get("/api/v1/resumen", headers=como(SIN_ROL)).status_code == 403
+    assert any(e["accion"] == "ACCESO_DENEGADO" and e["email"] == SIN_ROL for e in config.auditoria())
+
+
+def test_inicio_de_sesion_con_correo_y_contrasena(cliente, config):
+    respuesta = entrar(cliente, " Lector@Demo.local ", CLAVE)
+    assert respuesta.status_code == 200 and not respuesta.json()["debe_cambiar"]
+    assert cliente.get("/api/v1/auth/me", headers=con_token(respuesta.json()["token"])).json()["rol"] == "lector"
+    assert any(e["accion"] == "INICIO_SESION" and e["email"] == LECTOR for e in config.auditoria())
+
+
+def test_el_error_de_inicio_no_dice_si_la_cuenta_existe(cliente):
+    respuestas = [entrar(cliente, GOBIERNO, "no-es-la-clave"), entrar(cliente, "nadie@demo.local", CLAVE), entrar(cliente, SIN_ROL, CLAVE)]
+    assert {r.status_code for r in respuestas} == {401}
+    assert len({r.json()["message"] for r in respuestas}) == 1
+
+
+def test_alta_con_contrasena_temporal_que_obliga_a_cambiarla(cliente, config):
+    alta = cliente.put("/api/v1/admin/usuarios/temporal@demo.local", headers=como(ADMIN), json={"rol": "lector"}).json()
+    sesion = entrar(cliente, "temporal@demo.local", alta["clave_temporal"]).json()
+    assert sesion["debe_cambiar"]
+    cabeceras = con_token(sesion["token"])
+    assert cliente.get("/api/v1/auth/me", headers=cabeceras).json()["debe_cambiar"]
+    assert cliente.get("/api/v1/resumen", headers=cabeceras).status_code == 403
+
+    corta = cliente.post("/api/v1/auth/clave", headers=cabeceras, json={"actual": alta["clave_temporal"], "nueva": "corta"})
+    assert corta.status_code == 422
+    cambio = cliente.post("/api/v1/auth/clave", headers=cabeceras, json={"actual": alta["clave_temporal"], "nueva": "una frase larga y propia"})
+    assert cambio.status_code == 200
+    assert cliente.get("/api/v1/resumen", headers=cabeceras).status_code == 401  # el token anterior quedó cerrado
+    assert cliente.get("/api/v1/resumen", headers=con_token(cambio.json()["token"])).status_code == 200
+    assert any(e["accion"] == "CAMBIO_CLAVE" and e["email"] == "temporal@demo.local" for e in config.auditoria())
+
+
+def test_restablecer_la_contrasena_cierra_las_sesiones_abiertas(cliente):
+    alta = cliente.put("/api/v1/admin/usuarios/olvido@demo.local", headers=como(ADMIN), json={"rol": "gobierno"}).json()
+    token = entrar(cliente, "olvido@demo.local", alta["clave_temporal"]).json()["token"]
+    nueva = cliente.post("/api/v1/admin/usuarios/olvido@demo.local/clave", headers=como(ADMIN)).json()["clave_temporal"]
+    assert nueva != alta["clave_temporal"]
+    assert cliente.get("/api/v1/auth/me", headers=con_token(token)).status_code == 401
+    assert entrar(cliente, "olvido@demo.local", alta["clave_temporal"]).status_code == 401
+    assert entrar(cliente, "olvido@demo.local", nueva).status_code == 200
+    assert cliente.post("/api/v1/admin/usuarios/olvido@demo.local/clave", headers=como(LECTOR)).status_code == 403
 
 
 def test_cada_rol_ve_solo_sus_modulos(cliente):
@@ -210,10 +275,15 @@ def test_admin_lanza_una_corrida_y_aparece_en_el_portal(cliente):
 
 
 def test_admin_gestiona_usuarios_pero_no_se_quita_el_acceso(cliente):
-    assert cliente.put("/api/v1/admin/usuarios/nuevo@demo.local", headers=como(ADMIN), json={"rol": "lector"}).status_code == 200
-    assert {"email": "nuevo@demo.local", "rol": "lector"} in get(cliente, "/api/v1/admin/usuarios", ADMIN)
+    alta = cliente.put("/api/v1/admin/usuarios/nuevo@demo.local", headers=como(ADMIN), json={"rol": "lector"})
+    assert alta.status_code == 200
+    token = entrar(cliente, "nuevo@demo.local", alta.json()["clave_temporal"]).json()["token"]
+    usuarios = {u["email"]: u for u in get(cliente, "/api/v1/admin/usuarios", ADMIN)}
+    assert usuarios["nuevo@demo.local"]["rol"] == "lector" and usuarios["nuevo@demo.local"]["clave_temporal"]
+    assert usuarios[LECTOR]["ultimo_acceso"] is not None and not usuarios[LECTOR]["bloqueada"]
     assert cliente.delete(f"/api/v1/admin/usuarios/{ADMIN}", headers=como(ADMIN)).status_code == 422
     assert cliente.delete("/api/v1/admin/usuarios/nuevo@demo.local", headers=como(ADMIN)).status_code == 204
+    assert cliente.get("/api/v1/auth/me", headers=con_token(token)).status_code == 401
 
 
 # ── HU-15: rendimiento ──────────────────────────────────────────────────────

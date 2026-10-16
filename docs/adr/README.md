@@ -16,6 +16,7 @@ cuando una decisión de aquí reemplaza o ajusta un ADR de ese documento, lo dic
 | [0008](0008-sandbox.md) | En el sandbox, tablas agrupadas por corte en vez de particionadas | Nuevo |
 | [0009](0009-datos-sinteticos.md) | Aseguradora ficticia y datos 100 % sintéticos | Nuevo |
 | [0010](0010-pruebas.md) | El mismo SQL en DuckDB y un manifiesto de errores sembrados | Ajusta ADR-10 |
+| [0011](0011-inicio-de-sesion.md) | Inicio de sesión con correo y contraseña propio; Google como opción | Ajusta ADR-07 |
 
 Principios del documento que se mantienen tal cual: publicar solo resultados
 completos (ADR-04), guardianes de acceso a datos (ADR-09), vistas de contrato

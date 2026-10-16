@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  BadgeCheck, BookOpen, Database, FileText, LayoutDashboard, ListChecks, LogOut, Menu, Moon, PlayCircle,
+  BadgeCheck, BookOpen, Database, FileText, KeyRound, LayoutDashboard, ListChecks, LogOut, Menu, Moon, PlayCircle,
   ScrollText, SlidersHorizontal, Sun, Users, Workflow, X,
 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -102,6 +102,9 @@ async function salir() {
               <span>{{ NOMBRE_ROL[sesion.perfil?.rol ?? ''] }}</span>
             </span>
           </div>
+          <RouterLink v-if="sesion.conClave && !sesion.debeCambiar" to="/clave" class="boton icono fantasma" aria-label="Cambiar contraseña" title="Cambiar contraseña">
+            <KeyRound :size="18" />
+          </RouterLink>
           <button type="button" class="icono fantasma" aria-label="Salir" title="Salir" @click="salir"><LogOut :size="18" /></button>
         </div>
       </header>

@@ -69,12 +69,25 @@ python -m venv .venv
 cd web && npm install && npm run dev                         # portal en http://localhost:5173
 ```
 
-En local, el portal entra con usuarios de demostración (`admin@demo.local`,
-`gobierno@demo.local` y `lector@demo.local`), y la configuración vive en
-`data/config_local.json`. La API mantiene abierto `data/dq.duckdb`: detenla antes de
-volver a correr `dqc.pipeline`.
+**Inicio de sesión.** Se entra con correo y contraseña (ADR 0011). En local hay tres
+cuentas de demostración, una por rol, con la contraseña `SmartDQ-2026` (se cambia con
+`DQC_CLAVE_DEMO`):
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (94 pruebas) y `npm run build` en `web/`.
+| Cuenta | Rol | Qué ve |
+|---|---|---|
+| `admin@demo.local` | Administrador | Todo, más reglas, corridas, usuarios y auditoría |
+| `gobierno@demo.local` | Gobierno de datos | Los módulos de consulta, con los campos sensibles |
+| `lector@demo.local` | Lector | Los módulos de consulta, con los campos sensibles ocultos |
+
+Un administrador da acceso desde *Usuarios y roles*. La cuenta nueva recibe una
+contraseña temporal que debe cambiar al entrar. Cinco intentos fallidos bloquean la
+cuenta 15 minutos.
+
+La configuración local vive en `data/config_local.json` y el secreto que firma las
+sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
+detenla antes de volver a correr `dqc.pipeline`.
+
+Pruebas: `.venv/Scripts/python -m pytest -q` (105 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -87,14 +100,17 @@ export DQC_PROYECTO=dq-center-gabou DQC_SANDBOX=1
 gcloud auth login --update-adc
 
 python -m dqc.gcp preparar                        # datasets y llaves de cifrado
-python -m dqc.gcp sembrar --admin tu@correo.com   # reglas, contratos, glosario y admins en Firestore
+python -m dqc.gcp sembrar --admin tu@correo.com   # reglas, contratos, glosario y admins (imprime su clave temporal)
 python -m dqc.gcp simular                         # 6 cortes desde cero + verificación
 python -m dqc.gcp ejecutar                        # reevalúa el último corte
 
-DQC_MODO=gcp DQC_AUTH=firebase python -m dqc.api  # API sobre BigQuery + Firestore
+DQC_MODO=gcp DQC_SECRETO=... python -m dqc.api    # API sobre BigQuery + Firestore
 ```
 
-**Inicio de sesión con Google (Firebase).** Se configura una sola vez en la consola:
+En Cloud Run, `DQC_SECRETO` sale de Secret Manager (`openssl rand -base64 48`).
+
+**Opcional: entrar también con Google (Firebase).** Se agrega con `DQC_AUTH=firebase` y
+se configura una sola vez en la consola:
 
 1. En Firebase, agrega Firebase al proyecto `dq-center-gabou` (plan Spark, gratuito).
 2. En *Authentication › Sign-in method*, habilita el proveedor Google.
@@ -136,10 +152,10 @@ src/dqc/
   pipeline/      ingesta, homologación, privacidad, publicación y el flujo por corte
   motor/         reglas, SQL por tipo, puntuación y certificación
   plataforma/    DuckDB (local) y BigQuery, con la misma interfaz
-  api/           API FastAPI del portal
+  api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           94 pruebas, incluida la de aceptación contra el manifiesto
+tests/           105 pruebas, incluida la de aceptación contra el manifiesto
 docs/            brief original y decisiones de arquitectura (ADR)
 ```
 

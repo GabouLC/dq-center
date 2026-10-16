@@ -1,6 +1,7 @@
 """Motor de calidad sobre MASTER (HU-02, HU-03): estados, niveles, muestras y tendencia."""
 
 import json
+import re
 
 from dqc.datagen.generador import AGOSTO, JULIO, SEPTIEMBRE
 from dqc.modelo import CORTES, NIVEL_POR_DIMENSION
@@ -34,7 +35,9 @@ def test_muestras_traen_la_fila_sin_exponer_pii(ejecuciones):
     assert set(r.muestra) == set(r.fallidos[:20])
     fila = json.loads(r.muestra[r.fallidos[0]])
     assert str(fila["id_persona"]) == r.fallidos[0]
-    assert "@" not in str(fila["email"])  # la muestra se lee de MASTER: el correo va cifrado
+    # La muestra se lee de MASTER: el correo va cifrado. Los bytes cifrados pueden traer
+    # un 0x40 ("@") al azar, así que se exige que no tenga forma de correo, no que falte la arroba.
+    assert not re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", str(fila["email"]))
 
 
 def test_estructura_detecta_canal_venta_en_septiembre(ejecuciones):

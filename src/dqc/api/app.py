@@ -1,7 +1,8 @@
 """API del Portal Smart-DQ (FastAPI). Rutas de negocio con el prefijo /api/v1.
 
-Seguridad (HU-13): cada ruta exige un token válido y un rol registrado; el rol
-decide qué módulos responde. Los campos SENSIBLE solo se muestran a gobierno y
+Seguridad (HU-13): se entra con correo y contraseña (dqc.api.autenticacion) o con
+Google vía Firebase; cada ruta exige un token válido y un rol registrado, y el rol
+decide qué módulos responde. Una contraseña temporal solo deja cambiarla. Los campos SENSIBLE solo se muestran a gobierno y
 admin, y cada acceso denegado o restringido queda en la auditoría.
 Rendimiento (HU-15): cada solicitud se mide; si pasa de 8 s, se registra.
 """
@@ -22,11 +23,12 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from dqc import __version__
 from dqc.api import vistas
+from dqc.api.autenticacion import Autenticador, ErrorAcceso
 from dqc.api.configuracion import ROLES
 from dqc.api.datos import FuenteBusiness
 from dqc.modelo import TABLAS_CORTE
@@ -51,6 +53,8 @@ MODULOS = [
     ("usuarios", "Usuarios y roles", "administrar"),
     ("auditoria", "Auditoría", "administrar"),
 ]
+# Con una contraseña temporal solo se puede ver el perfil y cambiarla.
+RUTAS_CLAVE_TEMPORAL = {"/api/v1/auth/me", "/api/v1/auth/clave"}
 PERMISOS = {
     "lector": {"leer"},
     "gobierno": {"leer", "ver_sensibles", "editar_glosario"},
@@ -73,7 +77,7 @@ class Servicios:
     verificar_token: Callable[[str], str]
     lanzar: Callable[[date | None, str], dict]
     origenes: list[str] = field(default_factory=list)
-    usuarios_demo: list[str] = field(default_factory=list)
+    autenticador: Autenticador | None = None
 
 
 class PedidoEjecucion(BaseModel):
@@ -84,9 +88,19 @@ class PedidoRol(BaseModel):
     rol: Literal["admin", "gobierno", "lector"]
 
 
+class PedidoSesion(BaseModel):
+    email: str = Field(max_length=254)
+    clave: str = Field(max_length=256)
+
+
+class PedidoCambioClave(BaseModel):
+    actual: str = Field(max_length=256)
+    nueva: str = Field(max_length=256)
+
+
 def _error(codigo: int, mensaje) -> JSONResponse:
     nombres = {400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 409: "Conflict",
-               422: "Unprocessable Entity", 500: "Internal Server Error", 503: "Service Unavailable"}
+               422: "Unprocessable Entity", 423: "Locked", 500: "Internal Server Error", 503: "Service Unavailable"}
     return JSONResponse({"statusCode": codigo, "error": nombres.get(codigo, "Error"), "message": mensaje}, status_code=codigo)
 
 
@@ -159,7 +173,14 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
             s.config.auditar({"accion": "ACCESO_DENEGADO", "email": email, "recurso": request.url.path,
                               "detalle": "cuenta sin rol en el portal"})
             raise HTTPException(403, f"{email} no tiene acceso al portal")
+        if request.url.path not in RUTAS_CLAVE_TEMPORAL and s.autenticador and s.autenticador.debe_cambiar(email):
+            raise HTTPException(403, "Cambia tu contraseña temporal para continuar")
         return Usuario(email, rol)
+
+    def autenticador() -> Autenticador:
+        if s.autenticador is None:
+            raise HTTPException(404, "El inicio de sesión con contraseña no está habilitado")
+        return s.autenticador
 
     def requiere(permiso: str):
         def dependencia(request: Request, u: Usuario = Depends(usuario_actual)) -> Usuario:
@@ -214,6 +235,22 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
 
     # ── sesión ─────────────────────────────────────────────────────────────
 
+    @app.post("/api/v1/auth/sesion")
+    def entrar(pedido: PedidoSesion, a: Autenticador = Depends(autenticador)):
+        """Correo y contraseña -> token de sesión. Un solo mensaje para correo o contraseña errados."""
+        try:
+            return a.entrar(pedido.email, pedido.clave)
+        except ErrorAcceso as e:
+            raise HTTPException(e.codigo, e.mensaje) from None
+
+    @app.post("/api/v1/auth/clave")
+    def cambiar_clave(pedido: PedidoCambioClave, u: Usuario = Depends(usuario_actual), a: Autenticador = Depends(autenticador)):
+        """Cambia la contraseña y devuelve un token nuevo: las demás sesiones de la cuenta se cierran."""
+        try:
+            return a.cambiar(u.email, pedido.actual, pedido.nueva)
+        except ErrorAcceso as e:
+            raise HTTPException(e.codigo, e.mensaje) from None
+
     @app.get("/api/v1/auth/me")
     def yo(u: Usuario = Depends(usuario_actual)):
         permisos = PERMISOS[u.rol]
@@ -222,15 +259,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
             "rol": u.rol,
             "permisos": sorted(permisos),
             "modulos": [{"clave": c, "nombre": n} for c, n, p in MODULOS if p in permisos],
+            "debe_cambiar": bool(s.autenticador and s.autenticador.debe_cambiar(u.email)),
         }
-
-    @app.get("/api/v1/auth/demo")
-    def usuarios_demo():
-        """Usuarios para entrar sin Firebase; solo existe en el modo local."""
-        if not s.usuarios_demo:
-            raise HTTPException(404, "El modo demo no está habilitado")
-        roles = s.config.usuarios()
-        return [{"email": e, "rol": roles.get(e)} for e in s.usuarios_demo]
 
     # ── HU-09: resumen ─────────────────────────────────────────────────────
 
@@ -449,7 +479,10 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
 
     @app.get("/api/v1/admin/usuarios")
     def usuarios(_: Usuario = Depends(administrar)):
-        return [{"email": e, "rol": r} for e, r in sorted(s.config.usuarios().items())]
+        return [
+            {"email": e, "rol": r, **(s.autenticador.estado(e) if s.autenticador else {})}
+            for e, r in sorted(s.config.usuarios().items())
+        ]
 
     @app.put("/api/v1/admin/usuarios/{email}")
     def guardar_usuario(email: str, pedido: PedidoRol, u: Usuario = Depends(administrar)):
@@ -462,7 +495,22 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         s.config.guardar_usuario(email, pedido.rol, u.email)
         s.config.auditar({"accion": "CREAR" if anterior is None else "ACTUALIZAR", "email": u.email,
                           "recurso": f"usuarios/{email}", "detalle": f"rol {anterior or '-'} -> {pedido.rol}"})
-        return {"email": email, "rol": pedido.rol}
+        respuesta = {"email": email, "rol": pedido.rol}
+        # Un alta recibe una contraseña temporal; se muestra una sola vez al administrador.
+        if s.autenticador and s.config.credencial(email) is None:
+            respuesta["clave_temporal"] = s.autenticador.asignar_temporal(email)
+        return respuesta
+
+    @app.post("/api/v1/admin/usuarios/{email}/clave")
+    def restablecer_clave(email: str, u: Usuario = Depends(administrar), a: Autenticador = Depends(autenticador)):
+        """Contraseña temporal nueva: cierra las sesiones abiertas y desbloquea la cuenta."""
+        email = email.lower()
+        if email not in s.config.usuarios():
+            raise HTTPException(404, f"No existe el usuario {email}")
+        temporal = a.asignar_temporal(email)
+        s.config.auditar({"accion": "RESTABLECER_CLAVE", "email": u.email, "recurso": f"usuarios/{email}",
+                          "detalle": "contraseña temporal nueva"})
+        return {"email": email, "clave_temporal": temporal}
 
     @app.delete("/api/v1/admin/usuarios/{email}", status_code=204)
     def borrar_usuario(email: str, u: Usuario = Depends(administrar)):

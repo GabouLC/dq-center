@@ -27,7 +27,7 @@ Datos 100 % sintéticos.
 ```bash
 .venv/Scripts/python -m dqc.datagen                       # genera data/landing y el manifiesto
 .venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb  # flujo completo en DuckDB + verificación
-.venv/Scripts/python -m dqc.api                           # API local (usuarios demo)
+.venv/Scripts/python -m dqc.api                           # API local (cuentas *@demo.local, clave SmartDQ-2026)
 cd web && npm run dev                                     # portal en http://localhost:5173
 .venv/Scripts/python -m pytest -q                         # pruebas (sin GCP)
 DQC_PROYECTO=dq-center-gabou .venv/Scripts/python -m dqc.gcp --sandbox simular   # en BigQuery

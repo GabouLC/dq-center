@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, EyeOff, Pencil, Play, Plus, PowerOff, RefreshCw, Timer } from 'lucide-vue-next'
+import { Ban, EyeOff, KeyRound, Lock, LogIn, Pencil, Play, Plus, PowerOff, RefreshCw, ShieldAlert, Timer } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import { usarCarga } from '@/composables/usarCarga'
@@ -16,6 +16,11 @@ const ACCIONES: Record<string, { texto: string; tono: string; icono: unknown }> 
   CREAR: { texto: 'Alta', tono: 'bien', icono: Plus },
   ACTUALIZAR: { texto: 'Cambio', tono: 'marca', icono: Pencil },
   EJECUTAR: { texto: 'Corrida', tono: 'marca', icono: Play },
+  INICIO_SESION: { texto: 'Inicio de sesión', tono: 'bien', icono: LogIn },
+  INICIO_FALLIDO: { texto: 'Intento fallido', tono: 'aviso', icono: ShieldAlert },
+  CUENTA_BLOQUEADA: { texto: 'Cuenta bloqueada', tono: 'critico', icono: Lock },
+  CAMBIO_CLAVE: { texto: 'Cambio de contraseña', tono: 'marca', icono: KeyRound },
+  RESTABLECER_CLAVE: { texto: 'Clave restablecida', tono: 'aviso', icono: KeyRound },
 }
 const { datos, cargando, error, recargar } = usarCarga(() => api<Evento[]>('/api/v1/admin/auditoria', { params: { limite: 500 } }))
 const accion = ref('')

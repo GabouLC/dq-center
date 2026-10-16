@@ -200,12 +200,12 @@ button:hover { border-color: var(--marca); color: var(--marca); }
 button:active { transform: translateY(1px); }
 button.primario { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }
 button.primario:hover { background: var(--marca-fuerte); border-color: var(--marca-fuerte); color: var(--sobre-marca); }
-button.fantasma { border-color: transparent; background: transparent; }
-button.fantasma:hover { background: var(--superficie-2); color: var(--tinta); }
+:is(button, .boton).fantasma { border-color: transparent; background: transparent; }
+:is(button, .boton).fantasma:hover { background: var(--superficie-2); color: var(--tinta); text-decoration: none; }
 button.peligro { color: var(--critico-texto); }
 button.peligro:hover { border-color: var(--critico); }
 button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-button.icono { padding: 7px; border-radius: 10px; }
+:is(button, .boton).icono { padding: 7px; border-radius: 10px; color: inherit; }
 :is(button, select, input, textarea, a, [tabindex]):focus-visible {
   outline: 2px solid var(--marca);
   outline-offset: 2px;
@@ -219,6 +219,20 @@ select, input, textarea {
 input[type="search"] { min-width: 220px; }
 label.campo { display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--tinta-2); }
 label.campo > * { color: var(--tinta); font-size: 14px; font-weight: 500; }
+
+/* Campo con icono (inicio de sesión y contraseñas) */
+.campo-entrada { display: grid; gap: 6px; }
+.etiqueta { font-size: 12.5px; font-weight: 700; color: var(--tinta-2); }
+.caja-entrada { position: relative; display: flex; align-items: center; }
+.caja-entrada > svg:first-child { position: absolute; left: 13px; color: var(--tenue); pointer-events: none; transition: color 0.12s; }
+.caja-entrada input { width: 100%; padding: 11px 46px 11px 40px; border-radius: 12px; font-size: 15px; transition: border-color 0.12s, box-shadow 0.12s; }
+.caja-entrada input:focus { outline: none; border-color: var(--marca); box-shadow: 0 0 0 3px var(--marca-suave); }
+.caja-entrada:focus-within > svg:first-child { color: var(--marca); }
+.caja-entrada .ver { position: absolute; right: 5px; color: var(--tenue); }
+.caja-entrada .ver:hover { color: var(--tinta); }
+input[type="checkbox"] { width: 16px; height: 16px; padding: 0; accent-color: var(--marca); }
+.girando { animation: girar 0.8s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
 
 /* Grupo de botones-pastilla (filtros de una fila) */
 .segmentos { display: inline-flex; gap: 4px; padding: 4px; background: var(--superficie-2); border-radius: 999px; flex-wrap: wrap; }

@@ -30,20 +30,32 @@ export async function api<T>(ruta: string, { metodo = 'GET', cuerpo, params }: O
     body: cuerpo !== undefined ? JSON.stringify(cuerpo) : undefined,
   })
   if (respuesta.status === 401) {
+    // Sesión vencida o cerrada (cambio de contraseña, acceso retirado): de vuelta al inicio de sesión.
+    const activa = sesion.activa
     await sesion.cerrar()
+    if (activa) {
+      const { router } = await import('@/router')
+      await router.push({ path: '/entrar', query: { destino: router.currentRoute.value.fullPath, motivo: 'vencida' } })
+    }
     throw new ErrorApi(401, 'La sesión venció. Vuelve a entrar.')
   }
-  if (!respuesta.ok) {
-    const datos = await respuesta.json().catch(() => null)
-    const mensaje = Array.isArray(datos?.message) ? datos.message.join(' · ') : (datos?.message ?? respuesta.statusText)
-    throw new ErrorApi(respuesta.status, String(mensaje))
-  }
+  if (!respuesta.ok) throw await errorDe(respuesta)
   return respuesta.status === 204 ? (undefined as T) : ((await respuesta.json()) as T)
 }
 
-/** Para las rutas públicas (antes de iniciar sesión). */
-export async function apiPublica<T>(ruta: string): Promise<T> {
-  const respuesta = await fetch(BASE + ruta)
-  if (!respuesta.ok) throw new ErrorApi(respuesta.status, respuesta.statusText)
+async function errorDe(respuesta: Response): Promise<ErrorApi> {
+  const datos = await respuesta.json().catch(() => null)
+  const mensaje = Array.isArray(datos?.message) ? datos.message.join(' · ') : (datos?.message ?? respuesta.statusText)
+  return new ErrorApi(respuesta.status, String(mensaje))
+}
+
+/** Para las rutas públicas (antes de iniciar sesión); con cuerpo, es un POST. */
+export async function apiPublica<T>(ruta: string, cuerpo?: unknown): Promise<T> {
+  const respuesta = await fetch(BASE + ruta, cuerpo === undefined ? undefined : {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  })
+  if (!respuesta.ok) throw await errorDe(respuesta)
   return (await respuesta.json()) as T
 }

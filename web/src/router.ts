@@ -12,6 +12,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/entrar', component: () => import('@/vistas/Entrar.vue'), meta: { publica: true } },
+    { path: '/clave', component: () => import('@/vistas/CambiarClave.vue') },
     { path: '/', redirect: '/resumen' },
     { path: '/resumen', component: () => import('@/vistas/Resumen.vue'), meta: { modulo: 'resumen' } },
     { path: '/validaciones', component: () => import('@/vistas/Validaciones.vue'), meta: { modulo: 'validaciones' } },
@@ -28,12 +29,14 @@ export const router = createRouter({
   ],
 })
 
-// Acceso cerrado por defecto: sin sesión se va a /entrar; sin el módulo, al primero permitido.
+// Acceso cerrado por defecto: sin sesión se va a /entrar; con contraseña temporal, a /clave;
+// sin el módulo, al primero permitido.
 router.beforeEach(async (destino) => {
   const sesion = useSesion()
   await sesion.restaurar()
   if (destino.meta.publica) return sesion.activa ? '/resumen' : true
   if (!sesion.activa) return { path: '/entrar', query: { destino: destino.fullPath } }
+  if (sesion.debeCambiar && destino.path !== '/clave') return { path: '/clave', query: { destino: destino.fullPath } }
   const modulo = destino.meta.modulo
   if (modulo && !sesion.modulos.some((m) => m.clave === modulo)) return `/${sesion.modulos[0]?.clave ?? 'resumen'}`
   return true

@@ -5,6 +5,7 @@ Colecciones:
   contratos/{tabla}  dueño, consumidores y campos pactados con su clasificación DAC
   glosario/{id}      términos de negocio (HU-10)
   usuarios/{email}   rol: admin, gobierno o lector (HU-13)
+  credenciales/{email}  hash PBKDF2 de la contraseña, intentos fallidos y bloqueo
   auditoria/{auto}   cambios de configuración y accesos denegados o restringidos
 """
 
@@ -18,6 +19,7 @@ from google.cloud import firestore
 from dqc.motor.reglas import Regla, a_documento, desde_documento
 
 REGLAS, CONTRATOS, GLOSARIO, USUARIOS, AUDITORIA = "reglas", "contratos", "glosario", "usuarios", "auditoria"
+CREDENCIALES = "credenciales"
 VIGENCIA_CACHE = 30  # segundos
 
 
@@ -104,7 +106,16 @@ class ConfiguracionFirestore:
 
     def borrar_usuario(self, email: str) -> None:
         self.db.collection(USUARIOS).document(email).delete()
+        self.db.collection(CREDENCIALES).document(email).delete()
         self._cache.pop(USUARIOS, None)
+        self._cache.pop(CREDENCIALES, None)
+
+    def credencial(self, email: str) -> dict | None:
+        return self._coleccion(CREDENCIALES).get(email)
+
+    def guardar_credencial(self, email: str, cambios: dict) -> None:
+        self.db.collection(CREDENCIALES).document(email).set(cambios, merge=True)
+        self._cache.pop(CREDENCIALES, None)
 
     def auditar(self, evento: dict) -> None:
         self.db.collection(AUDITORIA).add({**evento, "fecha": datetime.now(timezone.utc)})

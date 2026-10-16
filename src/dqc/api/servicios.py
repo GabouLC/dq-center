@@ -1,9 +1,15 @@
-"""Piezas de la API que dependen del entorno: verificación de tokens y lanzamiento de corridas."""
+"""Piezas de la API que dependen del entorno: sesiones, verificación de tokens y lanzamiento de corridas."""
 
 from __future__ import annotations
 
 import os
+import secrets
+from collections.abc import Callable
 from datetime import date
+from pathlib import Path
+
+from dqc.api.autenticacion import Autenticador
+from dqc.api.configuracion import USUARIOS_DEMO
 
 from dqc.modelo import BUSINESS
 from dqc.motor.reglas import desde_documento
@@ -30,17 +36,39 @@ def verificador_firebase(proyecto: str):
     return verificar
 
 
-def verificador_demo(usuarios: list[str]):
+def secreto_sesiones(archivo: Path) -> bytes:
+    """DQC_SECRETO (Secret Manager en Cloud Run) o, fuera de Cloud Run, uno aleatorio guardado junto a los datos."""
+    if valor := os.environ.get("DQC_SECRETO"):
+        return valor.encode()
     if os.environ.get("K_SERVICE"):
-        raise RuntimeError("El modo demo no puede usarse en Cloud Run: define DQC_AUTH=firebase")
+        raise RuntimeError("Define DQC_SECRETO (Secret Manager) para firmar las sesiones en Cloud Run")
+    if not archivo.exists():
+        archivo.parent.mkdir(parents=True, exist_ok=True)
+        archivo.write_text(secrets.token_urlsafe(48), encoding="utf-8")
+    return archivo.read_text(encoding="utf-8").strip().encode()
+
+
+def verificador(autenticador: Autenticador, firebase: Callable[[str], str] | None = None) -> Callable[[str], str]:
+    """Tokens propios (dqs1.*) y, si está configurado, los de Google vía Firebase."""
 
     def verificar(token: str) -> str:
-        email = token.removeprefix("demo:")
-        if not token.startswith("demo:") or email not in usuarios:
-            raise ValueError("usuario demo desconocido")
-        return email
+        if autenticador.es_token(token):
+            return autenticador.verificar(token)
+        if firebase:
+            return firebase(token)
+        raise ValueError("token desconocido")
 
     return verificar
+
+
+def preparar_demo(autenticador: Autenticador, clave: str) -> None:
+    """Da a las cuentas de demostración la contraseña DQC_CLAVE_DEMO (solo fuera de Cloud Run)."""
+    if os.environ.get("K_SERVICE"):
+        raise RuntimeError("Las cuentas de demostración no pueden usarse en Cloud Run: define DQC_DEMO=0")
+    usuarios = autenticador.config.usuarios()
+    for email in USUARIOS_DEMO:
+        if email in usuarios and autenticador.config.credencial(email) is None:
+            autenticador.fijar(email, clave, debe_cambiar=False)
 
 
 def lanzador_en_proceso(plataforma, config, fuentes):

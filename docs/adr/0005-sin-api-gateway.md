@@ -11,7 +11,7 @@ mantener, y una clave de API embebida en una SPA no es un secreto.
 ## Decisión
 
 La API corre en Cloud Run con acceso público, pero cada ruta de negocio exige un
-token de Firebase Authentication válido, y el rol se resuelve en Firestore. CORS
+token de sesión válido (propio o de Firebase, ADR 0011), y el rol se resuelve en Firestore. CORS
 solo admite el origen del portal. Las rutas usan el prefijo `/api/v1` y hay
 sondas `/health/liveness` y `/health/readiness`, como en el documento.
 

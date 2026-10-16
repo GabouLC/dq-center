@@ -1,12 +1,23 @@
 <script setup lang="ts">
-import { BookOpen, CircleCheck, CircleX, ShieldCheck, SlidersHorizontal, UserMinus, UserPlus } from 'lucide-vue-next'
+import {
+  BookOpen, CircleCheck, CircleX, Copy, KeyRound, ShieldCheck, SlidersHorizontal, UserMinus, UserPlus, X,
+} from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import { usarCarga } from '@/composables/usarCarga'
+import { hora } from '@/formato'
 import { api } from '@/servicios/api'
 import { useSesion } from '@/stores/sesion'
 
-type Usuario = { email: string; rol: string }
+type Usuario = {
+  email: string
+  rol: string
+  ultimo_acceso?: string | null
+  bloqueada?: boolean
+  clave_temporal?: boolean
+  sin_clave?: boolean
+}
+type Temporal = { email: string; clave: string }
 
 const ROLES: [string, string, string, unknown][] = [
   ['lector', 'Lector', 'Consulta indicadores; los campos sensibles aparecen ocultos.', ShieldCheck],
@@ -18,16 +29,47 @@ const { datos, cargando, error, recargar } = usarCarga(() => api<Usuario[]>('/ap
 const nuevoEmail = ref('')
 const nuevoRol = ref('lector')
 const mensaje = ref<{ tipo: 'bien' | 'error'; texto: string } | null>(null)
+const temporal = ref<Temporal | null>(null)
+const copiada = ref(false)
 const porRol = computed(() => Object.fromEntries(ROLES.map(([r]) => [r, (datos.value ?? []).filter((u) => u.rol === r).length])))
+
+function estado(u: Usuario): { texto: string; tono: string } {
+  if (u.bloqueada) return { texto: 'Bloqueada', tono: 'critico' }
+  if (u.sin_clave) return { texto: 'Sin contraseña', tono: '' }
+  if (u.clave_temporal) return { texto: 'Clave temporal', tono: 'aviso' }
+  return { texto: 'Activa', tono: 'bien' }
+}
+
+function fallo(e: unknown) {
+  mensaje.value = { tipo: 'error', texto: e instanceof Error ? e.message : String(e) }
+}
+
+function mostrarTemporal(email: string, clave: string) {
+  temporal.value = { email, clave }
+  copiada.value = false
+}
 
 async function guardar(email: string, rol: string) {
   mensaje.value = null
   try {
-    await api(`/api/v1/admin/usuarios/${encodeURIComponent(email)}`, { metodo: 'PUT', cuerpo: { rol } })
-    mensaje.value = { tipo: 'bien', texto: `${email} ahora tiene el rol ${rol}.` }
+    const r = await api<{ clave_temporal?: string }>(`/api/v1/admin/usuarios/${encodeURIComponent(email)}`, { metodo: 'PUT', cuerpo: { rol } })
+    if (r.clave_temporal) mostrarTemporal(email, r.clave_temporal)
+    else mensaje.value = { tipo: 'bien', texto: `${email} ahora tiene el rol ${rol}.` }
     nuevoEmail.value = ''
   } catch (e) {
-    mensaje.value = { tipo: 'error', texto: e instanceof Error ? e.message : String(e) }
+    fallo(e)
+  }
+  await recargar()
+}
+
+async function restablecer(email: string) {
+  if (!window.confirm(`¿Dar a ${email} una contraseña temporal nueva? Se cerrarán sus sesiones abiertas.`)) return
+  mensaje.value = null
+  try {
+    const r = await api<{ clave_temporal: string }>(`/api/v1/admin/usuarios/${encodeURIComponent(email)}/clave`, { metodo: 'POST' })
+    mostrarTemporal(email, r.clave_temporal)
+  } catch (e) {
+    fallo(e)
   }
   await recargar()
 }
@@ -36,11 +78,22 @@ async function quitar(email: string) {
   if (!window.confirm(`¿Quitar el acceso de ${email}?`)) return
   try {
     await api(`/api/v1/admin/usuarios/${encodeURIComponent(email)}`, { metodo: 'DELETE' })
-    mensaje.value = { tipo: 'bien', texto: `${email} ya no tiene acceso.` }
+    mensaje.value = { tipo: 'bien', texto: `${email} ya no tiene acceso; sus sesiones se cerraron.` }
+    if (temporal.value?.email === email) temporal.value = null
   } catch (e) {
-    mensaje.value = { tipo: 'error', texto: e instanceof Error ? e.message : String(e) }
+    fallo(e)
   }
   await recargar()
+}
+
+async function copiar() {
+  if (!temporal.value) return
+  try {
+    await navigator.clipboard.writeText(temporal.value.clave)
+    copiada.value = true
+  } catch {
+    copiada.value = false
+  }
 }
 </script>
 
@@ -49,7 +102,7 @@ async function quitar(email: string) {
     <div class="encabezado">
       <div>
         <h1>Usuarios y roles</h1>
-        <p>Acceso cerrado por defecto: una cuenta sin rol no ve ningún módulo. Cada cambio queda en la auditoría.</p>
+        <p>Acceso cerrado por defecto: solo entra quien tiene un rol. Cada alta recibe una contraseña temporal que debe cambiar al entrar.</p>
       </div>
     </div>
 
@@ -73,6 +126,19 @@ async function quitar(email: string) {
       </form>
     </section>
 
+    <section v-if="temporal" class="panel temporal" role="status">
+      <span class="icono-rol"><KeyRound :size="20" /></span>
+      <div class="explica">
+        <strong>Contraseña temporal de {{ temporal.email }}</strong>
+        <p class="secundario">Compártela por un canal privado. Se muestra una sola vez y deberá cambiarla al entrar.</p>
+      </div>
+      <code class="clave">{{ temporal.clave }}</code>
+      <button type="button" @click="copiar">
+        <component :is="copiada ? CircleCheck : Copy" :size="15" />{{ copiada ? 'Copiada' : 'Copiar' }}
+      </button>
+      <button type="button" class="icono fantasma" aria-label="Ocultar la contraseña temporal" @click="temporal = null"><X :size="17" /></button>
+    </section>
+
     <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" role="status">
       <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
     </p>
@@ -81,7 +147,7 @@ async function quitar(email: string) {
       <section class="panel lista">
         <div class="tabla-envoltura">
           <table>
-            <thead><tr><th>Usuario</th><th>Rol</th><th /></tr></thead>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th /></tr></thead>
             <tbody>
               <tr v-for="u in datos ?? []" :key="u.email">
                 <td>
@@ -96,10 +162,13 @@ async function quitar(email: string) {
                     <option v-for="[r, n] in ROLES" :key="r" :value="r">{{ n }}</option>
                   </select>
                 </td>
+                <td><span class="chip" :class="estado(u).tono">{{ estado(u).texto }}</span></td>
+                <td class="secundario num">{{ hora(u.ultimo_acceso) }}</td>
                 <td class="der">
-                  <button v-if="u.email !== sesion.perfil?.email" type="button" class="peligro" @click="quitar(u.email)">
-                    <UserMinus :size="15" /> Quitar acceso
-                  </button>
+                  <span v-if="u.email !== sesion.perfil?.email" class="fila acciones">
+                    <button type="button" @click="restablecer(u.email)"><KeyRound :size="15" /> Restablecer clave</button>
+                    <button type="button" class="peligro" @click="quitar(u.email)"><UserMinus :size="15" /> Quitar acceso</button>
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -114,12 +183,28 @@ async function quitar(email: string) {
 .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .rol { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 16px; }
 .rol p { font-size: 12.5px; }
-.icono-rol { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--marca-suave); color: var(--marca); }
+.icono-rol { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--marca-suave); color: var(--marca); flex: none; }
 .cuenta { font-size: 24px; font-weight: 800; }
 .alta { align-items: end; gap: 14px; }
 .alta > svg { margin-bottom: 8px; }
 .marca-c { color: var(--marca); }
+.temporal { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--aviso); background: var(--aviso-suave); }
+.temporal .icono-rol { background: var(--superficie); color: var(--aviso-texto); }
+.explica { flex: 1 1 260px; }
+.explica p { font-size: 12.5px; }
+.clave {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--superficie);
+  border: 1px dashed var(--linea-fuerte);
+  border-radius: 10px;
+  padding: 7px 12px;
+  user-select: all;
+}
 .lista { padding: 6px 8px; }
 .persona { gap: 10px; flex-wrap: nowrap; }
+.acciones { gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
 .avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--superficie-3); font-size: 11.5px; font-weight: 800; flex: none; }
 </style>
