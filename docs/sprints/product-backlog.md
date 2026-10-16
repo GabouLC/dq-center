@@ -27,14 +27,14 @@ valor.
 | 5 | HU-06 · Cifrar automáticamente los datos sensibles | Data Architect | 8 | 1 | Terminada | [#6](https://github.com/GabouLC/dq-center/issues/6) |
 | 6 | HU-03 · Ejecutar reglas de calidad de Nivel 2 | QA Specialist | 5 | 2 | Terminada | [#3](https://github.com/GabouLC/dq-center/issues/3) |
 | 7 | HU-04 · Certificar la calidad de los datos | QA Specialist | 5 | 2 | Terminada | [#4](https://github.com/GabouLC/dq-center/issues/4) |
-| 8 | HU-07 · Ejecutar el Quality & Privacy Gate | Data Owner | 8 | 2 | Terminada | [#7](https://github.com/GabouLC/dq-center/issues/7) |
-| 9 | HU-08 · Publicar datos certificados en BUSINESS | Data Owner | 5 | 2 | Terminada | [#8](https://github.com/GabouLC/dq-center/issues/8) |
-| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | Terminada | [#13](https://github.com/GabouLC/dq-center/issues/13) |
-| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | Terminada | [#9](https://github.com/GabouLC/dq-center/issues/9) |
-| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | Terminada | [#12](https://github.com/GabouLC/dq-center/issues/12) |
-| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | Terminada | [#11](https://github.com/GabouLC/dq-center/issues/11) |
-| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | Terminada | [#10](https://github.com/GabouLC/dq-center/issues/10) |
-| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | Terminada | [#15](https://github.com/GabouLC/dq-center/issues/15) |
+| 8 | HU-07 · Ejecutar el Quality & Privacy Gate | Data Owner | 8 | 2 | En curso | [#7](https://github.com/GabouLC/dq-center/issues/7) |
+| 9 | HU-08 · Publicar datos certificados en BUSINESS | Data Owner | 5 | 2 | Por hacer | [#8](https://github.com/GabouLC/dq-center/issues/8) |
+| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | Planificada | [#13](https://github.com/GabouLC/dq-center/issues/13) |
+| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | Planificada | [#9](https://github.com/GabouLC/dq-center/issues/9) |
+| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | Planificada | [#12](https://github.com/GabouLC/dq-center/issues/12) |
+| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | Planificada | [#11](https://github.com/GabouLC/dq-center/issues/11) |
+| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | Planificada | [#10](https://github.com/GabouLC/dq-center/issues/10) |
+| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | Planificada | [#15](https://github.com/GabouLC/dq-center/issues/15) |
 | | **Total** | | **76** | | | |
 
 Los puntos son los del Product Backlog del equipo en Jira (proyecto SDGDCYP).
@@ -55,9 +55,9 @@ Cambios al backlog que salieron de las revisiones:
 
 | Fecha | Cambio | Origen |
 |---|---|---|
-| 2026-10-15 | HU-13 suma el inicio de sesión con correo y contraseña, el bloqueo por intentos y la contraseña temporal | Revisión del Sprint 3: «tiene que ser un inicio de sesión, no elegir roles» |
+| 2026-10-15 | HU-13 suma el inicio de sesión con correo y contraseña, el bloqueo por intentos y la contraseña temporal | Comentarios sobre el prototipo del portal: «tiene que ser un inicio de sesión, no elegir roles» |
 | 2026-10-15 | Se agrega como trabajo pendiente el despliegue en Cloud Run (no es una HU del backlog) | Impedimento abierto: facturación de GCP |
-| 2026-10-15 | HU-09 suma la simulación en vivo; los datos pasan a 92 cortes diarios de julio a septiembre | Revisión del Sprint 3: «que se sienta vivo, con variaciones realistas» |
+| 2026-10-15 | HU-09 suma la simulación en vivo; los datos pasan a 92 cortes diarios de julio a septiembre | Comentarios sobre el prototipo del portal: «que se sienta vivo, con variaciones realistas» |
 
 ## Pendiente fuera de las historias
 

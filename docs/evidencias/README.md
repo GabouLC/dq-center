@@ -28,6 +28,10 @@ python -m pytest -v > docs/evidencias/pruebas.txt
 
 ## Capturas del portal (`portal/`)
 
+Las capturas de HU-09 a HU-15 muestran el prototipo adelantado del portal: son evidencia
+preliminar hasta la revisión del Sprint 3. Las de HU-07 y HU-08 se confirman al cierre del
+Sprint 2.
+
 | Captura | Historias | Qué muestra |
 |---|---|---|
 | [hu01-fuentes-siniestro-rechazo](portal/hu01-fuentes-siniestro-rechazo.png) | HU-01 | Cargas con problemas: el archivo del 28 de julio rechazado por estructura y su reentrega |

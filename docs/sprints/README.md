@@ -7,8 +7,8 @@ seguimiento, revisión con evidencia por criterio de aceptación y retrospectiva
 | Sprint | Objetivo | Historias, en orden de prioridad | SP | Estado | Documento |
 |---|---|---|---|---|---|
 | 1 | Base del pipeline: RAW, MASTER, DAC, calidad N1 y cifrado | HU-01, HU-14, HU-05, HU-02, HU-06 | 22 | Terminado | [sprint-1.md](sprint-1.md) |
-| 2 | Motor y Gate: N2 y N3, certificación, Privacy Gate y BUSINESS | HU-03, HU-04, HU-07, HU-08 | 23 | Terminado | [sprint-2.md](sprint-2.md) |
-| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 31 | Terminado | [sprint-3.md](sprint-3.md) |
+| 2 | Motor y Gate: N2 y N3, certificación, Privacy Gate y BUSINESS | HU-03, HU-04, HU-07, HU-08 | 23 | En curso: 10 de 23 SP | [sprint-2.md](sprint-2.md) |
+| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 31 | Planificado (prototipo adelantado) | [sprint-3.md](sprint-3.md) |
 
 Los puntos son los que el equipo estimó en el Product Backlog de Jira (proyecto SDGDCYP),
 en Fibonacci. El Sprint 3 comprometió 31 SP, por encima de la velocidad sugerida de 20 a
@@ -25,13 +25,13 @@ equipo* significa que sale de una reunión y el documento trae el formato para r
 | **Product Owner y Scrum Master** | [Responsables](#responsables) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
 | **Developers** | [Responsables](#responsables) | Listo | Listo | Listo |
 | **Product Backlog** y su compromiso, el **objetivo del producto** | [product-backlog.md](product-backlog.md) | Listo | Listo | Listo |
-| **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo | Listo |
-| **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Listo | Listo |
+| **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo, con avance | Objetivo listo; el backlog se arma en su planificación |
+| **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Parcial: 2 de 4 historias | Pendiente |
 | **Sprint** (duración, compromiso y resultado) | Encabezado de cada sprint | Listo | Listo | Listo |
-| **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo | Listo |
+| **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo | Preliminar; se confirma el 20 de octubre |
 | **Daily Scrum** | Sección 3 de cada sprint y [plantillas.md](plantillas.md) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
-| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo; los comentarios los completa el equipo | Listo; los comentarios los completa el equipo | Listo, con los comentarios recibidos |
-| **Sprint Retrospective** | Sección 5 de cada sprint | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo |
+| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo; los comentarios los completa el equipo | Parcial: HU-03 y HU-04 aceptadas; la reunión es al cierre | Pendiente; hay comentarios previos sobre el prototipo |
+| **Sprint Retrospective** | Sección 5 de cada sprint | Borrador con hechos; lo completa el equipo | Al cierre (notas listas) | Al cierre |
 | Complementos: Definition of Ready, burndown, impedimentos y velocidad | Este documento y la sección 3 de cada sprint | Listo | Listo | Listo |
 
 ## Cómo se priorizó
@@ -48,24 +48,29 @@ aplicados en este orden:
    antes que el glosario (HU-10). El requisito no funcional de rendimiento (HU-15) cierra el
    release porque se mide sobre todas las pantallas ya construidas.
 
-## Burndown del release
+## Calendario y burndown del release
 
-Backlog total: 76 SP en 15 historias.
+| Sprint | Fechas | Estado en Jira |
+|---|---|---|
+| 1 | jueves 1 al lunes 5 de octubre de 2026 | Cerrado |
+| 2 | martes 6 al lunes 19 de octubre | Activo |
+| 3 | martes 20 de octubre al lunes 2 de noviembre | Sin iniciar |
+
+Backlog total: 76 SP en 15 historias. Quedan 54 SP: 13 del Sprint 2 y 31 del Sprint 3.
 
 ```mermaid
 xychart-beta
     title "SP pendientes del release"
-    x-axis ["Inicio", "Sprint 1", "Sprint 2", "Sprint 3"]
+    x-axis ["Inicio", "Fin del Sprint 1", "Hoy (Sprint 2)"]
     y-axis "SP" 0 --> 80
-    line [76, 54, 31, 0]
+    line [76, 54, 44]
 ```
 
-| Momento | SP comprometidos | SP terminados | SP pendientes |
-|---|---|---|---|
-| Inicio | | | 76 |
-| Fin del Sprint 1 | 22 | 22 | 54 |
-| Fin del Sprint 2 | 23 | 23 | 31 |
-| Fin del Sprint 3 | 31 | 31 | 0 |
+| Momento | SP terminados | SP pendientes |
+|---|---|---|
+| Inicio | | 76 |
+| Fin del Sprint 1 (5 de octubre) | 22 | 54 |
+| Hoy, a mitad del Sprint 2 | 10 más (HU-03 y HU-04) | 44 |
 
 ## Definition of Ready
 

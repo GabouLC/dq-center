@@ -47,7 +47,7 @@ RESPONSABLES = {
 }
 SPRINTS = [
     {
-        "numero": 1, "nombre": "SDGDCYP Sprint 1", "epica": "Base del pipeline",
+        "numero": 1, "nombre": "SDGDCYP Sprint 1", "epica": "Base del pipeline", "estado": "cerrado",
         "inicio": "2026-10-01T09:00:00.000-05:00", "fin": "2026-10-05T18:00:00.000-05:00",
         "objetivo": "Construir la base del pipeline de datos: ingesta a RAW, homologación hacia MASTER, "
                     "primeras validaciones de calidad y cifrado de la información sensible.",
@@ -56,20 +56,20 @@ SPRINTS = [
                     "Gabriel Leon")],
     },
     {
-        "numero": 2, "nombre": "SDGDCYP Sprint 2", "epica": "Motor y Gate",
-        "inicio": "2026-10-06T09:00:00.000-05:00", "fin": "2026-10-10T18:00:00.000-05:00",
+        "numero": 2, "nombre": "SDGDCYP Sprint 2", "epica": "Motor y Gate", "estado": "en_curso",
+        "inicio": "2026-10-06T09:00:00.000-05:00", "fin": "2026-10-19T18:00:00.000-05:00",
         "objetivo": "Que cada corte salga del pipeline con un veredicto: reglas de Nivel 2 y 3, certificación "
                     "en tres estados, Quality & Privacy Gate y publicación en BUSINESS solo de lo certificado.",
         "historias": ["HU-03", "HU-04", "HU-07", "HU-08"],
         "tareas": [],
     },
     {
-        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ",
-        "inicio": "2026-10-11T09:00:00.000-05:00", "fin": "2026-10-15T23:00:00.000-05:00",
+        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ", "estado": "planificado",
+        "inicio": "2026-10-20T09:00:00.000-05:00", "fin": "2026-11-02T18:00:00.000-05:00",
         "objetivo": "Llevar los resultados al negocio: un portal donde cada rol ve la salud y la certificación "
                     "de los datos, su linaje y su glosario, con acceso controlado y cada sección en menos de 8 s.",
         "historias": ["HU-13", "HU-09", "HU-12", "HU-11", "HU-10", "HU-15"],
-        "tareas": [],  # las de «Base del portal» salen de docs/sprints/sprint-3.md
+        "tareas": [],  # su sprint backlog se arma en la Sprint Planning
     },
 ]
 
@@ -148,18 +148,18 @@ def normalizar(texto: str) -> str:
 # ── lo que dicen los documentos del sprint ─────────────────────────────────
 
 
-def tareas_del_sprint(numero: int) -> dict[str, list[str]]:
-    """Tareas del Sprint Backlog por historia; las que no son de una historia van en «sin_historia»."""
+def tareas_del_sprint(numero: int) -> dict[str, list[tuple[str, bool]]]:
+    """(tarea, hecha) del Sprint Backlog por historia; las que no son de una historia van en «sin_historia»."""
     texto = (RAIZ / "docs" / "sprints" / f"sprint-{numero}.md").read_text(encoding="utf-8")
     seccion = texto.split("## 2. Sprint Backlog", 1)[1].split("## 3.", 1)[0]
-    grupos: dict[str, list[str]] = {}
+    grupos: dict[str, list[tuple[str, bool]]] = {}
     actual = "sin_historia"
     for linea in seccion.splitlines():
         cabecera = re.match(r"\*\*(HU-\d{2})?[^*]*\*\*", linea)
         if cabecera:
             actual = cabecera.group(1) or "sin_historia"
-        elif linea.startswith("- [x] "):
-            grupos.setdefault(actual, []).append(linea[6:].strip())
+        elif linea.startswith(("- [x] ", "- [ ] ")):
+            grupos.setdefault(actual, []).append((linea[6:].strip(), linea.startswith("- [x] ")))
     return grupos
 
 
@@ -186,17 +186,32 @@ def usuarios(jira: Jira) -> dict[str, str]:
     return encontrados
 
 
-def finalizar(jira: Jira, clave: str) -> None:
-    if not jira.aplicar and clave.startswith("("):
-        print(f"  haría: pasar {clave} a Finalizada")
+# Categorías de estado de Jira: por hacer, en curso y finalizada.
+POR_HACER, EN_CURSO, HECHA = "new", "indeterminate", "done"
+
+
+def transicionar(jira: Jira, clave: str, categoria: str) -> None:
+    if clave.startswith("("):
+        print(f"  {'haría' if not jira.aplicar else 'hecho'}: pasar {clave} a {categoria}")
         return
     issue = jira.leer(f"/rest/api/3/issue/{clave}", fields="status")
-    if issue["fields"]["status"]["statusCategory"]["key"] == "done":
+    if issue["fields"]["status"]["statusCategory"]["key"] == categoria:
         return
     transiciones = jira.leer(f"/rest/api/3/issue/{clave}/transitions")["transitions"]
-    hacia = next(t for t in transiciones if t["to"]["statusCategory"]["key"] == "done")
+    # En curso: «En curso» antes que «En revisión».
+    hacia = sorted((t for t in transiciones if t["to"]["statusCategory"]["key"] == categoria),
+                   key=lambda t: "revis" in normalizar(t["to"]["name"]))[0]
     jira.escribir(f"{clave} -> {hacia['to']['name']}", "POST", f"/rest/api/3/issue/{clave}/transitions",
                   {"transition": {"id": hacia["id"]}})
+
+
+def finalizar(jira: Jira, clave: str) -> None:
+    transicionar(jira, clave, HECHA)
+
+
+def categoria_de(tareas: list[tuple[str, bool]]) -> str:
+    hechas = sum(hecha for _, hecha in tareas)
+    return HECHA if tareas and hechas == len(tareas) else EN_CURSO if hechas else POR_HACER
 
 
 def asignar(jira: Jira, clave: str, cuenta: str | None, actual: str | None) -> None:
@@ -253,29 +268,28 @@ def sincronizar(jira: Jira, numeros: list[int], con_epicas: bool, con_responsabl
             cuenta = cuentas.get(RESPONSABLES[hu])
             asignar(jira, clave, cuenta, (issue["fields"].get("assignee") or {}).get("accountId"))
 
-            ya = {s["fields"]["summary"] for s in issue["fields"].get("subtasks", [])}
-            for tarea in grupos.get(hu, []):
+            ya = {s["fields"]["summary"]: s["key"] for s in issue["fields"].get("subtasks", [])}
+            tareas = grupos.get(hu, [])
+            for tarea, hecha in tareas:
                 titulo = resumen(tarea)
-                if titulo in ya:
-                    continue
-                extra = {"parent": {"key": clave}, "description": adf(tarea.replace("`", ""))}
-                if cuenta:
-                    extra["assignee"] = {"accountId": cuenta}
-                subtarea = crear(jira, "Subtask", titulo, extra)
-                finalizar(jira, subtarea)
-            for s in issue["fields"].get("subtasks", []):
-                finalizar(jira, s["key"])
+                subtarea = ya.get(titulo)
+                if subtarea is None:
+                    extra = {"parent": {"key": clave}, "description": adf(tarea.replace("`", ""))}
+                    if cuenta:
+                        extra["assignee"] = {"accountId": cuenta}
+                    subtarea = crear(jira, "Subtask", titulo, extra)
+                transicionar(jira, subtarea, HECHA if hecha else POR_HACER)
 
-            for global_id, url, titulo in (
-                (f"dq-center-github-{gh}", f"{REPO}/issues/{gh}", f"GitHub #{gh} · {hu}"),
-                (f"dq-center-evidencia-{hu}", f"{REPO}/blob/main/docs/sprints/sprint-{n}.md", f"Evidencia de {hu} (Sprint {n})"),
-            ):
+            enlaces = [(f"dq-center-github-{gh}", f"{REPO}/issues/{gh}", f"GitHub #{gh} · {hu}")]
+            if sprint["estado"] != "planificado":
+                enlaces.append((f"dq-center-evidencia-{hu}", f"{REPO}/blob/main/docs/sprints/sprint-{n}.md", f"{hu} en el Sprint {n}"))
+            for global_id, url, titulo in enlaces:
                 jira.escribir(f"enlace {clave} -> {titulo}", "POST", f"/rest/api/3/issue/{clave}/remotelink",
                               {"globalId": global_id, "object": {"url": url, "title": titulo}})
-            finalizar(jira, clave)
+            transicionar(jira, clave, HECHA if sprint["estado"] == "cerrado" else categoria_de(tareas))
 
         # Tareas que no son de una historia (base técnica del sprint)
-        sueltas = [(resumen(t), RESPONSABLES["HU-09"]) for t in grupos.get("sin_historia", [])] + sprint["tareas"]
+        sueltas = [(resumen(t), RESPONSABLES["HU-09"]) for t, _ in grupos.get("sin_historia", [])] + sprint["tareas"]
         for titulo, responsable in sueltas:
             if titulo in existentes:
                 clave = existentes[titulo]["key"]
@@ -286,17 +300,18 @@ def sincronizar(jira: Jira, numeros: list[int], con_epicas: bool, con_responsabl
                 clave = crear(jira, "Tarea", titulo, extra)
             claves_sprint.append(clave)
             finalizar(jira, clave)
-        if epica:
+        if epica and sprint["estado"] == "cerrado":
             finalizar(jira, epica)
 
-        # Historias y tareas al sprint; luego se inicia y se cierra
+        # Historias y tareas al sprint; se inicia si está en curso o cerrado, y se cierra si terminó
         if sp["state"] != "closed":
             jira.escribir(f"{len(claves_sprint)} issues a {sprint['nombre']}", "POST", f"/rest/agile/1.0/sprint/{sp['id']}/issue",
                           {"issues": [c for c in claves_sprint if not c.startswith("(")]})
-            if sp["state"] == "future":
+            if sp["state"] == "future" and sprint["estado"] != "planificado":
                 jira.escribir(f"iniciar {sprint['nombre']}", "POST", f"/rest/agile/1.0/sprint/{sp['id']}",
                               {"state": "active", **datos_sprint})
-            jira.escribir(f"cerrar {sprint['nombre']}", "POST", f"/rest/agile/1.0/sprint/{sp['id']}", {"state": "closed"})
+            if sprint["estado"] == "cerrado":
+                jira.escribir(f"cerrar {sprint['nombre']}", "POST", f"/rest/agile/1.0/sprint/{sp['id']}", {"state": "closed"})
 
 
 # ── revisión del sprint: criterios, pruebas y evidencia en cada historia ───
@@ -343,11 +358,15 @@ def comentario_de_revision(numero: int, hu: str, filas: list[list[str]]) -> dict
 def publicar_revision(jira: Jira, numeros: list[int]) -> None:
     for sprint in (s for s in SPRINTS if s["numero"] in numeros):
         n = sprint["numero"]
-        revision = revision_del_sprint(n)
+        revision = revision_del_sprint(n) if sprint["estado"] != "planificado" else {}
+        tareas = tareas_del_sprint(n)
         print(f"\nRevisión del Sprint {n}:")
         for hu in sprint["historias"]:
             clave, _ = HISTORIAS[hu]
             filas = revision.get(hu, [])
+            if not filas or categoria_de(tareas.get(hu, [])) != HECHA:
+                print(f"  {hu}: todavía no se acepta; sin revisión")
+                continue
             comentarios = jira.leer(f"/rest/api/3/issue/{clave}/comment", maxResults=100)["comments"]
             if not any(f"Revisión del Sprint {n}" in json.dumps(c["body"], ensure_ascii=False) for c in comentarios):
                 jira.escribir(f"comentario de revisión en {clave} ({hu}, {len(filas)} criterios)", "POST",

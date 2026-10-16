@@ -1,14 +1,16 @@
 # Sprint 1 · Base del pipeline
 
-**Estado:** terminado · **Compromiso:** 22 SP, 5 historias · **Terminado:** 22 SP, 5 historias ·
+**Estado:** terminado · **Fechas:** jueves 1 al lunes 5 de octubre de 2026 · **Compromiso:** 22 SP,
+5 historias · **Terminado:** 22 SP, 5 historias · **Jira:** SDGDCYP Sprint 1 (cerrado) ·
 **Incremento:** commits [`369a0d7`](https://github.com/GabouLC/dq-center/commit/369a0d7) y
 [`e286dc2`](https://github.com/GabouLC/dq-center/commit/e286dc2), sobre la base técnica de
 `6025505` a `6a24f78` · **Milestone:** [Sprint 1](https://github.com/GabouLC/dq-center/milestone/1)
 
 ## 1. Sprint Planning
 
-**Fecha, duración y asistentes:** completar con el calendario del equipo. La planificación se
-presentó al docente en el *Sprint 1 Planning* (Sprint1_Planning_SMART-DQ.pptx).
+**Fecha, duración y asistentes:** jueves 1 de octubre de 2026; cinco días, hasta el lunes 5.
+Asistentes: completar. La planificación se presentó al docente en el *Sprint 1 Planning*
+(Sprint1_Planning_SMART-DQ.pptx).
 
 ### ¿Por qué es valioso este sprint? · Objetivo del sprint
 
@@ -196,7 +198,7 @@ Las cinco historias cumplen la Definition of Done: forman el incremento del Spri
 
 ### Reunión de revisión
 
-- **Fecha y asistentes:** completar.
+- **Fecha:** lunes 5 de octubre de 2026. Asistentes: completar.
 - **Historias demostradas y aceptadas:** las cinco, con la demostración de la sección 4.
 - **Comentarios de los interesados:** completar con la plantilla de [plantillas.md](plantillas.md).
 
