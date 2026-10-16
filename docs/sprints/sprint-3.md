@@ -6,7 +6,7 @@
 [`12d0d91`](https://github.com/GabouLC/dq-center/commit/12d0d91) (inicio de sesión) ·
 **Milestone:** [Sprint 3](https://github.com/GabouLC/dq-center/milestone/4)
 
-## 1. Planificación
+## 1. Sprint Planning
 
 **Objetivo del sprint.** Llevar los resultados al negocio: un portal donde cada rol ve la salud
 y la certificación de los datos, su linaje y su glosario, con acceso controlado y cada sección
@@ -38,7 +38,7 @@ confirman con el equipo.
 
 **Fuera del sprint.** El despliegue en Cloud Run, que depende de la facturación de GCP.
 
-## 2. Sprint backlog
+## 2. Sprint Backlog
 
 **Base del portal**
 - [x] API FastAPI con prefijo `/api/v1`, sondas `/health` y errores con el formato del documento de arquitectura (`src/dqc/api/app.py`)
@@ -75,7 +75,7 @@ confirman con el equipo.
 - [x] Cabecera `Server-Timing` en cada respuesta y auditoría de las que pasan de 8 s
 - [x] Prueba automatizada por sección del portal
 
-## 3. Seguimiento
+## 3. Seguimiento · Daily Scrum
 
 **Impedimentos registrados**
 
@@ -91,7 +91,7 @@ diaria se registra con [plantillas.md](plantillas.md). Resultado: 23 de 23 SP, s
 
 **Dailies.** Se registran con el acta de [plantillas.md](plantillas.md).
 
-## 4. Revisión
+## 4. Sprint Review e Incremento
 
 **Incremento.** El Portal Smart-DQ con 11 módulos y tres roles. Para reproducirlo:
 
@@ -168,7 +168,7 @@ contraseña `SmartDQ-2026`.
 | Si se supera el límite, se registra la incidencia | `test_una_solicitud_lenta_queda_registrada_en_la_auditoria` | Evento `RENDIMIENTO_LENTO` (*Más de 8 s* en la [Auditoría](../evidencias/portal/hu13-hu15-auditoria.png)); en la demo no hubo ninguno |
 | Las pruebas de rendimiento verifican el indicador | `test_cada_seccion_responde_en_menos_de_8_segundos` corre en cada push en el CI | [Reporte de pruebas](../evidencias/pruebas.txt) |
 
-## 5. Retrospectiva (borrador con los hechos del sprint)
+## 5. Sprint Retrospective (borrador con los hechos del sprint)
 
 | Funcionó | Por mejorar |
 |---|---|

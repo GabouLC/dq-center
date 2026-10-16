@@ -5,10 +5,21 @@
 [`e286dc2`](https://github.com/GabouLC/dq-center/commit/e286dc2), sobre la base técnica de
 `6025505` a `6a24f78` · **Milestone:** [Sprint 1](https://github.com/GabouLC/dq-center/milestone/1)
 
-## 1. Planificación
+## 1. Sprint Planning
+
+**Fecha, duración y asistentes:** completar con el calendario del equipo. La planificación se
+presentó al docente en el *Sprint 1 Planning* (Sprint1_Planning_SMART-DQ.pptx).
+
+### ¿Por qué es valioso este sprint? · Objetivo del sprint
 
 **Objetivo del sprint.** Construir la base del pipeline de datos: ingesta a RAW, homologación
 hacia MASTER, primeras validaciones de calidad y cifrado de la información sensible.
+
+**Valor.** Sin esta base nada puede validarse ni certificarse, y la PII quedaría expuesta desde
+la primera carga. Al cerrar el sprint, cada corte llega a MASTER homologado, cifrado y con sus
+reglas N1 evaluadas.
+
+### ¿Qué se puede terminar? · Historias seleccionadas
 
 **Capacidad.** Velocidad sugerida de 20 a 24 SP. Se comprometieron 22.
 
@@ -34,33 +45,45 @@ hacia MASTER, primeras validaciones de calidad y cifrado de la información sens
 **Fuera del sprint.** Reglas N2 y N3, certificación, Gate y publicación (Sprint 2), y el portal
 (Sprint 3).
 
-## 2. Sprint backlog
+### ¿Cómo se hará? · Plan de trabajo
 
-**HU-01 · Ingesta a RAW**
+Cada historia se dividió en tareas técnicas: son el Sprint Backlog de la sección 2. El trabajo
+sigue el flujo de los datos: primero el generador y la ingesta, después la homologación y la
+clasificación, al final el motor y el cifrado. Cada tarea cierra con su prueba automatizada.
+
+## 2. Sprint Backlog
+
+Las tareas de cada historia, con su responsable. Al cierre del sprint el tablero quedó así:
+
+| Por hacer | En curso | Hechas |
+|---|---|---|
+| 0 | 0 | 20 tareas de 5 historias |
+
+**HU-01 · Ingesta a RAW** · Cristhian Pimentel
 - [x] Generador de datos sintéticos: 5 tablas y 2 referencias, 6 cortes mensuales y errores sembrados con su manifiesto (`src/dqc/datagen/generador.py`)
 - [x] Zona de aterrizaje: un CSV por fuente y corte, con hora de llegada (`src/dqc/datagen/exportar.py`)
 - [x] Validación de la estructura del CSV y rechazo con motivo (`src/dqc/pipeline/ingesta.py`)
 - [x] Carga a RAW como texto, sin transformar, y registro de cada carga (`dq_raw.registro_cargas`)
 - [x] Pruebas: `tests/test_ingesta.py`, `tests/test_flujo.py`
 
-**HU-14 · Homologación a MASTER**
+**HU-14 · Homologación a MASTER** · Jesus de la Cruz
 - [x] Mapa de cada fuente al modelo estándar: nombres, tipos y formatos de fecha (`config/homologacion.yaml`)
 - [x] SQL de homologación por fuente y corte (`src/dqc/pipeline/homologacion.py`)
 - [x] Registros no homologables a `incidencias_homologacion`, fuera de MASTER
 - [x] Funciones equivalentes en BigQuery y DuckDB, como `parsear_fecha` (`src/dqc/pipeline/funciones.py`)
 
-**HU-05 · Clasificación DAC**
+**HU-05 · Clasificación DAC** · Jesus de la Cruz
 - [x] Contrato de datos por tabla con la categoría DAC de cada campo (`config/contratos.yaml`)
 - [x] Validación del contrato al cargarlo: toda columna tiene categoría válida (`src/dqc/pipeline/configuracion.py`)
 - [x] Contratos en Firestore (`src/dqc/gcp/firestore.py`)
 
-**HU-02 · Calidad N1**
+**HU-02 · Calidad N1** · Cristhian Pimentel
 - [x] Catálogo de 36 reglas, 48 al expandir las transversales (`config/reglas_iniciales.yaml`)
 - [x] Motor: SQL por tipo de regla en dialecto BigQuery, traducido a DuckDB para las pruebas (`src/dqc/motor/sql.py`, `motor.py`)
 - [x] Estado de cada regla según su umbral, con muestra de registros fallidos (`src/dqc/motor/puntuacion.py`)
 - [x] Prueba de aceptación contra el manifiesto de errores sembrados (`src/dqc/pipeline/verificacion.py`)
 
-**HU-06 · Cifrado**
+**HU-06 · Cifrado** · Jesus de la Cruz
 - [x] Llaves AEAD por campo en `dq_seguridad.llaves` (KMS simulado)
 - [x] Cifrado determinístico (DNI) y aleatorio (nombres, correo, celular) al pasar a MASTER, con el campo como dato asociado
 - [x] Equivalente local con `cryptography` (AES-SIV y AES-GCM) para correr sin GCP
@@ -69,7 +92,7 @@ hacia MASTER, primeras validaciones de calidad y cifrado de la información sens
 **Transversal:** CI con GitHub Actions (`e8a7b4f`), carga a BigQuery en el sandbox (`9ccf16d`) y
 configuración en Firestore (`9098ad4`).
 
-## 3. Seguimiento
+## 3. Seguimiento · Daily Scrum
 
 **Impedimentos registrados**
 
@@ -84,9 +107,18 @@ configuración en Firestore (`9098ad4`).
 muestra el avance día a día. La línea real se registra con la plantilla de burndown de
 [plantillas.md](plantillas.md) a partir del tablero del equipo. Resultado: 22 de 22 SP, sin arrastre.
 
-**Dailies.** Se registran con el acta de [plantillas.md](plantillas.md).
+**Registro de Daily Scrum.** Una fila por daily; el acta completa de cada una va con el formato
+de [plantillas.md](plantillas.md).
 
-## 4. Revisión
+| Daily | Fecha | Avance del equipo | Impedimentos nuevos |
+|---|---|---|---|
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
+
+## 4. Sprint Review e Incremento
 
 **Incremento.** Seis cortes mensuales (abril a septiembre de 2026) pasan de CSV a RAW, de RAW a
 MASTER homologado y cifrado, y se evalúan con las reglas N1. Para reproducirlo:
@@ -149,9 +181,29 @@ El backlog habla de PASS y FAIL. El motor usa tres estados: **OK** es PASS; **AL
 | Un campo que no se compara usa cifrado no determinístico | `test_deterministico_iguala_documentos_y_aleatorio_no` | [Linaje de un campo cifrado](../evidencias/portal/hu06-hu11-linaje-campo-cifrado.png) |
 | Ningún PII queda en texto plano al almacenarse | `test_ningun_campo_pii_queda_en_texto_plano_en_master`, `test_business_no_expone_pii_en_claro` | Muestras cifradas en [bigquery.txt](../evidencias/bigquery.txt) |
 
-**Comentarios de la revisión:** completar con la plantilla de [plantillas.md](plantillas.md).
+### Definition of Done por historia
 
-## 5. Retrospectiva (borrador con los hechos del sprint)
+| Criterio de la Definition of Done | HU-01 | HU-14 | HU-05 | HU-02 | HU-06 |
+|---|---|---|---|---|---|
+| Código en `main` y CI en verde | Sí | Sí | Sí | Sí | Sí |
+| Cada criterio de aceptación con prueba automatizada | 4 de 4 | 4 de 4 | 4 de 4 | 4 de 4 | 4 de 4 |
+| 0 diferencias contra el manifiesto | Ingesta | Homologación | No aplica | Reglas | No aplica |
+| Desvíos del documento de arquitectura en un ADR | [0009](../adr/0009-datos-sinteticos.md) | [0006](../adr/0006-capas-y-privacy-gate.md) | No hubo | [0004](../adr/0004-evaluacion-sql.md), [0010](../adr/0010-pruebas.md) | [0006](../adr/0006-capas-y-privacy-gate.md), [0007](../adr/0007-pii-solo-en-memoria.md) |
+| Evidencia en `docs/evidencias` | Sí | Sí | Sí | Sí | Sí |
+| Issue cerrado y enlazado a su evidencia | [#1](https://github.com/GabouLC/dq-center/issues/1) | [#14](https://github.com/GabouLC/dq-center/issues/14) | [#5](https://github.com/GabouLC/dq-center/issues/5) | [#2](https://github.com/GabouLC/dq-center/issues/2) | [#6](https://github.com/GabouLC/dq-center/issues/6) |
+
+Las cinco historias cumplen la Definition of Done: forman el incremento del Sprint 1.
+
+### Reunión de revisión
+
+- **Fecha y asistentes:** completar.
+- **Historias demostradas y aceptadas:** las cinco, con la demostración de la sección 4.
+- **Comentarios de los interesados:** completar con la plantilla de [plantillas.md](plantillas.md).
+
+**Product Backlog tras la revisión.** Sin historias nuevas. Siguen, en orden: HU-03, HU-04,
+HU-07 y HU-08 (Sprint 2). Se agrega como pendiente técnico resolver la facturación de GCP.
+
+## 5. Sprint Retrospective (borrador con los hechos del sprint)
 
 | Funcionó | Por mejorar |
 |---|---|

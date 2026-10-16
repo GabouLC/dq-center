@@ -14,6 +14,26 @@ seguimiento, revisión con evidencia por criterio de aceptación y retrospectiva
 y 3 son una **propuesta** con la misma escala (Fibonacci, velocidad sugerida 20–24 SP)
 y deben confirmarse en la planificación con el equipo.
 
+## Scrum en el proyecto: dónde está cada pieza
+
+Según la Guía Scrum (2020): tres responsabilidades, cinco eventos y tres artefactos, cada uno
+con su compromiso. *Listo* significa que el documento existe con datos reales; *lo completa el
+equipo* significa que sale de una reunión y el documento trae el formato para registrarla.
+
+| Elemento | Dónde está | Sprint 1 | Sprint 2 | Sprint 3 |
+|---|---|---|---|---|
+| **Product Owner y Scrum Master** | [Responsables](#responsables) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
+| **Developers** | [Responsables](#responsables) | Listo | Listo | Listo |
+| **Product Backlog** y su compromiso, el **objetivo del producto** | [product-backlog.md](product-backlog.md) | Listo | Listo | Listo |
+| **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo | Listo |
+| **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Listo | Listo |
+| **Sprint** (duración, compromiso y resultado) | Encabezado de cada sprint | Listo | Listo | Listo |
+| **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo (puntos propuestos) | Listo (puntos propuestos) |
+| **Daily Scrum** | Sección 3 de cada sprint y [plantillas.md](plantillas.md) | Lo completa el equipo | Lo completa el equipo | Lo completa el equipo |
+| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo; los comentarios los completa el equipo | Listo; los comentarios los completa el equipo | Listo, con los comentarios recibidos |
+| **Sprint Retrospective** | Sección 5 de cada sprint | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo | Borrador con hechos; lo completa el equipo |
+| Complementos: Definition of Ready, burndown, impedimentos y velocidad | Este documento y la sección 3 de cada sprint | Listo | Listo | Listo |
+
 ## Cómo se priorizó
 
 El Product Backlog no asigna prioridades numéricas, así que el orden sale de tres criterios,

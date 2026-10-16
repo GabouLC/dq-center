@@ -4,11 +4,20 @@
 4 historias · **Incremento:** commit [`565aa0a`](https://github.com/GabouLC/dq-center/commit/565aa0a) ·
 **Milestone:** [Sprint 2](https://github.com/GabouLC/dq-center/milestone/3)
 
-## 1. Planificación
+## 1. Sprint Planning
+
+**Fecha, duración y asistentes:** completar con el calendario del equipo.
+
+### ¿Por qué es valioso este sprint? · Objetivo del sprint
 
 **Objetivo del sprint.** Que cada corte salga del pipeline con un veredicto: reglas de Nivel 2
 y 3, certificación en tres estados, Quality & Privacy Gate y publicación en BUSINESS solo de
 lo certificado.
+
+**Valor.** Al cerrar el sprint, cada tabla de cada corte tiene un veredicto con su porqué, y
+BUSINESS expone solo lo que pasó el Gate: el negocio deja de consumir datos sin revisar.
+
+### ¿Qué se puede terminar? · Historias seleccionadas
 
 **Capacidad.** Velocidad sugerida de 20 a 24 SP; el Sprint 1 cerró 22. Se comprometen 21.
 
@@ -32,31 +41,44 @@ confirman con el equipo.
 
 **Fuera del sprint.** El portal, el acceso por rol y el rendimiento (Sprint 3).
 
-## 2. Sprint backlog
+### ¿Cómo se hará? · Plan de trabajo
 
-**HU-03 · Reglas N2 y N3**
+Se completan primero los niveles N2 y N3 del motor, luego la certificación sobre sus
+resultados, después la revisión de privacidad que convierte la certificación en el Gate, y al
+final la publicación. El manifiesto de errores sembrados se extiende a la etapa de privacidad
+para que el Gate tenga la misma prueba de aceptación que el motor.
+
+## 2. Sprint Backlog
+
+Las tareas de cada historia, con su responsable. Al cierre del sprint el tablero quedó así:
+
+| Por hacer | En curso | Hechas |
+|---|---|---|
+| 0 | 0 | 14 tareas de 4 historias |
+
+**HU-03 · Reglas N2 y N3** · Franco Delgado
 - [x] Reglas de consistencia e integridad (N2) y de oportunidad y volumetría (N3); el nivel sale de la dimensión (`NIVEL_POR_DIMENSION` en `src/dqc/modelo.py`)
 - [x] Cada resultado lleva su dominio, Póliza o Persona (`DOMINIO_POR_TABLA`)
 - [x] Validación de una regla antes de guardarla: tipo, campos y umbral (`src/dqc/motor/reglas.py`)
 - [x] Reglas en Firestore, con la versión del catálogo en cada ejecución
 
-**HU-04 · Certificación**
+**HU-04 · Certificación** · Franco Delgado
 - [x] Tres estados: Certificado, Certificado con observaciones y No certificado (`src/dqc/motor/certificacion.py`)
 - [x] Una regla CRÍTICA o ALTA en FALLA bloquea; una MEDIA o una ALERTA quedan como observación
 - [x] Sello por tabla y corte con versión del motor, versión de reglas y cobertura (`dq_engine.certificaciones`)
 
-**HU-07 · Quality & Privacy Gate**
+**HU-07 · Quality & Privacy Gate** · Franco Delgado
 - [x] Revisión de privacidad: DNI, celulares o correos en claro fuera de los campos cifrados, campos PII sin cifrar y columnas nuevas sin clasificar (`src/dqc/pipeline/privacidad.py`)
 - [x] Hallazgos guardados como evidencia (`dq_engine.hallazgos_privacidad`)
 - [x] Un hallazgo bloqueante impide certificar aunque la calidad esté bien
 - [x] Flujo por corte: ingesta, homologación, motor, privacidad, certificación y publicación (`src/dqc/pipeline/flujo.py`)
 
-**HU-08 · Publicación en BUSINESS**
+**HU-08 · Publicación en BUSINESS** · Franco Delgado
 - [x] Tablas `p_<tabla>` solo con cortes certificados y vistas `v_<tabla>` con el último certificado (`src/dqc/pipeline/publicacion.py`)
 - [x] Vistas de contrato `v_calidad_*`, la única interfaz del portal con los resultados
 - [x] Corrida completa en BigQuery: las mismas tablas y vistas en `dq_business`
 
-## 3. Seguimiento
+## 3. Seguimiento · Daily Scrum
 
 **Impedimentos registrados**
 
@@ -69,9 +91,18 @@ confirman con el equipo.
 **Burndown.** Igual que en el Sprint 1, el incremento entró en un solo commit (`565aa0a`). La
 línea diaria se registra con [plantillas.md](plantillas.md). Resultado: 21 de 21 SP, sin arrastre.
 
-**Dailies.** Se registran con el acta de [plantillas.md](plantillas.md).
+**Registro de Daily Scrum.** Una fila por daily; el acta completa de cada una va con el formato
+de [plantillas.md](plantillas.md).
 
-## 4. Revisión
+| Daily | Fecha | Avance del equipo | Impedimentos nuevos |
+|---|---|---|---|
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
+
+## 4. Sprint Review e Incremento
 
 **Incremento.** Cada uno de los 6 cortes recibe un sello por tabla. Matriz resultante, igual
 en DuckDB y en BigQuery:
@@ -127,9 +158,29 @@ manifiesto da 0 diferencias también en la etapa de privacidad
 | Los datos se publican en las vistas de BUSINESS | `test_las_vistas_de_contrato_responden`, `test_business_no_expone_pii_en_claro` | 5 tablas `p_`, 5 vistas `v_` y 8 vistas `v_calidad_*` ([bigquery.txt](../evidencias/bigquery.txt)) |
 | El portal accede únicamente a BUSINESS | `test_el_portal_solo_lee_la_capa_business` ([test_api.py](../../tests/test_api.py)) | `src/dqc/api/datos.py` lee solo vistas `v_calidad_*` |
 
-**Comentarios de la revisión:** completar con la plantilla de [plantillas.md](plantillas.md).
+### Definition of Done por historia
 
-## 5. Retrospectiva (borrador con los hechos del sprint)
+| Criterio de la Definition of Done | HU-03 | HU-04 | HU-07 | HU-08 |
+|---|---|---|---|---|
+| Código en `main` y CI en verde | Sí | Sí | Sí | Sí |
+| Cada criterio de aceptación con prueba automatizada | 4 de 4, más el detalle de dominios | 4 de 4 | 4 de 4 | 4 de 4 |
+| 0 diferencias contra el manifiesto | Reglas | No aplica: la matriz se verifica con `test_matriz_de_certificacion` | Privacidad | No aplica |
+| Desvíos del documento de arquitectura en un ADR | [0004](../adr/0004-evaluacion-sql.md) | No hubo | [0006](../adr/0006-capas-y-privacy-gate.md), [0007](../adr/0007-pii-solo-en-memoria.md) | No hubo: mantiene las vistas de contrato del documento |
+| Evidencia en `docs/evidencias` | Sí | Sí | Sí | Sí |
+| Issue cerrado y enlazado a su evidencia | [#3](https://github.com/GabouLC/dq-center/issues/3) | [#4](https://github.com/GabouLC/dq-center/issues/4) | [#7](https://github.com/GabouLC/dq-center/issues/7) | [#8](https://github.com/GabouLC/dq-center/issues/8) |
+
+Las cuatro historias cumplen la Definition of Done: forman el incremento del Sprint 2.
+
+### Reunión de revisión
+
+- **Fecha y asistentes:** completar.
+- **Historias demostradas y aceptadas:** las cuatro, con la matriz de certificación de la sección 4.
+- **Comentarios de los interesados:** completar con la plantilla de [plantillas.md](plantillas.md).
+
+**Product Backlog tras la revisión.** Sin historias nuevas. Siguen, en orden: HU-13, HU-09,
+HU-12, HU-11, HU-10 y HU-15 (Sprint 3).
+
+## 5. Sprint Retrospective (borrador con los hechos del sprint)
 
 | Funcionó | Por mejorar |
 |---|---|
