@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { EyeOff, GitCompareArrows, Lock, X } from 'lucide-vue-next'
+import { EyeOff, FilterX, GitCompareArrows, Lock, ShieldCheck, X } from 'lucide-vue-next'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BarraCumplimiento from '@/componentes/BarraCumplimiento.vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { mensajeDeError, usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_SEVERIDAD, NOMBRE_TABLA, num, pct, signo, TABLAS } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -42,7 +45,8 @@ const ruta = useRoute()
 const filtroTabla = ref(String(ruta.query.tabla ?? ''))
 const filtroNivel = ref('')
 const filtroEstado = ref('')
-const compararCon = ref('')
+// ?comparar=AAAA-MM-DD (desde la lectura rápida del Resumen) abre la comparación con ese día.
+const compararCon = ref(typeof ruta.query.comparar === 'string' ? ruta.query.comparar : '')
 // Atajos para comparar: el día anterior, una semana antes y el inicio del período.
 const atajos = computed(() => {
   const i = cortes.lista.findIndex((c) => c.fecha_corte === cortes.elegido)
@@ -132,15 +136,28 @@ const etiqueta = (clave: string | number) => {
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
 const oculto = (v: unknown) => String(v).startsWith('••••')
+const quitarFiltros = () => {
+  filtroTabla.value = ''
+  filtroNivel.value = ''
+  filtroEstado.value = ''
+}
+
+const LECTURA: Clave[] = [
+  { muestras: ['umbral'], texto: 'La barra es el % de registros que cumplen la regla (escala de 90 a 100 %); la línea vertical, el umbral que debe alcanzar.' },
+  { muestras: ['bien', 'aviso', 'critico'], texto: 'Cumple: llega al umbral. Alerta: hasta 2 puntos por debajo. Falla: más de 2 puntos por debajo.' },
+  { texto: 'Severidad: si una regla Crítica o Alta queda en Falla, su tabla no se certifica ese día.' },
+  { texto: 'Nivel: N1 revisa cada campo, N2 las reglas del negocio y N3 la carga completa (si llegó a tiempo y con el volumen esperado).' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Validaciones</h1>
-        <p>Cada regla del día elegido contra su umbral (la línea vertical). Primero las más graves; elige una para ver sus registros fallidos.</p>
-      </div>
+    <EncabezadoSeccion
+      modulo="validaciones"
+      titulo="Validaciones"
+      subtitulo="Cada regla del día elegido contra su umbral, de la más grave a la más leve. Elige una para ver sus registros fallidos."
+      :lectura="LECTURA"
+    >
       <label class="fila comparar">
         <GitCompareArrows :size="17" />
         <select v-model="compararCon" aria-label="Comparar con otro día">
@@ -155,7 +172,7 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
           </optgroup>
         </select>
       </label>
-    </div>
+    </EncabezadoSeccion>
 
     <div class="filtros">
       <div class="segmentos" role="group" aria-label="Tabla">
@@ -180,7 +197,13 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
         <button type="button" class="fantasma" @click="compararCon = ''"><X :size="16" /> Cerrar</button>
       </div>
       <BloqueCarga :cargando="comparacion.cargando.value" :error="comparacion.error.value" :vacio="!comparacion.datos.value" @reintentar="comparacion.recargar">
-        <p v-if="!empeoradas.length" class="aviso-caja bien">Ninguna regla empeoró entre esos días.</p>
+        <EstadoVacio
+          v-if="!empeoradas.length"
+          tono="bien"
+          :icono="ShieldCheck"
+          titulo="Ninguna regla empeoró entre esos días"
+          texto="Si alguna bajara su cumplimiento, aparecería aquí con el antes, el ahora y el cambio de estado."
+        />
         <div v-else class="tabla-envoltura">
           <table>
             <thead>
@@ -233,7 +256,14 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
             </tbody>
           </table>
         </div>
-        <p v-if="!reglas.length" class="tenue vacio">Ninguna regla con esos filtros. Prueba con "Todos".</p>
+        <EstadoVacio
+          v-if="!reglas.length"
+          :icono="FilterX"
+          titulo="Ninguna regla con esos filtros"
+          texto="En este día no hay reglas de esa tabla, nivel y estado a la vez. Quita algún filtro para ver las demás."
+        >
+          <button type="button" @click="quitarFiltros"><FilterX :size="15" aria-hidden="true" /> Quitar filtros</button>
+        </EstadoVacio>
       </section>
     </BloqueCarga>
 
@@ -273,7 +303,10 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
         <template v-if="elegida.fallidos">
           <h3>Registros fallidos</h3>
           <p v-if="errorFallidos" class="aviso-caja error" role="alert">{{ errorFallidos }}</p>
-          <p v-else-if="!fallidos" class="tenue">Cargando…</p>
+          <div v-else-if="!fallidos" class="pila-chica" role="status">
+            <span class="visualmente-oculto">Cargando los registros fallidos…</span>
+            <span v-for="a in ['100%', '86%', '92%', '70%']" :key="a" class="esqueleto" :style="{ width: a, height: '14px' }" aria-hidden="true" />
+          </div>
           <template v-else>
             <p v-if="fallidos.campos_restringidos.length" class="aviso-caja">
               <EyeOff :size="17" />
@@ -316,7 +349,6 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
 .severidad.ALTA { color: var(--aviso-texto); }
 .baja { color: var(--critico-texto); font-weight: 700; }
 .nowrap { flex-wrap: nowrap; }
-.vacio { padding: 18px; }
 .pequeno { font-size: 12.5px; }
 .cajon {
   position: fixed;

@@ -3,10 +3,13 @@ import { Fingerprint, Lock, LockOpen, ShieldAlert, ShieldCheck, Stamp, TriangleA
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import MapaDias from '@/componentes/MapaDias.vue'
 import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -63,21 +66,25 @@ function conteoNivel(t: Tabla, n: string): string {
   if (SIN_DATOS) partes.push(`${SIN_DATOS} sin datos`)
   return partes.join(' · ')
 }
+
+const LECTURA: Clave[] = [
+  { muestras: ['bien', 'aviso', 'critico'], texto: 'El sello resume el veredicto de la tabla ese día: Certificada, Con observaciones o No certificada. Solo las dos primeras se publican en BUSINESS.' },
+  { muestras: ['bien', 'aviso', 'critico', 'neutro'], texto: 'Las barras N1, N2 y N3 reparten las reglas de cada nivel por estado: cumplen, en alerta, fallan o sin datos. El texto debajo da los números.' },
+  { muestras: ['candado'], texto: 'Privacidad: un candado morado es un dato personal guardado cifrado; uno rojo abierto, un dato personal sin cifrar, que retiene la tabla.' },
+  { muestras: ['critico'], texto: 'Arriba, el mapa muestra el sello de cada tabla en todos los días; clic en un cuadro para ver ese día.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Certificación</h1>
-        <p>
-          Cada día, el control de calidad y privacidad (Quality &amp; Privacy Gate) revisa cada tabla. Si falla una regla
-          crítica o alta, o aparecen datos personales sin cifrar, la tabla no se certifica ni se publica en BUSINESS.
-        </p>
-      </div>
-    </div>
+    <EncabezadoSeccion
+      modulo="certificacion"
+      titulo="Certificación"
+      subtitulo="Cada día, el control de calidad y privacidad (Quality & Privacy Gate) revisa cada tabla. Una regla crítica o alta en falla, o datos personales sin cifrar, la retienen: no se publica en BUSINESS."
+      :lectura="LECTURA"
+    />
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="tarjetas" @reintentar="recargar">
       <template v-if="datos">
         <section class="panel pila">
           <h2>Certificación día por día</h2>
@@ -147,6 +154,13 @@ function conteoNivel(t: Tabla, n: string): string {
             <RouterLink :to="`/linaje/${t.tabla}`" class="fila enlace"><Workflow :size="16" /> Ver su linaje</RouterLink>
           </section>
         </article>
+        <section v-if="!datos.tablas.length" class="panel">
+          <EstadoVacio
+            :icono="Stamp"
+            titulo="Este día todavía no tiene certificación"
+            texto="Cada tabla recibe su sello cuando llegan sus archivos y el motor termina de evaluarla. Elige otro día en la línea de arriba."
+          />
+        </section>
       </template>
     </BloqueCarga>
   </div>

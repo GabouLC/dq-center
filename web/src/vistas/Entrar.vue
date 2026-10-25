@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { CircleAlert, Info, LoaderCircle, LogIn, Mail } from 'lucide-vue-next'
+import { CircleAlert, Eye, Info, LoaderCircle, Lock, LogIn, Mail, Users } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CampoClave from '@/componentes/CampoClave.vue'
 import Sello from '@/componentes/Sello.vue'
+import ViajeDatos from '@/componentes/ViajeDatos.vue'
 import { firebaseConfigurado } from '@/servicios/firebase'
 import { useSesion } from '@/stores/sesion'
 
@@ -60,12 +61,17 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
         <strong>Smart-DQ</strong>
       </div>
       <div class="sellos" aria-hidden="true">
-        <Sello estado="CERTIFICADO" tabla="Póliza" :tamano="150" />
-        <Sello estado="CERTIFICADO_CON_OBSERVACIONES" tabla="Persona" :tamano="120" />
-        <Sello estado="NO_CERTIFICADO" tabla="Siniestro" :tamano="104" />
+        <Sello estado="CERTIFICADO" tabla="Póliza" :tamano="128" />
+        <Sello estado="CERTIFICADO_CON_OBSERVACIONES" tabla="Persona" :tamano="106" />
+        <Sello estado="NO_CERTIFICADO" tabla="Siniestro" :tamano="92" />
       </div>
       <h1>Cada dato llega a negocio certificado en calidad y privacidad.</h1>
-      <p>Ingesta validada, datos personales cifrados y certificación diaria, de RAW a BUSINESS.</p>
+      <ViajeDatos tono="oscuro" :retraso="700" repetible class="viaje" />
+      <ul class="puntos">
+        <li><span class="icono-punto" aria-hidden="true"><Eye :size="17" /></span>Ves, día por día, si cada tabla pasó el control y qué regla falló.</li>
+        <li><span class="icono-punto" aria-hidden="true"><Lock :size="17" /></span>Los datos personales se guardan cifrados: el portal nunca los muestra en claro.</li>
+        <li><span class="icono-punto" aria-hidden="true"><Users :size="17" /></span>Para negocio, gobierno de datos y administración, cada uno con su rol.</li>
+      </ul>
     </section>
 
     <section class="acceso">
@@ -139,11 +145,19 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
   overflow: hidden;
 }
 .marca { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; position: absolute; top: 36px; left: 56px; }
-.sellos { display: flex; align-items: flex-end; gap: 4px; margin-bottom: 8px; }
+.sellos { display: flex; align-items: flex-end; gap: 4px; }
 .sellos :deep(figcaption) { color: #dbe5f3; }
 .sellos :deep(figcaption span) { color: #b9c7dc !important; }
-.presentacion h1 { color: #fff; font-size: 36px; max-width: 18ch; letter-spacing: -0.03em; }
-.presentacion p { font-size: 16px; max-width: 46ch; color: #b9c7dc; }
+/* Al entrar, los tres sellos se estampan uno tras otro; después, el archivo recorre la franja. */
+.sellos > * { animation: estampar 0.42s var(--ease-out) backwards; }
+.sellos > :nth-child(2) { animation-delay: 0.12s; }
+.sellos > :nth-child(3) { animation-delay: 0.24s; }
+@keyframes estampar { from { opacity: 0; transform: scale(1.18) rotate(-8deg); } }
+.presentacion h1 { color: #fff; font-size: 34px; max-width: 19ch; letter-spacing: -0.03em; }
+.viaje { max-width: 520px; padding: 16px 8px 4px; border-radius: 16px; background: rgb(255 255 255 / 0.04); border: 1px solid rgb(255 255 255 / 0.08); }
+.puntos { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 48ch; }
+.puntos li { display: flex; align-items: center; gap: 12px; font-size: 15px; line-height: 1.45; color: #dbe5f3; }
+.icono-punto { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: #18304f; color: #6cb2ff; }
 .acceso { display: grid; place-items: center; padding: 32px 20px; }
 .caja { width: min(400px, 100%); display: grid; gap: 18px; }
 .titulo { display: grid; gap: 4px; }
@@ -161,9 +175,14 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
 }
 @media (max-width: 900px) {
   .entrada { grid-template-columns: 1fr; }
-  .presentacion { padding: 84px 22px 32px; }
+  .presentacion { padding: 84px 22px 32px; gap: 18px; }
   .marca { left: 22px; top: 26px; }
-  .presentacion h1 { font-size: 27px; }
-  .sellos :deep(svg) { max-width: 90px; height: auto; }
+  .presentacion h1 { font-size: 26px; }
+  /* En el teléfono, lo justo para que el formulario quede a la vista: la frase y los tres puntos. */
+  .sellos, .viaje { display: none; }
+  .puntos li { font-size: 14px; }
+}
+@media (max-height: 760px) and (min-width: 901px) {
+  .sellos { display: none; }
 }
 </style>

@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { CircleAlert, RotateCw } from 'lucide-vue-next'
 
-/** Carga: mientras recarga, el contenido anterior queda atenuado (sin parpadeos ni saltos). */
-defineProps<{ cargando: boolean; error: string | null; vacio?: boolean }>()
+/**
+ * Carga: la primera vez muestra la forma de lo que viene (esqueleto); al llegar, los bloques
+ * entran escalonados. Mientras recarga, el contenido anterior queda atenuado (sin parpadeos).
+ * `forma` elige el esqueleto que más se parece a la vista.
+ */
+withDefaults(defineProps<{ cargando: boolean; error: string | null; vacio?: boolean; forma?: 'tabla' | 'tarjetas' | 'resumen' | 'lista' }>(), {
+  forma: 'tabla',
+})
 defineEmits<{ reintentar: [] }>()
+const ANCHOS = ['92%', '78%', '86%', '64%', '88%', '72%']
 </script>
 
 <template>
@@ -12,21 +19,57 @@ defineEmits<{ reintentar: [] }>()
     <span class="mensaje">No pudimos cargar estos datos: {{ error }}</span>
     <button type="button" @click="$emit('reintentar')"><RotateCw :size="15" /> Reintentar</button>
   </div>
-  <div v-else-if="cargando && vacio" class="cargando" aria-live="polite">
-    <span class="punto" /><span class="punto" /><span class="punto" />
-    <span class="tenue">Cargando…</span>
+  <div v-else-if="cargando && vacio" class="esqueletos" role="status">
+    <span class="visualmente-oculto">Cargando…</span>
+    <template v-if="forma === 'resumen'">
+      <div class="panel fila-esq" aria-hidden="true">
+        <span class="esqueleto circulo" style="width: 64px; height: 64px" />
+        <span class="pila-chica crece"><span class="esqueleto" style="width: 58%; height: 20px" /><span class="esqueleto" style="width: 82%; height: 13px" /></span>
+      </div>
+      <div class="panel fila-esq alto" aria-hidden="true">
+        <span class="pila-chica" style="width: 220px"><span class="esqueleto" style="width: 70%; height: 12px" /><span class="esqueleto" style="width: 60%; height: 52px" /></span>
+        <span v-for="i in 5" :key="i" class="esqueleto circulo" style="width: 96px; height: 96px" />
+      </div>
+      <div class="tres" aria-hidden="true"><span v-for="i in 3" :key="i" class="esqueleto" style="height: 86px; border-radius: 12px" /></div>
+    </template>
+    <template v-else-if="forma === 'tarjetas'">
+      <div v-for="i in 3" :key="i" class="panel fila-esq" aria-hidden="true">
+        <span class="esqueleto circulo" style="width: 72px; height: 72px" />
+        <span class="pila-chica crece"><span class="esqueleto" style="width: 30%; height: 16px" /><span class="esqueleto" :style="{ width: ANCHOS[i], height: '12px' }" /><span class="esqueleto" style="width: 44%; height: 12px" /></span>
+      </div>
+    </template>
+    <div v-else-if="forma === 'lista'" class="panel pila-chica" aria-hidden="true">
+      <span v-for="(a, i) in ANCHOS" :key="i" class="fila-esq">
+        <span class="esqueleto circulo" style="width: 32px; height: 32px" />
+        <span class="pila-chica crece"><span class="esqueleto" :style="{ width: a, height: '13px' }" /><span class="esqueleto" style="width: 36%; height: 11px" /></span>
+      </span>
+    </div>
+    <div v-else class="panel pila-chica" aria-hidden="true">
+      <span class="esqueleto" style="width: 28%; height: 14px; margin-bottom: 8px" />
+      <span v-for="(a, i) in ANCHOS" :key="i" class="fila-tabla">
+        <span class="esqueleto" style="width: 90px; height: 12px" />
+        <span class="esqueleto" :style="{ width: a, height: '12px' }" />
+        <span class="esqueleto" style="width: 64px; height: 18px; border-radius: 999px" />
+      </span>
+    </div>
   </div>
-  <div v-else class="pila" :class="{ recargando: cargando }">
+  <div v-else class="pila escalonado" :class="{ recargando: cargando }">
     <slot />
   </div>
 </template>
 
 <style scoped>
 .mensaje { flex: 1; }
-.cargando { display: flex; gap: 6px; align-items: center; justify-content: center; padding: 56px 0; }
-.punto { width: 8px; height: 8px; border-radius: 50%; background: var(--marca); animation: latido 1s infinite ease-in-out; }
-.punto:nth-child(2) { animation-delay: 0.15s; }
-.punto:nth-child(3) { animation-delay: 0.3s; }
-@keyframes latido { 0%, 100% { opacity: 0.25; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+.esqueletos { display: grid; gap: 18px; }
+.fila-esq { display: flex; align-items: center; gap: 16px; }
+.fila-esq.alto { gap: 22px; flex-wrap: wrap; padding: 26px 20px; }
+.crece { flex: 1; }
+.circulo { border-radius: 50%; flex: none; }
+.tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fila-tabla { display: grid; grid-template-columns: 90px 1fr 64px; gap: 18px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--linea); }
 .recargando { opacity: 0.55; transition: opacity 0.15s; }
+@media (max-width: 760px) {
+  .tres { grid-template-columns: 1fr; }
+  .fila-esq.alto .circulo:nth-of-type(n + 4) { display: none; }
+}
 </style>

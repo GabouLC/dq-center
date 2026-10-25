@@ -25,6 +25,21 @@ export const corte = (iso: string) => diaLargo.format(new Date(`${iso}T00:00:00Z
 export const corteCorto = (iso: string) => diaCorto.format(new Date(`${iso}T00:00:00Z`))
 /** "2026-07-14" -> "mar., 14 jul." */
 export const corteMedio = (iso: string) => diaMedio.format(new Date(`${iso}T00:00:00Z`))
+const partesDia = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+function partes(iso: string): Record<string, string> {
+  return Object.fromEntries(partesDia.formatToParts(new Date(`${iso}T00:00:00Z`)).map((p) => [p.type, p.value]))
+}
+/** "2026-07-14" -> "Martes 14 de julio" (para frases) */
+export function diaEnFrase(iso: string): string {
+  const p = partes(iso)
+  const texto = `${p.weekday} ${p.day} de ${p.month}`
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+/** "2026-07-13" -> "lunes 13" */
+export function diaDeSemana(iso: string): string {
+  const p = partes(iso)
+  return `${p.weekday} ${p.day}`
+}
 /** Fin de semana: los sistemas de origen casi no generan movimiento. */
 export const esFinDeSemana = (iso: string) => [0, 6].includes(new Date(`${iso}T00:00:00Z`).getUTCDay())
 /** "hace 3 min", "hace 20 s" */

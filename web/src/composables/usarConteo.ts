@@ -1,8 +1,8 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
 
 /**
- * Número que sube hasta su valor (el único movimiento automático del portal).
- * Con "reducir movimiento" activado, muestra el valor final de inmediato.
+ * Número que sube (o baja) hasta su valor: al cargar y cada vez que cambia, por ejemplo al
+ * elegir otro día. Con "reducir movimiento" activado, muestra el valor final de inmediato.
  */
 export function usarConteo(objetivo: Ref<number | null | undefined>, duracionMs = 900) {
   const valor = ref<number | null>(null)

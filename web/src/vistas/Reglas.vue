@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Plus, Search, X } from 'lucide-vue-next'
+import { CircleCheck, CircleX, Plus, Search, SearchX, X } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { hora, NOMBRE_DIMENSION, NOMBRE_SEVERIDAD, NOMBRE_TABLA, TABLAS } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 
 type Regla = {
@@ -89,22 +92,27 @@ const necesita = (campo: string) =>
     cumple: ['expresion'],
     ref: ['referencia'],
   })[campo]?.includes(nueva.tipo) ?? false
+
+const LECTURA: Clave[] = [
+  { muestras: ['bien'], texto: 'Cada fila es una regla del catálogo. El interruptor la activa o la desactiva; una regla inactiva no se evalúa.' },
+  { muestras: ['umbral'], texto: 'El umbral es el % mínimo de registros que deben cumplirla. Hasta 2 puntos por debajo queda en Alerta; más abajo, en Falla.' },
+  { texto: 'Severidad: si una regla Crítica o Alta falla, su tabla no se certifica. Media: solo deja una observación.' },
+  { texto: 'Los cambios se aplican en la próxima ejecución; para ver su efecto hoy, vuelve a evaluar el día en Ejecuciones.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Reglas</h1>
-        <p>
-          El catálogo de calidad, editable sin tocar código. Antes de guardar, la API valida la regla y compila su SQL contra el
-          último corte, es decir, el último día de datos (HU-03).
-        </p>
-      </div>
+    <EncabezadoSeccion
+      modulo="reglas"
+      titulo="Reglas"
+      subtitulo="El catálogo de calidad, editable sin tocar código. Antes de guardar, la API valida la regla y compila su SQL contra el último día de datos (HU-03)."
+      :lectura="LECTURA"
+    >
       <button type="button" class="primario" @click="creando = !creando">
         <component :is="creando ? X : Plus" :size="16" /> {{ creando ? 'Cancelar' : 'Nueva regla' }}
       </button>
-    </div>
+    </EncabezadoSeccion>
 
     <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" :role="mensaje.tipo === 'error' ? 'alert' : 'status'">
       <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
@@ -194,6 +202,14 @@ const necesita = (campo: string) =>
             </tbody>
           </table>
         </div>
+        <EstadoVacio
+          v-if="!reglas.length"
+          :icono="SearchX"
+          titulo="Ninguna regla coincide"
+          :texto="filtro ? `No hay reglas que contengan «${filtro}» en esa tabla. Revisa la palabra o elige «Todas las reglas».` : 'Esta tabla todavía no tiene reglas. Crea una con «Nueva regla».'"
+        >
+          <button type="button" @click="(filtro = ''), (filtroTabla = '')">Ver todas las reglas</button>
+        </EstadoVacio>
       </section>
     </BloqueCarga>
   </div>

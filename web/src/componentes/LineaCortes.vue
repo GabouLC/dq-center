@@ -106,10 +106,12 @@ function teclado(e: KeyboardEvent) {
 @keyframes latido { 50% { opacity: 0.25; } }
 .meses { position: absolute; left: 6px; right: 6px; bottom: 1px; height: 12px; }
 .meses span { position: absolute; font-size: 10px; font-weight: 700; color: var(--tenue); text-transform: capitalize; }
-.elegido { display: grid; line-height: 1.2; min-width: 0; margin-left: 4px; }
+.elegido { display: grid; line-height: 1.2; flex-shrink: 0; margin-left: 4px; }
 .elegido strong { font-size: 13.5px; white-space: nowrap; text-transform: capitalize; }
 .detalle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--tenue); font-weight: 600; white-space: nowrap; }
 .bien { color: var(--bien); }
 .critico { color: var(--critico); }
+/* En pantallas medianas la franja se angosta para que el día elegido se lea completo. */
+@media (max-width: 1500px) { .linea { --paso: 4px; } .dia { width: 3px; } }
 @media (max-width: 1180px) { .franja { display: none; } }
 </style>

@@ -1,47 +1,87 @@
 <script setup lang="ts">
-import {
-  BadgeCheck, BookOpen, Database, FileText, KeyRound, LayoutDashboard, ListChecks, LogOut, Menu, Moon, PlayCircle,
-  ScrollText, SlidersHorizontal, Sun, Users, Workflow, X,
-} from 'lucide-vue-next'
+import { CircleHelp, KeyRound, LogOut, Menu, Moon, Sun, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import IndicadorVivo from '@/componentes/IndicadorVivo.vue'
 import LineaCortes from '@/componentes/LineaCortes.vue'
-import { useSesion } from '@/stores/sesion'
+import RecorridoGuiado from '@/componentes/RecorridoGuiado.vue'
+import { GRUPOS, MODULOS } from '@/navegacion'
+import { useRecorrido } from '@/stores/recorrido'
+import { useSesion, type Modulo } from '@/stores/sesion'
 import { useTema } from '@/stores/tema'
 import { useVivo } from '@/stores/vivo'
 
 const sesion = useSesion()
 const tema = useTema()
 const vivo = useVivo()
+const recorrido = useRecorrido()
 // La simulación en vivo se consulta mientras haya sesión.
 watch(() => sesion.activa, (activa) => (activa ? vivo.iniciar() : vivo.detener()), { immediate: true })
 const ruta = useRoute()
 const router = useRouter()
 const menuAbierto = ref(false)
-watch(() => ruta.fullPath, () => (menuAbierto.value = false))
+watch(() => ruta.fullPath, () => {
+  menuAbierto.value = false
+  ocultarAyuda(true)
+})
 
-const ICONOS: Record<string, unknown> = {
-  resumen: LayoutDashboard,
-  validaciones: ListChecks,
-  certificacion: BadgeCheck,
-  fuentes: Database,
-  contratos: FileText,
-  linaje: Workflow,
-  glosario: BookOpen,
-  reglas: SlidersHorizontal,
-  ejecuciones: PlayCircle,
-  usuarios: Users,
-  auditoria: ScrollText,
+// Primera visita al Resumen: recorrido guiado (una vez por usuario).
+watch(
+  () => [sesion.activa, sesion.debeCambiar, ruta.path] as const,
+  ([activa, debeCambiar, camino]) => {
+    if (activa && !debeCambiar && camino === '/resumen') recorrido.abrirSiEsPrimeraVez()
+  },
+  { immediate: true },
+)
+
+// Menú agrupado por objetivo; los módulos (y sus nombres) los decide la API según el rol.
+type GrupoNav = { clave: string; nombre: string; modulos: Modulo[] }
+const grupos = computed<GrupoNav[]>(() => {
+  const lista: GrupoNav[] = GRUPOS.map((g) => ({
+    clave: g.clave,
+    nombre: g.nombre,
+    modulos: sesion.modulos.filter((m) => MODULOS[m.clave]?.grupo === g.clave),
+  }))
+  const otros = sesion.modulos.filter((m) => !MODULOS[m.clave])
+  if (otros.length) lista.push({ clave: 'otros', nombre: 'Otros', modulos: otros })
+  return lista.filter((g) => g.modulos.length)
+})
+
+// Para qué sirve cada opción: globo al pasar el puntero o al llegar con el teclado (escritorio).
+// El primero espera un poco (no salta al pasar de largo); los siguientes aparecen al instante.
+const ayuda = ref<{ texto: string; top: number; left: number } | null>(null)
+let esperaAyuda = 0
+let esperaOcultar = 0
+function mostrarAyuda(clave: string, evento: Event, inmediata = false) {
+  const texto = MODULOS[clave]?.descripcion
+  if (!texto || window.matchMedia('(max-width: 960px)').matches) return
+  const enlace = evento.currentTarget as HTMLElement
+  clearTimeout(esperaAyuda)
+  clearTimeout(esperaOcultar)
+  const poner = () => {
+    const r = enlace.getBoundingClientRect()
+    const lateral = enlace.closest('.lateral')?.getBoundingClientRect()
+    ayuda.value = { texto, top: r.top + r.height / 2, left: (lateral?.right ?? r.right) + 8 }
+  }
+  if (inmediata || ayuda.value) poner()
+  else esperaAyuda = window.setTimeout(poner, 350)
 }
-const ADMIN = new Set(['reglas', 'ejecuciones', 'usuarios', 'auditoria'])
-const consulta = computed(() => sesion.modulos.filter((m) => !ADMIN.has(m.clave)))
-const administracion = computed(() => sesion.modulos.filter((m) => ADMIN.has(m.clave)))
+function alEnfocar(clave: string, evento: FocusEvent) {
+  if ((evento.currentTarget as HTMLElement).matches(':focus-visible')) mostrarAyuda(clave, evento, true)
+}
+function ocultarAyuda(ya = false) {
+  clearTimeout(esperaAyuda)
+  clearTimeout(esperaOcultar)
+  if (ya) ayuda.value = null
+  else esperaOcultar = window.setTimeout(() => (ayuda.value = null), 90)
+}
 
 const publica = computed(() => ruta.meta.publica === true)
 const conCorte = computed(() => ['resumen', 'validaciones', 'certificacion'].includes(String(ruta.meta.modulo)))
 const NOMBRE_ROL: Record<string, string> = { admin: 'Administrador', gobierno: 'Gobierno de datos', lector: 'Lector' }
 const iniciales = computed(() => (sesion.perfil?.email ?? '?').slice(0, 2).toUpperCase())
+// La vista se reutiliza al cambiar solo el parámetro (otra tabla en Linaje, otro término en el Glosario).
+const claveVista = computed(() => String(ruta.meta.modulo ?? ruta.path))
 
 async function salir() {
   await sesion.cerrar()
@@ -71,33 +111,57 @@ function irAlContenido() {
         </div>
         <button type="button" class="icono cerrar-menu" aria-label="Cerrar menú" @click="menuAbierto = false"><X :size="18" /></button>
       </div>
-      <nav aria-label="Módulos">
-        <RouterLink v-for="m in consulta" :key="m.clave" :to="`/${m.clave}`">
-          <component :is="ICONOS[m.clave]" :size="18" :stroke-width="2" aria-hidden="true" />
-          {{ m.nombre }}
-        </RouterLink>
-        <template v-if="administracion.length">
-          <span class="grupo">Administración</span>
-          <RouterLink v-for="m in administracion" :key="m.clave" :to="`/${m.clave}`">
-            <component :is="ICONOS[m.clave]" :size="18" :stroke-width="2" aria-hidden="true" />
-            {{ m.nombre }}
+      <nav aria-label="Módulos" data-recorrido="menu">
+        <div v-for="g in grupos" :key="g.clave" class="grupo-nav" role="group" :aria-labelledby="`grupo-${g.clave}`">
+          <span :id="`grupo-${g.clave}`" class="grupo">{{ g.nombre }}</span>
+          <RouterLink
+            v-for="m in g.modulos"
+            :key="m.clave"
+            :to="`/${m.clave}`"
+            :aria-label="m.nombre"
+            :aria-describedby="MODULOS[m.clave] ? `desc-${m.clave}` : undefined"
+            @mouseenter="mostrarAyuda(m.clave, $event)"
+            @mouseleave="ocultarAyuda()"
+            @focus="alEnfocar(m.clave, $event)"
+            @blur="ocultarAyuda()"
+          >
+            <component :is="MODULOS[m.clave]?.icono" v-if="MODULOS[m.clave]" :size="18" :stroke-width="2" aria-hidden="true" />
+            <span class="textos">
+              <span>{{ m.nombre }}</span>
+              <span v-if="MODULOS[m.clave]" :id="`desc-${m.clave}`" class="descripcion">{{ MODULOS[m.clave].descripcion }}</span>
+            </span>
           </RouterLink>
-        </template>
+        </div>
       </nav>
       <div class="pie">
         <span>Aseguradora ficticia</span>
         <span>Datos sintéticos · USMP 2026-II</span>
       </div>
     </aside>
-    <div v-if="menuAbierto" class="velo" @click="menuAbierto = false" />
+    <Transition name="ayuda">
+      <div v-if="ayuda" class="ayuda-nav" :style="{ top: `${ayuda.top}px`, left: `${ayuda.left}px` }" aria-hidden="true">{{ ayuda.texto }}</div>
+    </Transition>
+    <Transition name="velo">
+      <div v-if="menuAbierto" class="velo" @click="menuAbierto = false" />
+    </Transition>
 
     <div class="principal">
       <header class="barra-superior">
-        <button type="button" class="icono abrir-menu" aria-label="Abrir menú" @click="menuAbierto = true"><Menu :size="20" /></button>
-        <LineaCortes v-if="conCorte" />
+        <button type="button" class="icono abrir-menu" aria-label="Abrir menú" data-recorrido="menu-movil" @click="menuAbierto = true"><Menu :size="20" /></button>
+        <LineaCortes v-if="conCorte" data-recorrido="linea" />
         <span v-else class="espacio" />
         <div class="fila acciones">
           <IndicadorVivo />
+          <button
+            id="boton-recorrido"
+            type="button"
+            class="icono fantasma"
+            aria-label="Ver recorrido"
+            title="Ver recorrido: qué muestra el portal y cómo se lee"
+            @click="recorrido.abrir()"
+          >
+            <CircleHelp :size="18" />
+          </button>
           <button
             type="button"
             class="icono fantasma"
@@ -123,11 +187,12 @@ function irAlContenido() {
       <main id="contenido" class="contenido" tabindex="-1">
         <RouterView v-slot="{ Component }">
           <Transition name="vista" mode="out-in">
-            <component :is="Component" :key="ruta.path" />
+            <component :is="Component" :key="claveVista" />
           </Transition>
         </RouterView>
       </main>
     </div>
+    <RecorridoGuiado v-if="sesion.activa && !sesion.debeCambiar" />
   </div>
 </template>
 
@@ -149,7 +214,9 @@ function irAlContenido() {
 .marca div { display: grid; line-height: 1.25; flex: 1; }
 .marca strong { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
 .marca span { font-size: 12px; color: var(--nav-tinta); }
-nav { display: grid; gap: 3px; }
+nav { display: grid; gap: 14px; }
+.grupo-nav { display: grid; gap: 2px; }
+.grupo { margin: 0 12px 4px; font-size: 11.5px; font-weight: 700; color: #8a9bb5; }
 nav a {
   display: flex;
   align-items: center;
@@ -160,14 +227,32 @@ nav a {
   font-weight: 600;
   font-size: 14px;
   text-decoration: none;
-  transition: background 0.12s, color 0.12s;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
-nav a:hover { background: var(--nav-2); color: #fff; }
+nav a svg { flex: none; }
+nav a:hover { background: var(--nav-2); color: #fff; text-decoration: none; }
 nav a.router-link-active { background: var(--nav-2); color: var(--nav-activo); box-shadow: inset 3px 0 0 var(--nav-acento); }
 nav a.router-link-active svg { color: var(--nav-acento); }
-.grupo { margin: 14px 12px 4px; font-size: 11.5px; font-weight: 700; color: #7f90ab; }
-.pie { margin-top: auto; display: grid; gap: 2px; font-size: 11.5px; color: #7f90ab; padding: 0 8px; }
+.textos { display: grid; min-width: 0; line-height: 1.3; }
+/* En escritorio la descripción la lee el lector de pantalla y se ve en el globo; en el menú móvil, debajo del nombre. */
+.descripcion { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.pie { margin-top: auto; display: grid; gap: 2px; font-size: 11.5px; color: #8a9bb5; padding: 0 8px; }
 .cerrar-menu, .abrir-menu, .velo { display: none; }
+
+.ayuda-nav {
+  position: fixed; z-index: 50; transform: translateY(-50%); pointer-events: none;
+  max-width: 240px; padding: 7px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 600; line-height: 1.35;
+  background: var(--tinta); color: var(--superficie); box-shadow: var(--sombra-alta);
+}
+.ayuda-nav::before {
+  content: ''; position: absolute; left: -4px; top: 50%; width: 9px; height: 9px; border-radius: 2px;
+  background: inherit; transform: translateY(-50%) rotate(45deg);
+}
+.ayuda-enter-active { transition: opacity 0.14s var(--ease-out), translate 0.14s var(--ease-out); }
+.ayuda-leave-active { transition: opacity 0.1s ease; }
+.ayuda-enter-from { opacity: 0; translate: -4px 0; }
+.ayuda-leave-to { opacity: 0; }
+
 .principal { min-width: 0; display: flex; flex-direction: column; }
 .barra-superior {
   display: flex;
@@ -215,8 +300,10 @@ nav a.router-link-active svg { color: var(--nav-acento); }
 }
 .saltar:focus { top: 12px; }
 
-.vista-enter-active, .vista-leave-active { transition: opacity 0.16s ease, transform 0.16s ease; }
-.vista-enter-from { opacity: 0; transform: translateY(6px); }
+/* Cambio de vista: la nueva entra con un leve deslizamiento; la anterior se va más rápido. */
+.vista-enter-active { transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); }
+.vista-leave-active { transition: opacity 0.12s ease; }
+.vista-enter-from { opacity: 0; transform: translateY(8px); }
 .vista-leave-to { opacity: 0; }
 
 @media (max-width: 960px) {
@@ -224,15 +311,20 @@ nav a.router-link-active svg { color: var(--nav-acento); }
   .lateral {
     position: fixed;
     inset: 0 auto 0 0;
-    width: 272px;
+    width: 286px;
     z-index: 30;
     transform: translateX(-100%);
     /* Cerrado no se ve ni recibe foco; visibility espera a que termine la animación. */
     visibility: hidden;
-    transition: transform 0.22s ease, visibility 0.22s;
+    transition: transform 0.26s var(--ease-out), visibility 0s linear 0.26s;
   }
-  .lateral.abierto { transform: none; visibility: visible; box-shadow: var(--sombra-alta); }
+  .lateral.abierto { transform: none; visibility: visible; box-shadow: var(--sombra-alta); transition-delay: 0s; }
   .velo { display: block; position: fixed; inset: 0; background: rgb(8 16 28 / 0.45); z-index: 25; }
+  .velo-enter-active, .velo-leave-active { transition: opacity 0.22s ease; }
+  .velo-enter-from, .velo-leave-to { opacity: 0; }
+  .descripcion { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; font-size: 12px; font-weight: 500; color: #93a4bf; }
+  nav a.router-link-active .descripcion { color: var(--nav-tinta); }
+  .ayuda-nav { display: none; }
   .cerrar-menu { display: inline-flex; color: var(--nav-tinta); border-color: transparent; background: transparent; }
   .abrir-menu { display: inline-flex; }
   .barra-superior { padding: 10px 14px; flex-wrap: wrap; }

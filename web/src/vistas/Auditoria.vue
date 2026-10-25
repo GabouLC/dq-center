@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { Ban, EyeOff, KeyRound, Lock, LogIn, Pencil, Play, Plus, PowerOff, RefreshCw, ShieldAlert, Timer } from 'lucide-vue-next'
+import { Ban, EyeOff, KeyRound, Lock, LogIn, Pencil, Play, Plus, PowerOff, RefreshCw, ScrollText, ShieldAlert, Timer } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { hora } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 
 type Evento = { fecha: string; accion: string; email: string | null; recurso: string; detalle: string }
@@ -28,17 +31,24 @@ const acciones = computed(() => [...new Set((datos.value ?? []).map((e) => e.acc
 const cuenta = (a: string) => (datos.value ?? []).filter((e) => e.accion === a).length
 const eventos = computed(() => (datos.value ?? []).filter((e) => !accion.value || e.accion === accion.value))
 const info = (a: string) => ACCIONES[a] ?? { texto: a, tono: '', icono: Pencil }
+
+const LECTURA: Clave[] = [
+  { texto: 'Cada punto de la línea es un evento, del más nuevo al más viejo, con quién lo hizo (o «sistema») y cuándo.' },
+  { muestras: ['critico', 'cifrado', 'aviso'], texto: 'El color dice el tipo: rojo, accesos denegados y cuentas bloqueadas; morado, campos sensibles ocultos a un lector; ámbar, avisos como intentos fallidos o respuestas lentas.' },
+  { texto: 'Filtra por tipo de acción con los botones de arriba; el número es cuántos eventos hay de cada tipo.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Auditoría</h1>
-        <p>Quién cambió qué y cuándo, accesos denegados, campos sensibles ocultos y solicitudes de más de 8 segundos (HU-13, HU-15).</p>
-      </div>
+    <EncabezadoSeccion
+      modulo="auditoria"
+      titulo="Auditoría"
+      subtitulo="Quién cambió qué y cuándo, accesos denegados, campos sensibles ocultos y solicitudes de más de 8 segundos (HU-13, HU-15)."
+      :lectura="LECTURA"
+    >
       <button type="button" @click="recargar"><RefreshCw :size="15" /> Actualizar</button>
-    </div>
+    </EncabezadoSeccion>
 
     <div class="segmentos" role="group" aria-label="Acción">
       <button type="button" :class="{ activo: !accion }" :aria-pressed="!accion" @click="accion = ''">Todo <span class="cuenta">{{ datos?.length ?? 0 }}</span></button>
@@ -47,9 +57,14 @@ const info = (a: string) => ACCIONES[a] ?? { texto: a, tono: '', icono: Pencil }
       </button>
     </div>
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="lista" @reintentar="recargar">
       <section class="panel">
-        <p v-if="!eventos.length" class="tenue">Sin eventos todavía. Aparecerán al cambiar reglas o usuarios, o cuando alguien intente entrar sin permiso.</p>
+        <EstadoVacio
+          v-if="!eventos.length"
+          :icono="ScrollText"
+          titulo="Sin eventos todavía"
+          texto="Aparecerán al cambiar reglas o usuarios, al iniciar sesión o cuando alguien intente entrar sin permiso."
+        />
         <ol v-else class="linea-tiempo">
           <li v-for="(e, i) in eventos" :key="i" :class="info(e.accion).tono">
             <span class="marca-evento"><component :is="info(e.accion).icono" :size="15" /></span>

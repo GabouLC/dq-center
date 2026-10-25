@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ChevronDown, CircleAlert, ShieldCheck, TriangleAlert, Users } from 'lucide-vue-next'
+import { ChevronDown, CircleAlert, FileText, ShieldCheck, TriangleAlert, Users } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import Anillo from '@/componentes/Anillo.vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import DacChip from '@/componentes/DacChip.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { NOMBRE_TABLA } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 
 type Campo = {
@@ -40,21 +43,25 @@ const abierto = ref<string | null>('persona')
 const cuenta = (c: Contrato, dac: string) => c.campos.filter((f) => f.dac === dac).length
 const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensible', 'var(--aviso)'], ['SENSIBLE_CIFRADO', 'Sensible cifrado', 'var(--sello)']]
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
+
+const LECTURA: Clave[] = [
+  { texto: 'El anillo dice cuántos campos del contrato vigila al menos una regla de calidad (cobertura).' },
+  { muestras: ['publico', 'sensible', 'cifrado'], texto: 'La barra reparte los campos por sensibilidad (DAC): Público, Sensible y Sensible cifrado, que nunca se muestra en claro.' },
+  { muestras: ['critico', 'aviso', 'bien'], texto: 'Afecta a consumidores: alguna regla del contrato falla en el último día de datos. En riesgo: alguna está en alerta. Sin impacto: todas cumplen.' },
+  { texto: 'Abre una tabla para ver cada campo, su tipo, qué reglas lo vigilan y cómo llegó a MASTER.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Contrato de datos</h1>
-        <p>
-          Lo pactado con el dueño de cada tabla: campos, tipos y clasificación de sensibilidad (DAC). La cobertura dice cuántos
-          campos vigila al menos una regla; el impacto, qué consumidores sufren si una regla falla en el último día de datos.
-        </p>
-      </div>
-    </div>
+    <EncabezadoSeccion
+      modulo="contratos"
+      titulo="Contrato de datos"
+      subtitulo="Lo pactado con el dueño de cada tabla: campos, tipos y clasificación de sensibilidad (DAC), qué reglas los vigilan y qué consumidores sufren si una falla."
+      :lectura="LECTURA"
+    />
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="tarjetas" @reintentar="recargar">
       <article v-for="c in datos ?? []" :key="c.tabla" class="panel contrato" :class="{ abierto: abierto === c.tabla }">
         <h2 class="titulo-contrato">
           <button type="button" class="cabecera" :aria-expanded="abierto === c.tabla" @click="abierto = abierto === c.tabla ? null : c.tabla">
@@ -130,12 +137,19 @@ const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : vari
           </div>
         </div>
       </article>
+      <section v-if="datos && !datos.length" class="panel">
+        <EstadoVacio
+          :icono="FileText"
+          titulo="Todavía no hay contratos"
+          texto="Cuando se registre el contrato de una tabla con su dueño, aquí verás sus campos, su clasificación y quién depende de ella."
+        />
+      </section>
     </BloqueCarga>
   </div>
 </template>
 
 <style scoped>
-.contrato { padding: 14px 20px; transition: box-shadow 0.15s; }
+.contrato { padding: 14px 20px; transition: box-shadow 0.15s ease, border-color 0.15s ease; }
 .contrato.abierto { box-shadow: var(--sombra-alta); }
 .cabecera {
   display: grid;
@@ -151,6 +165,11 @@ const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : vari
   font-weight: 400;
 }
 .cabecera:hover { color: inherit; }
+/* Botón ancho: se hunde apenas al presionar. */
+.cabecera:active { transform: scale(0.995); }
+@media (hover: hover) and (pointer: fine) {
+  .contrato:not(.abierto):hover { border-color: var(--linea-fuerte); }
+}
 /* El h2 solo da la estructura; el aspecto lo pone el botón y sus partes. */
 .titulo-contrato { font: inherit; letter-spacing: normal; }
 .identidad { display: grid; gap: 3px; }
@@ -160,7 +179,7 @@ const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : vari
 .leyenda { gap: 12px; font-size: 12px; color: var(--tinta-2); font-weight: 600; }
 .leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .impacto { display: flex; align-items: center; gap: 10px; }
-.flecha { color: var(--tenue); transition: transform 0.15s; }
+.flecha { color: var(--tenue); transition: transform 0.2s var(--ease-out); }
 .contrato.abierto .flecha { transform: rotate(180deg); }
 .cuerpo { margin-top: 16px; }
 .pequeno { font-size: 12.5px; }

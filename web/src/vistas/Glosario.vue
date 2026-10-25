@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { BookOpen, FileText, ListChecks, Lock, Pencil, Plus, Search, User, Workflow } from 'lucide-vue-next'
+import { BookOpen, FileText, ListChecks, Lock, Pencil, Plus, Search, SearchX, User, Workflow } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useSesion } from '@/stores/sesion'
 
@@ -65,17 +68,25 @@ async function guardar() {
   }
 }
 const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Boolean)
+// La vista se reutiliza al elegir otro término: si se estaba editando, se cierra el formulario.
+watch(() => ruta.params.id, () => (editando.value = false))
+const limpiar = () => {
+  q.value = ''
+  dominio.value = ''
+  letra.value = ''
+}
+
+const LECTURA: Clave[] = [
+  { texto: 'Busca por palabra, o filtra por dominio (Póliza, Persona, Calidad, Privacidad) y por letra inicial; las letras apagadas no tienen términos.' },
+  { muestras: ['cifrado'], texto: '«Dónde está en los datos» lleva al linaje de cada campo relacionado con el término.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Glosario de negocio</h1>
-        <p>Qué significa cada término y dónde vive en los datos.</p>
-      </div>
+    <EncabezadoSeccion modulo="glosario" titulo="Glosario de negocio" subtitulo="Qué significa cada término del negocio y dónde vive en los datos." :lectura="LECTURA">
       <button v-if="sesion.puede('editar_glosario')" type="button" class="primario" @click="editar(null)"><Plus :size="16" /> Nuevo término</button>
-    </div>
+    </EncabezadoSeccion>
 
     <div class="panel buscador-grande">
       <label class="buscar"><Search :size="20" /><input v-model="q" type="search" placeholder="Busca un término: prima, DNI, vigencia, cifrado…" aria-label="Buscar término" /></label>
@@ -98,10 +109,17 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
       </div>
     </div>
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="lista" @reintentar="recargar">
       <div class="disposicion">
         <nav class="panel lista" aria-label="Términos">
-          <p v-if="!filtrados.length" class="tenue">Ningún término coincide. Prueba con otra palabra.</p>
+          <EstadoVacio
+            v-if="!filtrados.length"
+            :icono="SearchX"
+            titulo="Ningún término coincide"
+            :texto="buscado ? `No encontramos «${buscado}» con esos filtros. Prueba con otra palabra o un sinónimo.` : 'No hay términos con ese dominio y esa letra.'"
+          >
+            <button type="button" @click="limpiar">Ver todos</button>
+          </EstadoVacio>
           <RouterLink v-for="t in filtrados" :key="t.id" :to="`/glosario/${t.id}`" :class="{ activo: elegido?.id === t.id }">
             <component :is="ICONO_DOMINIO[t.dominio]" :size="15" class="icono-dominio" />
             <span>{{ t.termino }}</span>

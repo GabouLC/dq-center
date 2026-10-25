@@ -4,8 +4,11 @@ import {
 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { hora } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useSesion } from '@/stores/sesion'
 
@@ -102,6 +105,12 @@ async function quitar(email: string) {
   await recargar()
 }
 
+const LECTURA: Clave[] = [
+  { texto: 'Las tarjetas de arriba dicen qué puede hacer cada rol y cuántas personas lo tienen.' },
+  { muestras: ['bien', 'aviso', 'critico'], texto: 'Estado: Activa; Contraseña temporal, si aún no entró a crear la suya; Bloqueada, tras cinco intentos fallidos (dura 15 minutos).' },
+  { texto: 'Restablecer la contraseña o quitar el acceso cierra las sesiones abiertas de esa persona; cada cambio queda en Auditoría.' },
+]
+
 async function copiar() {
   if (!temporal.value) return
   try {
@@ -115,12 +124,12 @@ async function copiar() {
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Usuarios y roles</h1>
-        <p>Acceso cerrado por defecto: solo entra quien tiene un rol. Cada alta recibe una contraseña temporal que debe cambiar al entrar.</p>
-      </div>
-    </div>
+    <EncabezadoSeccion
+      modulo="usuarios"
+      titulo="Usuarios y roles"
+      subtitulo="Acceso cerrado por defecto: solo entra quien tiene un rol. Cada alta recibe una contraseña temporal que debe cambiar al entrar."
+      :lectura="LECTURA"
+    />
 
     <section class="roles">
       <div v-for="[r, nombre, texto, icono] in ROLES" :key="r" class="panel rol">
@@ -159,7 +168,7 @@ async function copiar() {
       <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
     </p>
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="lista" @reintentar="recargar">
       <section class="panel lista">
         <div class="tabla-envoltura">
           <table>
@@ -190,6 +199,11 @@ async function copiar() {
             </tbody>
           </table>
         </div>
+        <EstadoVacio
+          v-if="!datos?.length"
+          titulo="Nadie tiene acceso todavía"
+          texto="Da acceso con el formulario de arriba: la persona recibe una contraseña temporal que cambia al entrar."
+        />
       </section>
     </BloqueCarga>
   </div>

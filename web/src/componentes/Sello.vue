@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /**
  * Sello del Quality & Privacy Gate: un timbre circular por tabla y corte.
  * El estado va en el ícono central y en el texto (nunca solo en el color).
+ * Cuando el estado cambia (otro día, una corrida nueva), el sello se vuelve a estampar.
+ * `decorativo`: solo el timbre, sin leyenda y oculto para lectores de pantalla.
  */
 const props = withDefaults(
-  defineProps<{ estado: string; tabla: string; detalle?: string; tamano?: number }>(),
-  { tamano: 132, detalle: '' },
+  defineProps<{ estado: string; tabla: string; detalle?: string; tamano?: number; decorativo?: boolean }>(),
+  { tamano: 132, detalle: '', decorativo: false },
 )
 
 let contador = 0
@@ -19,11 +21,37 @@ const TONO: Record<string, { color: string; suave: string; texto: string; leyend
 }
 const tono = computed(() => TONO[props.estado] ?? { color: 'var(--tenue)', suave: 'var(--neutro-suave)', texto: 'var(--tenue)', leyenda: 'Sin evaluar' })
 const anillo = computed(() => `QUALITY & PRIVACY GATE · ${props.tabla.toUpperCase()} · `)
+
+// Estampado: baja un poco más grande y girado, se aprieta y se asienta (WAAPI: interrumpible).
+const timbre = ref<SVGSVGElement | null>(null)
+let animacion: Animation | null = null
+watch(
+  () => props.estado,
+  (nuevo, viejo) => {
+    if (!viejo || nuevo === viejo || !timbre.value?.animate) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    animacion?.cancel()
+    animacion = timbre.value.animate(
+      [
+        { transform: 'rotate(-17deg) scale(1.16)', opacity: 0.4 },
+        { transform: 'rotate(-8deg) scale(0.96)', opacity: 1, offset: 0.62 },
+        { transform: 'rotate(-9deg) scale(1)', opacity: 1 },
+      ],
+      { duration: 340, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+    )
+  },
+)
+onBeforeUnmount(() => animacion?.cancel())
 </script>
 
 <template>
-  <figure class="sello" :style="{ width: `${tamano}px` }" :aria-label="`${tabla}: ${tono.leyenda}`">
-    <svg viewBox="0 0 120 120" :width="tamano" :height="tamano" aria-hidden="true">
+  <figure
+    class="sello"
+    :style="{ width: `${tamano}px` }"
+    :aria-label="decorativo ? undefined : `${tabla}: ${tono.leyenda}`"
+    :aria-hidden="decorativo || undefined"
+  >
+    <svg ref="timbre" viewBox="0 0 120 120" :width="tamano" :height="tamano" aria-hidden="true">
       <defs>
         <path :id="id" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0" />
       </defs>
@@ -45,7 +73,7 @@ const anillo = computed(() => `QUALITY & PRIVACY GATE · ${props.tabla.toUpperCa
         <path v-else d="M48 60 h24" />
       </g>
     </svg>
-    <figcaption>
+    <figcaption v-if="!decorativo">
       <strong>{{ tabla }}</strong>
       <span :style="{ color: tono.texto }">{{ tono.leyenda }}</span>
       <span v-if="detalle" class="tenue">{{ detalle }}</span>
@@ -55,8 +83,11 @@ const anillo = computed(() => `QUALITY & PRIVACY GATE · ${props.tabla.toUpperCa
 
 <style scoped>
 .sello { margin: 0; display: grid; justify-items: center; gap: 8px; text-align: center; }
-svg { transform: rotate(-9deg); transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); filter: drop-shadow(0 6px 10px rgb(15 27 45 / 0.12)); }
-.sello:hover svg, a:focus-visible .sello svg { transform: rotate(0deg) scale(1.04); }
+svg { transform: rotate(-9deg); transition: transform 0.3s var(--ease-out); filter: drop-shadow(0 6px 10px rgb(15 27 45 / 0.12)); }
+@media (hover: hover) and (pointer: fine) {
+  .sello:hover svg { transform: rotate(0deg) scale(1.04); }
+}
+a:focus-visible .sello svg { transform: rotate(0deg) scale(1.04); }
 .anillo { font-size: 8.6px; font-weight: 800; letter-spacing: 0.08em; }
 figcaption { display: grid; gap: 1px; line-height: 1.3; }
 figcaption strong { font-size: 15px; }

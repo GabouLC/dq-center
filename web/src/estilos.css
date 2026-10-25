@@ -60,6 +60,10 @@
   --radio-chico: 9px;
   --font: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* movimiento: curvas fuertes (entrar/salir, moverse en pantalla) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -207,10 +211,11 @@ button, .boton {
   font-weight: 600;
   font-size: 13.5px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.08s;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.14s var(--ease-out);
 }
 button:hover { border-color: var(--marca); color: var(--marca); }
-button:active { transform: translateY(1px); }
+/* Respuesta al presionar: se hunde apenas (no en los botones anchos, que se verían encoger). */
+:is(button, .boton):active { transform: scale(0.97); }
 button.primario { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }
 button.primario:hover { background: var(--marca-fuerte); border-color: var(--marca-fuerte); color: var(--sobre-marca); }
 :is(button, .boton).fantasma { border-color: transparent; background: transparent; }
@@ -320,6 +325,27 @@ a.chip:hover { text-decoration: none; filter: brightness(0.97); }
 .tooltip .t-fila strong { font-variant-numeric: tabular-nums; }
 .tooltip .t-clave { width: 12px; height: 3px; border-radius: 2px; }
 
+/* ── entrada escalonada: los bloques de una vista aparecen uno tras otro al cargar ── */
+.escalonado > * { animation: aparecer 0.34s var(--ease-out) backwards; }
+.escalonado > :nth-child(2) { animation-delay: 50ms; }
+.escalonado > :nth-child(3) { animation-delay: 100ms; }
+.escalonado > :nth-child(4) { animation-delay: 150ms; }
+.escalonado > :nth-child(5) { animation-delay: 200ms; }
+.escalonado > :nth-child(6) { animation-delay: 240ms; }
+.escalonado > :nth-child(n + 7) { animation-delay: 280ms; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(10px); } }
+
+/* ── marcadores de carga (esqueletos) ────────────────────────────────── */
+.esqueleto { display: block; border-radius: 8px; background: var(--superficie-3); animation: respirar 1.3s ease-in-out infinite; }
+@keyframes respirar { 50% { opacity: 0.5; } }
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }
