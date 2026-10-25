@@ -137,14 +137,15 @@ completas, integrante por integrante, están en [dailies.md](dailies.md#sprint-1
 | Daily | Fecha | Avance del equipo | Impedimentos nuevos |
 |---|---|---|---|
 | 1 | viernes 2 de octubre | Generador con errores sembrados (HU-01), mapa de homologación (HU-14), estrategia de prueba contra el manifiesto, proyecto y datasets de GCP | Facturación de GCP; `SAFE.PARSE_DATE` en DuckDB |
-| 2 | sábado 3 | Rechazo de CSV con motivo, `parsear_fecha` por plataforma, pruebas de ingesta y decisión de usar el sandbox (ADR 0008) | Ninguno; se resolvió el de las fechas |
+| 2 | sábado 3 | Rechazo de CSV con motivo, `parsear_fecha` por plataforma, pruebas de ingesta y decisión de usar el sandbox (registrada después en el ADR 0008) | Ninguno; se resolvió el de las fechas |
 | 3 | domingo 4 | HU-01, HU-14 y HU-05 terminadas; catálogo de reglas N1; CI en verde | `COUNTIF` vacío; `duckdb.typing` |
 | 4 | lunes 5 | Motor N1 (HU-02) y cifrado (HU-06); 0 diferencias contra el manifiesto; cortes en el sandbox de BigQuery | Ninguno; se resolvieron los dos del domingo |
 
 ## 4. Sprint Review e Incremento
 
-**Incremento.** 92 cortes diarios (del 1 de julio al 30 de septiembre de 2026) pasan de CSV a RAW, de
-RAW a MASTER homologado y cifrado, y se evalúan con las reglas N1. Para reproducirlo:
+**Incremento.** Seis cortes mensuales (abril a septiembre de 2026) pasan de CSV a RAW, de RAW a
+MASTER homologado y cifrado, y se evalúan con las reglas N1. La evidencia enlazada se regeneró
+con los 92 cortes diarios del Sprint 2 (ADR 0012), sobre el mismo código del flujo. Para reproducirlo:
 
 ```bash
 python -m dqc.datagen                       # datos sintéticos y manifiesto

@@ -10,15 +10,34 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from dqc.modelo import ESQUEMAS, MASTER, RAW, TABLAS_CORTE
+from dqc.modelo import CORTES, ENGINE, ESQUEMAS, MASTER, RAW, TABLAS_CORTE
 from dqc.motor.certificacion import Certificacion, certificar, version_reglas
 from dqc.motor.motor import Ejecucion, Motor, guardar_ejecucion
 from dqc.motor.reglas import Regla
 from dqc.pipeline.configuracion import Fuente, cifrados
 from dqc.pipeline.homologacion import sql_homologacion
 from dqc.pipeline.ingesta import EXITOSA, Carga, Entrega, validar_csv
-from dqc.pipeline.privacidad import revisar
+from dqc.pipeline.privacidad import columnas_del_corte, revisar
 from dqc.pipeline.publicacion import preparar_almacen, publicar
+
+
+def cortes_por_procesar(plataforma, desde: date | None, cortes: list[date] = CORTES) -> list[date]:
+    """Todos los cortes, o los que faltan si se reanuda desde `desde`.
+
+    Para reanudar, cada corte anterior a `desde` tiene que estar evaluado; si no, quedaría un hueco.
+    """
+    if desde is None:
+        return list(cortes)
+    if desde not in cortes:
+        raise ValueError(f"{desde} no es un corte: van del {cortes[0]} al {cortes[-1]}")
+    evaluados = set()
+    if plataforma.columnas("ejecuciones", ENGINE):
+        filas = plataforma.consultar(f"SELECT DISTINCT fecha_corte FROM {ENGINE}.ejecuciones")
+        evaluados = {f["fecha_corte"] for f in filas}
+    faltan = [c for c in cortes if c < desde and c not in evaluados]
+    if faltan:
+        raise ValueError(f"no se puede reanudar desde el {desde}: el {faltan[0]} no está evaluado")
+    return [c for c in cortes if c >= desde]
 
 
 @dataclass
@@ -82,6 +101,9 @@ class Flujo:
     def evaluar(self, corte: date, origen: str, primero: bool = False) -> tuple[Ejecucion, list[Certificacion]]:
         """Motor + Quality & Privacy Gate + publicación de lo certificado, con su evidencia."""
         ejecucion = self.motor.ejecutar(corte, origen)
+        for tabla in TABLAS_CORTE:  # la estructura de cada tabla tal como llegó ese día
+            pactados = {c["nombre"] for c in self.contratos[tabla]["campos"]}
+            ejecucion.esquemas[tabla] = columnas_del_corte(self.plataforma, tabla, corte, pactados)
         hallazgos = [
             h
             for tabla in TABLAS_CORTE

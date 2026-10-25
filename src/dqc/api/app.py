@@ -103,6 +103,14 @@ class PedidoCambioClave(BaseModel):
     nueva: str = Field(max_length=256)
 
 
+class PedidoTermino(BaseModel):
+    termino: str = Field(min_length=1, max_length=120)
+    definicion: str = Field(min_length=1, max_length=2_000)
+    dominio: str = Field(min_length=1, max_length=60)
+    sinonimos: list[str] = Field(default_factory=list, max_length=30)
+    campos: list[str] = Field(default_factory=list, max_length=30)
+
+
 def _error(codigo: int, mensaje) -> JSONResponse:
     nombres = {400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found", 409: "Conflict",
                422: "Unprocessable Entity", 423: "Locked", 500: "Internal Server Error", 503: "Service Unavailable"}
@@ -181,6 +189,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
                               "detalle": "cuenta sin rol en el portal"})
             raise HTTPException(403, f"{email} no tiene acceso al portal")
         if request.url.path not in RUTAS_CLAVE_TEMPORAL and s.autenticador and s.autenticador.debe_cambiar(email):
+            s.config.auditar({"accion": "ACCESO_DENEGADO", "email": email, "recurso": request.url.path,
+                              "detalle": "contraseña temporal sin cambiar"})
             raise HTTPException(403, "Cambia tu contraseña temporal para continuar")
         return Usuario(email, rol)
 
@@ -395,8 +405,21 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         return vistas.estructura(tabla_valida(tabla), ultimas(), s.fuente.esquemas())
 
     @app.get("/api/v1/fuentes/{tabla}/incidencias")
-    def incidencias(tabla: str, corte: date, limite: int = Query(50, ge=1, le=200), _: Usuario = Depends(lector)):
-        return s.fuente.incidencias(tabla_valida(tabla), corte, limite)
+    def incidencias(
+        request: Request, tabla: str, corte: date, limite: int = Query(50, ge=1, le=200), u: Usuario = Depends(lector),
+    ):
+        filas = s.fuente.incidencias(tabla_valida(tabla), corte, limite)
+        destino_de = {c.origen.upper(): c.destino for c in s.fuentes_homologacion[tabla].columnas}
+        dac = clasificacion(s.config.contratos()).get(tabla, {})
+        ve_sensibles = "ver_sensibles" in PERMISOS[u.rol]
+        restringidos = set()
+        for f in filas:
+            f["valores"], ocultos = vistas.enmascarar_valores(f["valores"], destino_de, dac, ve_sensibles)
+            restringidos |= set(ocultos)
+        if restringidos:
+            s.config.auditar({"accion": "ACCESO_RESTRINGIDO", "email": u.email, "recurso": request.url.path,
+                              "detalle": f"campos sensibles ocultos: {', '.join(sorted(restringidos))}"})
+        return filas
 
     # ── contrato de datos ──────────────────────────────────────────────────
 
@@ -432,14 +455,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         raise HTTPException(404, f"No existe el término {id_termino}")
 
     @app.put("/api/v1/glosario/{id_termino}")
-    def guardar_termino(id_termino: str, datos: dict = Body(...), u: Usuario = Depends(requiere("editar_glosario"))):
-        faltan = [c for c in ("termino", "definicion", "dominio") if not datos.get(c)]
-        if faltan:
-            raise HTTPException(422, [f"falta '{c}'" for c in faltan])
-        doc = {
-            "id": id_termino, "termino": datos["termino"], "definicion": datos["definicion"], "dominio": datos["dominio"],
-            "sinonimos": list(datos.get("sinonimos") or []), "campos": list(datos.get("campos") or []),
-        }
+    def guardar_termino(id_termino: str, datos: PedidoTermino, u: Usuario = Depends(requiere("editar_glosario"))):
+        doc = {"id": id_termino, **datos.model_dump()}
         s.config.guardar_termino(doc, u.email)
         s.config.auditar({"accion": "ACTUALIZAR", "email": u.email, "recurso": f"glosario/{id_termino}", "detalle": doc["termino"]})
         return doc

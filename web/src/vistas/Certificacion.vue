@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Fingerprint, Lock, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
+import { Fingerprint, Lock, LockOpen, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
@@ -44,9 +44,9 @@ const { datos, cargando, error, recargar } = usarCarga(
   [() => cortes.elegido],
 )
 const HALLAZGO: Record<string, string> = {
-  PII_EN_CLARO: 'PII en texto claro',
+  PII_EN_CLARO: 'Datos personales sin cifrar',
   CAMPO_SIN_CIFRAR: 'Campo sensible sin cifrar',
-  COLUMNA_SIN_CLASIFICAR: 'Columna sin clasificación DAC',
+  COLUMNA_SIN_CLASIFICAR: 'Columna sin clasificación de sensibilidad (DAC)',
 }
 const filasHistoria = computed(() =>
   TABLAS.map((tabla) => ({
@@ -56,7 +56,13 @@ const filasHistoria = computed(() =>
   })),
 )
 const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
-const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b) => a + b, 0) || 1
+// Conteo del nivel en palabras: el color de la barra no va solo.
+function conteoNivel(t: Tabla, n: string): string {
+  const { OK = 0, ALERTA = 0, FALLA = 0, SIN_DATOS = 0 } = niveles(t, n)
+  const partes = [`${OK} ${OK === 1 ? 'cumple' : 'cumplen'}`, `${ALERTA} en alerta`, `${FALLA} ${FALLA === 1 ? 'falla' : 'fallan'}`]
+  if (SIN_DATOS) partes.push(`${SIN_DATOS} sin datos`)
+  return partes.join(' · ')
+}
 </script>
 
 <template>
@@ -65,8 +71,8 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
       <div>
         <h1>Certificación</h1>
         <p>
-          El Quality &amp; Privacy Gate sella cada tabla: calidad en tres niveles, privacidad y trazabilidad (HU-04, HU-07,
-          HU-12). Una regla CRÍTICA o ALTA en FAIL, o PII en texto claro, impide certificar y publicar.
+          Cada día, el control de calidad y privacidad (Quality &amp; Privacy Gate) revisa cada tabla. Si falla una regla
+          crítica o alta, o aparecen datos personales sin cifrar, la tabla no se certifica ni se publica en BUSINESS.
         </p>
       </div>
     </div>
@@ -74,10 +80,7 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="datos">
         <section class="panel pila">
-          <div class="fila entre">
-            <h2>Historia de los sellos</h2>
-            <span class="tenue pequeno">Días certificados · con observaciones · sin certificar</span>
-          </div>
+          <h2>Certificación día por día</h2>
           <MapaDias
             :dias="Object.keys(datos.historia)"
             :filas="filasHistoria"
@@ -91,16 +94,16 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
 
           <section class="bloque">
             <h3 class="fila"><component :is="t.calidad.ok ? ShieldCheck : ShieldAlert" :size="18" :class="t.calidad.ok ? 'bien' : 'critico'" /> Calidad</h3>
-            <p class="secundario"><strong class="num">{{ pct(t.calidad.pct_pass) }}</strong> de las reglas en PASS</p>
-            <div v-for="n in ['N1', 'N2', 'N3']" :key="n" class="nivel" :title="`${n}: ${niveles(t, n).OK ?? 0} PASS, ${niveles(t, n).ALERTA ?? 0} alerta, ${niveles(t, n).FALLA ?? 0} FAIL`">
+            <p class="secundario"><strong class="num">{{ pct(t.calidad.pct_pass) }}</strong> de las reglas cumplen</p>
+            <div v-for="n in ['N1', 'N2', 'N3']" :key="n" class="nivel">
               <strong>{{ n }}</strong>
-              <div class="pila-barra">
+              <div class="pila-barra" aria-hidden="true">
                 <span class="seg bien" :style="{ flex: niveles(t, n).OK ?? 0 }" />
                 <span class="seg aviso" :style="{ flex: niveles(t, n).ALERTA ?? 0 }" />
                 <span class="seg critico" :style="{ flex: niveles(t, n).FALLA ?? 0 }" />
                 <span class="seg neutro" :style="{ flex: niveles(t, n).SIN_DATOS ?? 0 }" />
               </div>
-              <span class="tenue num">{{ niveles(t, n).OK ?? 0 }}/{{ total(t, n) }}</span>
+              <span class="conteo secundario num">{{ conteoNivel(t, n) }}</span>
             </div>
             <p v-if="t.calidad.reglas_bloqueantes.length" class="aviso-caja error">
               <ShieldAlert :size="17" /><span>Bloquean: <strong>{{ t.calidad.reglas_bloqueantes.join(', ') }}</strong></span>
@@ -114,10 +117,10 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
             <h3 class="fila"><component :is="t.privacidad.ok ? Lock : ShieldAlert" :size="18" :class="t.privacidad.ok ? 'sello-c' : 'critico'" /> Privacidad</h3>
             <div v-if="t.privacidad.campos_cifrados.length" class="fila chips">
               <span v-for="c in t.privacidad.campos_cifrados" :key="c.campo" class="chip" :class="c.protegido ? 'sello' : 'critico'">
-                <Lock :size="12" /> {{ c.campo }}
+                <component :is="c.protegido ? Lock : LockOpen" :size="12" /> {{ c.campo }}<template v-if="!c.protegido"> · sin cifrar</template>
               </span>
             </div>
-            <p v-else class="tenue pequeno">Sin campos de PII que cifrar.</p>
+            <p v-else class="tenue pequeno">No tiene datos personales que cifrar.</p>
             <p v-for="h in t.privacidad.hallazgos" :key="h.tipo + h.columna" class="aviso-caja" :class="{ error: h.bloqueante }">
               <component :is="h.bloqueante ? ShieldAlert : TriangleAlert" :size="17" />
               <span>
@@ -131,14 +134,14 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
           <section class="bloque">
             <h3 class="fila"><Fingerprint :size="18" class="marca-c" /> Trazabilidad</h3>
             <dl class="sello-datos">
-              <dt>Corrida</dt><dd class="mono">{{ t.trazabilidad.id_ejecucion.slice(0, 12) }}</dd>
+              <dt>Ejecución</dt><dd class="mono">{{ t.trazabilidad.id_ejecucion.slice(0, 12) }}</dd>
               <dt>Motor · reglas</dt><dd class="mono">v{{ t.trazabilidad.version_motor }} · {{ t.trazabilidad.version_reglas }}</dd>
               <dt>Cobertura</dt><dd>{{ pct(t.trazabilidad.cobertura) }} de reglas con datos</dd>
-              <dt>Sellado</dt><dd>{{ hora(t.trazabilidad.certificado_en) }}</dd>
+              <dt>Certificada el</dt><dd>{{ hora(t.trazabilidad.certificado_en) }}</dd>
               <dt>BUSINESS</dt>
               <dd>
                 <span v-if="t.trazabilidad.publicado" class="chip bien"><Stamp :size="12" /> {{ t.trazabilidad.objeto_business }}</span>
-                <span v-else class="chip critico">Retenido por el Gate</span>
+                <span v-else class="chip critico">No publicada: no se certificó</span>
               </dd>
             </dl>
             <RouterLink :to="`/linaje/${t.tabla}`" class="fila enlace"><Workflow :size="16" /> Ver su linaje</RouterLink>
@@ -160,11 +163,12 @@ const total = (t: Tabla, n: string) => Object.values(niveles(t, n)).reduce((a, b
 .critico { color: var(--critico); }
 .sello-c { color: var(--sello); }
 .marca-c { color: var(--marca); }
-.nivel { display: grid; grid-template-columns: 28px 1fr 42px; gap: 8px; align-items: center; font-size: 13px; }
+.nivel { display: grid; grid-template-columns: 28px 1fr; gap: 2px 8px; align-items: center; font-size: 13px; }
+.nivel .conteo { grid-column: 2; font-size: 12px; }
 .pila-barra { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--superficie-3); }
 .seg.bien { background: var(--bien); }
 .seg.aviso { background: var(--aviso); }
-.seg.critico { background: var(--critico); }
+.seg.critico { background: var(--celda-critico); box-shadow: inset 0 0 0 1.5px var(--tinta); }
 .seg.neutro { background: var(--linea-fuerte); }
 .chips { gap: 5px; }
 .pequeno { font-size: 12.5px; }

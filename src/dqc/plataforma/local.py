@@ -78,6 +78,31 @@ class PlataformaDuckDB:
             self.con.execute(f"DROP {'VIEW' if tipo == 'VIEW' else 'TABLE'} IF EXISTS {dataset}.{nombre}")
 
     @_con_candado
+    def recortar(self, desde: date) -> list[str]:
+        tablas = self.con.execute(
+            "SELECT c.table_schema, c.table_name FROM information_schema.columns c "
+            "JOIN information_schema.tables t USING (table_schema, table_name) "
+            "WHERE c.column_name = 'fecha_corte' AND t.table_type = 'BASE TABLE' AND c.table_schema IN (?, ?, ?, ?)",
+            [RAW, MASTER, ENGINE, BUSINESS],
+        ).fetchall()
+        recortadas = []
+        for dataset, tabla in tablas:
+            sobran = self.con.execute(f"SELECT COUNT(*) FROM {dataset}.{tabla} WHERE fecha_corte >= ?", [desde]).fetchone()[0]
+            if sobran:
+                self.con.execute(f"DELETE FROM {dataset}.{tabla} WHERE fecha_corte >= ?", [desde])
+                recortadas.append(f"{dataset}.{tabla}: {sobran} filas desde el {desde}")
+        return recortadas
+
+    @_con_candado
+    def quitar_corte(self, dataset: str, tabla: str, corte: date) -> int:
+        if not self.columnas(tabla, dataset):
+            return 0
+        sobran = self.con.execute(f"SELECT COUNT(*) FROM {dataset}.{tabla} WHERE fecha_corte = ?", [corte]).fetchone()[0]
+        if sobran:
+            self.con.execute(f"DELETE FROM {dataset}.{tabla} WHERE fecha_corte = ?", [corte])
+        return sobran
+
+    @_con_candado
     def crear_tabla(self, dataset: str, tabla: str, columnas: list[tuple[str, str]]) -> None:
         definicion = ", ".join(f"{c} {TIPOS_DUCKDB[t]}" for c, t in columnas)
         self.con.execute(f"CREATE TABLE IF NOT EXISTS {dataset}.{tabla} ({definicion})")
@@ -128,7 +153,8 @@ class PlataformaDuckDB:
                 "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '_nuevo'"
             ).fetchall():
                 if columna not in actuales:
-                    self.con.execute(f"ALTER TABLE {destino} ADD COLUMN {columna} {tipo}")
+                    nombre = columna.replace('"', '""')
+                    self.con.execute(f'ALTER TABLE {destino} ADD COLUMN "{nombre}" {tipo}')
             if corte is None:
                 self.con.execute(f"DELETE FROM {destino}")
             else:

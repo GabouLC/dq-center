@@ -11,16 +11,16 @@ type Evento = { fecha: string; accion: string; email: string | null; recurso: st
 const ACCIONES: Record<string, { texto: string; tono: string; icono: unknown }> = {
   ACCESO_DENEGADO: { texto: 'Acceso denegado', tono: 'critico', icono: Ban },
   ACCESO_RESTRINGIDO: { texto: 'Campos ocultos', tono: 'sello', icono: EyeOff },
-  RENDIMIENTO_LENTO: { texto: 'Más de 8 s', tono: 'aviso', icono: Timer },
+  RENDIMIENTO_LENTO: { texto: 'Respuesta lenta (más de 8 s)', tono: 'aviso', icono: Timer },
   DESACTIVAR: { texto: 'Desactivación', tono: 'aviso', icono: PowerOff },
   CREAR: { texto: 'Alta', tono: 'bien', icono: Plus },
   ACTUALIZAR: { texto: 'Cambio', tono: 'marca', icono: Pencil },
-  EJECUTAR: { texto: 'Corrida', tono: 'marca', icono: Play },
+  EJECUTAR: { texto: 'Ejecución', tono: 'marca', icono: Play },
   INICIO_SESION: { texto: 'Inicio de sesión', tono: 'bien', icono: LogIn },
   INICIO_FALLIDO: { texto: 'Intento fallido', tono: 'aviso', icono: ShieldAlert },
   CUENTA_BLOQUEADA: { texto: 'Cuenta bloqueada', tono: 'critico', icono: Lock },
   CAMBIO_CLAVE: { texto: 'Cambio de contraseña', tono: 'marca', icono: KeyRound },
-  RESTABLECER_CLAVE: { texto: 'Clave restablecida', tono: 'aviso', icono: KeyRound },
+  RESTABLECER_CLAVE: { texto: 'Contraseña restablecida', tono: 'aviso', icono: KeyRound },
 }
 const { datos, cargando, error, recargar } = usarCarga(() => api<Evento[]>('/api/v1/admin/auditoria', { params: { limite: 500 } }))
 const accion = ref('')
@@ -41,8 +41,8 @@ const info = (a: string) => ACCIONES[a] ?? { texto: a, tono: '', icono: Pencil }
     </div>
 
     <div class="segmentos" role="group" aria-label="Acción">
-      <button type="button" :class="{ activo: !accion }" @click="accion = ''">Todo <span class="cuenta">{{ datos?.length ?? 0 }}</span></button>
-      <button v-for="a in acciones" :key="a" type="button" :class="{ activo: accion === a }" @click="accion = a">
+      <button type="button" :class="{ activo: !accion }" :aria-pressed="!accion" @click="accion = ''">Todo <span class="cuenta">{{ datos?.length ?? 0 }}</span></button>
+      <button v-for="a in acciones" :key="a" type="button" :class="{ activo: accion === a }" :aria-pressed="accion === a" @click="accion = a">
         {{ info(a).texto }} <span class="cuenta">{{ cuenta(a) }}</span>
       </button>
     </div>

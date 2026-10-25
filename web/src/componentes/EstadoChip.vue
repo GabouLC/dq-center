@@ -6,14 +6,14 @@ import { computed } from 'vue'
 const props = defineProps<{ estado: string; compacto?: boolean }>()
 
 const ESTADOS: Record<string, { tono: string; texto: string; corto: string; icono: unknown }> = {
-  OK: { tono: 'bien', texto: 'PASS', corto: 'PASS', icono: CircleCheck },
+  OK: { tono: 'bien', texto: 'Cumple', corto: 'Cumple', icono: CircleCheck },
   ALERTA: { tono: 'aviso', texto: 'Alerta', corto: 'Alerta', icono: TriangleAlert },
-  FALLA: { tono: 'critico', texto: 'FAIL', corto: 'FAIL', icono: CircleX },
+  FALLA: { tono: 'critico', texto: 'Falla', corto: 'Falla', icono: CircleX },
   SIN_DATOS: { tono: '', texto: 'Sin datos', corto: 'S/d', icono: CircleDashed },
   CERTIFICADO: { tono: 'bien', texto: 'Certificada', corto: 'Cert.', icono: CircleCheck },
   CERTIFICADO_CON_OBSERVACIONES: { tono: 'aviso', texto: 'Con observaciones', corto: 'Obs.', icono: TriangleAlert },
   NO_CERTIFICADO: { tono: 'critico', texto: 'No certificada', corto: 'No cert.', icono: CircleX },
-  EXITOSA: { tono: 'bien', texto: 'Exitosa', corto: 'OK', icono: CircleCheck },
+  EXITOSA: { tono: 'bien', texto: 'Exitosa', corto: 'Exitosa', icono: CircleCheck },
   RECHAZADA: { tono: 'critico', texto: 'Rechazada', corto: 'Rech.', icono: CircleX },
 }
 const datos = computed(() => ESTADOS[props.estado] ?? { tono: '', texto: props.estado, corto: props.estado, icono: CircleDashed })

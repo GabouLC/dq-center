@@ -157,6 +157,24 @@ def test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno(client
     assert any(e["accion"] == "ACCESO_RESTRINGIDO" and e["email"] == LECTOR for e in config.auditoria())
 
 
+def test_incidencias_ocultan_los_valores_sensibles_al_lector(cliente, config):
+    ruta = "/api/v1/fuentes/pago/incidencias"
+    lector = get(cliente, ruta, LECTOR, corte=str(PRIMERO))
+    gobierno = get(cliente, ruta, GOBIERNO, corte=str(PRIMERO))
+    assert lector and all(f["valores"] == "IMPORTE=•••• restringido" for f in lector)
+    assert all(f["valores"].startswith("IMPORTE=") and "••••" not in f["valores"] for f in gobierno)
+    assert any(e["accion"] == "ACCESO_RESTRINGIDO" and e["recurso"] == ruta and e["email"] == LECTOR
+               for e in config.auditoria())
+
+
+def test_la_contrasena_temporal_sin_cambiar_queda_auditada(cliente, config):
+    alta = cliente.put("/api/v1/admin/usuarios/pendiente@demo.local", headers=como(ADMIN), json={"rol": "lector"}).json()
+    token = entrar(cliente, "pendiente@demo.local", alta["clave_temporal"]).json()["token"]
+    assert cliente.get("/api/v1/resumen", headers=con_token(token)).status_code == 403
+    assert any(e["accion"] == "ACCESO_DENEGADO" and e["email"] == "pendiente@demo.local"
+               and e["detalle"] == "contraseña temporal sin cambiar" for e in config.auditoria())
+
+
 # ── HU-08: el portal solo lee BUSINESS ──────────────────────────────────────
 
 
@@ -271,6 +289,9 @@ def test_solo_gobierno_y_admin_editan_el_glosario(cliente):
     assert cliente.put("/api/v1/glosario/endoso", headers=como(LECTOR), json=termino).status_code == 403
     assert cliente.put("/api/v1/glosario/endoso", headers=como(GOBIERNO), json=termino).status_code == 200
     assert get(cliente, "/api/v1/glosario", q="endoso")[0]["id"] == "endoso"
+    invalido = {**termino, "termino": 123}
+    assert cliente.put("/api/v1/glosario/endoso", headers=como(GOBIERNO), json=invalido).status_code == 400
+    assert get(cliente, "/api/v1/glosario", q="endoso")[0]["termino"] == "Endoso"
 
 
 # ── HU-03: reglas configurables desde el portal ─────────────────────────────

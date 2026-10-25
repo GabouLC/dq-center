@@ -143,6 +143,29 @@ def enmascarar(detalle: str | None, clasificacion_tabla: dict[str, str], ve_sens
     return fila, restringidos
 
 
+def enmascarar_valores(
+    valores: str | None, destino_de: dict[str, str], clasificacion_tabla: dict[str, str], ve_sensibles: bool,
+) -> tuple[str | None, list[str]]:
+    """Los valores de una incidencia («COLUMNA=valor; …», con nombres de la fuente) con la misma regla.
+
+    Cada columna de origen se clasifica por su campo de MASTER; si no tiene, se trata como SENSIBLE.
+    """
+    if not valores:
+        return valores, []
+    partes, restringidos = [], []
+    for par in filter(None, (p.strip() for p in valores.split(";"))):
+        origen, _, valor = par.partition("=")
+        campo = destino_de.get(origen.upper(), origen)
+        dac = clasificacion_tabla.get(campo, "SENSIBLE")
+        if dac == "SENSIBLE_CIFRADO":
+            valor = MASCARA_CIFRADO
+        elif dac == "SENSIBLE" and not ve_sensibles:
+            valor = MASCARA_RESTRINGIDO
+            restringidos.append(campo)
+        partes.append(f"{origen}={valor}")
+    return "; ".join(partes), restringidos
+
+
 # ── Fuentes ─────────────────────────────────────────────────────────────────
 
 

@@ -1,7 +1,8 @@
 """Ingesta a RAW (HU-01): valida la estructura del CSV y lo carga sin modificarlo.
 
-Un archivo con estructura inválida (faltan columnas, filas con otro número de
-campos, codificación ilegible) se rechaza y no llega a RAW; el rechazo queda en
+Un archivo con estructura inválida (faltan columnas, nombres de columna que no son
+identificadores, filas con otro número de campos, codificación ilegible) se rechaza y no
+llega a RAW; el rechazo queda en
 registro_cargas con su motivo. Las columnas que la homologación no conoce se
 aceptan y se conservan en RAW, pero se anotan en el detalle de la carga.
 """
@@ -10,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -19,6 +21,8 @@ import pyarrow as pa
 from dqc.pipeline.configuracion import Fuente
 
 EXITOSA, RECHAZADA = "EXITOSA", "RECHAZADA"
+IDENTIFICADOR = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
+RESERVADAS = {"fecha_corte", "archivo"}  # las agrega la ingesta
 
 
 @dataclass(frozen=True)
@@ -85,6 +89,10 @@ def validar_csv(landing: Path, entrega: Entrega, fuente: Fuente) -> Carga:
         return rechazo("el archivo está vacío")
 
     encabezado, registros = filas[0], filas[1:]
+    # Cada columna llega a RAW como identificador SQL: solo letras, dígitos y guion bajo.
+    invalidas = [c for c in encabezado if not IDENTIFICADOR.fullmatch(c) or c.lower() in RESERVADAS]
+    if invalidas:
+        return rechazo(f"nombres de columna no válidos: {', '.join(repr(c) for c in invalidas)}", len(registros))
     faltantes = [c for c in fuente.requeridas if c not in encabezado]
     if faltantes:
         return rechazo(f"faltan columnas: {', '.join(faltantes)}", len(registros))

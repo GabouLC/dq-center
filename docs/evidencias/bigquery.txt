@@ -1,119 +1,121 @@
 Evidencia en BigQuery · proyecto dq-center-gabou (sandbox, datos sintéticos)
-Generada: 2026-10-16 00:12 UTC
+Generada: 2026-10-25 02:51 UTC · consultas estimadas por dry run: 83.4 MB
+Verificación contra el manifiesto: 0 diferencias · paridad con DuckDB: 0 diferencias
 
-## HU-01 · Registro de cargas en RAW (por estado)
+## Verificación contra el manifiesto de errores sembrados (92 cortes en BigQuery)
 
-estado     cargas  filas
----------  ------  ------
-EXITOSA    32      356259
-RECHAZADA  1       636
+etapa         sembrados  detectados  sin_detectar  de_mas
+------------  ---------  ----------  ------------  ------
+ingesta       1          1           0             0
+homologación  3062       3062        0             0
+reglas        107483     107483      0             0
+privacidad    8          8           0             0
+
+## Paridad con la corrida completa en DuckDB (dq_completo.duckdb)
+
+qué se compara                                    filas_bigquery  filas_duckdb  diferencias
+------------------------------------------------  --------------  ------------  -----------
+Cargas en RAW (archivo, filas, estado, motivo)    463             463           0
+Incidencias de homologación                       3062            3062          0
+Resultados de reglas (universo, cumplen, estado)  4416            4416          0
+Registros fallidos por regla                      107483          107483        0
+Sellos de certificación                           460             460           0
+Hallazgos del Privacy Gate                        30              30            0
+Filas por corte en MASTER.persona                 92              92            0
+Filas por corte en MASTER.poliza                  92              92            0
+Filas por corte en MASTER.vehiculo                92              92            0
+Filas por corte en MASTER.siniestro               92              92            0
+Filas por corte en MASTER.pago                    92              92            0
+Filas por corte en BUSINESS.p_persona             90              90            0
+Filas por corte en BUSINESS.p_poliza              88              88            0
+Filas por corte en BUSINESS.p_vehiculo            92              92            0
+Filas por corte en BUSINESS.p_siniestro           90              90            0
+Filas por corte en BUSINESS.p_pago                92              92            0
+
+## HU-01 · Cargas en RAW por estado
+
+estado     cargas  filas    cortes
+---------  ------  -------  ------
+EXITOSA    462     1374037  92
+RECHAZADA  1       223      1
 
 ## HU-01 · Cargas rechazadas, con su motivo (no llegan a RAW)
 
-fecha_corte  tabla      archivo                     detalle
+fecha_corte  tabla      archivo                     detalle                          
 -----------  ---------  --------------------------  ---------------------------------
-2026-07-31   siniestro  siniestros_20260731_01.csv  faltan columnas: ESTADO_SINIESTRO
+2026-07-28   siniestro  siniestros_20260728_01.csv  faltan columnas: ESTADO_SINIESTRO
 
-## HU-14 · Incidencias de homologación (registros excluidos de MASTER)
+## HU-14 · Incidencias de homologación (registros que quedan fuera de MASTER)
 
-fecha_corte  tabla      columnas   registros
------------  ---------  ---------  ---------
-2026-04-30   pago       IMPORTE    75
-2026-04-30   siniestro  FEC_AVISO  5
-2026-05-31   pago       IMPORTE    76
-2026-05-31   siniestro  FEC_AVISO  5
-2026-06-30   pago       IMPORTE    81
-2026-06-30   siniestro  FEC_AVISO  5
-2026-07-31   pago       IMPORTE    81
-2026-07-31   siniestro  FEC_AVISO  5
-2026-08-31   pago       IMPORTE    81
-2026-08-31   siniestro  FEC_AVISO  6
-2026-09-30   pago       IMPORTE    82
-2026-09-30   siniestro  FEC_AVISO  6
+tabla      columnas   registros  cortes  desde       hasta     
+---------  ---------  ---------  ------  ----------  ----------
+pago       IMPORTE    2807       92      2026-07-01  2026-09-30
+siniestro  FEC_AVISO  255        92      2026-07-01  2026-09-30
 
-## HU-06 · PII en MASTER: los campos sensibles se guardan cifrados (BYTES, AEAD)
+## HU-06 · Tipo de cada campo PII en MASTER: se guardan cifrados (BYTES, AEAD)
 
-id_persona  nro_documento_cifrado      email_cifrado
+table_name  column_name       data_type
+----------  ----------------  ---------
+persona     nro_documento     BYTES
+persona     nombres           BYTES
+persona     apellido_paterno  BYTES
+persona     apellido_materno  BYTES
+persona     email             BYTES
+persona     celular           BYTES
+
+## HU-06 · Muestra de Persona en MASTER (último corte)
+
+id_persona  nro_documento_cifrado      email_cifrado            
 ----------  -------------------------  -------------------------
-1           Ac5dnmIDq0K98T7Rcu5719aU…  Aa1ma4CJe3NMISotVGL9ZI+H…
+1           Ac5dnmIDq0K98T7Rcu5719aU…  Aa1ma4CORxUtfql2h4wjO1cN…
 2           Ac5dnmK+a0yHCjiLW8ipkC4F…
-3           Ac5dnmLco1kWqqrC9oiYGb/9…
+3           Ac5dnmL3cMxJSExd/0r2OCe7…  Aa1ma4Bif6tozjQw2TiCUKcP…
 
-## HU-06 · Tipo de cada campo PII en MASTER
+## HU-02 / HU-03 · Reglas evaluadas por nivel y estado (92 cortes, última ejecución de cada uno)
 
-column_name    data_type
--------------  ---------
-nro_documento  BYTES
-nombres        BYTES
-email          BYTES
-celular        BYTES
+nivel  reglas  ok    alerta  falla  sin_datos
+-----  ------  ----  ------  -----  ---------
+N1     19      1184  378     186    0
+N2     14      945   255     88     0
+N3     15      1373  0       2      5
 
-## HU-02 / HU-03 · Reglas por corte, nivel y estado (última ejecución de cada corte)
+## HU-04 · Sellos por tabla en los 92 cortes
 
-fecha_corte  nivel  ok  alerta  falla
------------  -----  --  ------  -----
-2026-04-30   N1     14  5       0
-2026-04-30   N2     8   6       0
-2026-04-30   N3     10  0       0
-2026-05-31   N1     14  5       0
-2026-05-31   N2     6   8       0
-2026-05-31   N3     15  0       0
-2026-06-30   N1     14  5       0
-2026-06-30   N2     6   8       0
-2026-06-30   N3     15  0       0
-2026-07-31   N1     13  6       0
-2026-07-31   N2     7   7       0
-2026-07-31   N3     14  0       1
-2026-08-31   N1     13  6       0
-2026-08-31   N2     8   6       0
-2026-08-31   N3     14  0       1
-2026-09-30   N1     15  4       0
-2026-09-30   N2     7   7       0
-2026-09-30   N3     15  0       0
+tabla      certificado  con_observaciones  no_certificado
+---------  -----------  -----------------  --------------
+pago       0            92                 0
+persona    0            90                 2
+poliza     12           76                 4
+siniestro  0            90                 2
+vehiculo   19           73                 0
 
-## HU-04 / HU-07 · Certificación por corte y tabla (última ejecución de cada corte)
+## HU-04 / HU-07 · Tablas no certificadas y su motivo (retenidas por el Gate)
 
-fecha_corte  tabla      estado                         reglas_bloqueantes  hallazgos  publicado
------------  ---------  -----------------------------  ------------------  ---------  ---------
-2026-04-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-04-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-04-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-04-30   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-04-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-05-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-05-31   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-05-31   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-05-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-05-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-06-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-06-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-06-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-06-30   siniestro  NO_CERTIFICADO                                     6          False
-2026-06-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-07-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-07-31   persona    NO_CERTIFICADO                 GEN-OPO-01          0          False
-2026-07-31   poliza     CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-07-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-07-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-08-31   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-08-31   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-08-31   poliza     NO_CERTIFICADO                 GEN-VOL-01          0          False
-2026-08-31   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-08-31   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-09-30   pago       CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-09-30   persona    CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-09-30   poliza     CERTIFICADO_CON_OBSERVACIONES                      1          True
-2026-09-30   siniestro  CERTIFICADO_CON_OBSERVACIONES                      0          True
-2026-09-30   vehiculo   CERTIFICADO_CON_OBSERVACIONES                      0          True
+fecha_corte  tabla      reglas_bloqueantes     privacidad_ok  hallazgos  publicado
+-----------  ---------  ---------------------  -------------  ---------  ---------
+2026-07-14   persona    GEN-OPO-01             True           0          False
+2026-07-22   persona    PER-COM-01,PER-VAL-01  True           0          False
+2026-08-07   siniestro                         False          5          False
+2026-08-08   siniestro                         False          3          False
+2026-08-20   poliza     GEN-VOL-01             True           0          False
+2026-09-28   poliza     POL-CON-03             True           1          False
+2026-09-29   poliza     POL-CON-03             True           1          False
+2026-09-30   poliza     POL-CON-03             True           1          False
 
 ## HU-07 · Hallazgos del Privacy Gate
 
-fecha_corte  tabla      tipo                    columna      registros  bloquea
------------  ---------  ----------------------  -----------  ---------  -------
-2026-06-30   siniestro  PII_EN_CLARO            causa        6          True
-2026-09-30   poliza     COLUMNA_SIN_CLASIFICAR  canal_venta  1          False
+tipo                    tabla      columna      bloqueante  registros  cortes  desde       hasta     
+----------------------  ---------  -----------  ----------  ---------  ------  ----------  ----------
+PII_EN_CLARO            siniestro  causa        True        8          2       2026-08-07  2026-08-08
+COLUMNA_SIN_CLASIFICAR  poliza     canal_venta  False       22         22      2026-09-09  2026-09-30
 
-## HU-08 · Objetos publicados en BUSINESS (p_ = tablas certificadas, v_ = vistas)
+## HU-07 · Evidencia del sello: versión del motor y de las reglas
+
+version_motor  version_reglas  sellos  primero                           ultimo                          
+-------------  --------------  ------  --------------------------------  --------------------------------
+0.2.0          417addeaec      460     2026-10-16 01:24:32.748189+00:00  2026-10-25 02:48:33.530211+00:00
+
+## HU-08 · Objetos de BUSINESS (p_ = tablas con lo certificado, v_ = vistas)
 
 table_name                      table_type
 ------------------------------  ----------
@@ -135,3 +137,17 @@ v_persona                       VIEW
 v_poliza                        VIEW
 v_siniestro                     VIEW
 v_vehiculo                      VIEW
+
+## HU-08 · Cortes publicados por tabla y último corte en su vista v_
+
+tabla      cortes_publicados  corte_en_la_vista
+---------  -----------------  -----------------
+pago       92                 2026-09-30
+persona    90                 2026-09-30
+poliza     88                 2026-09-27
+siniestro  90                 2026-09-30
+vehiculo   92                 2026-09-30
+
+## HU-08 · Cortes no certificados que llegaron a BUSINESS (debe estar vacío)
+
+(sin filas)

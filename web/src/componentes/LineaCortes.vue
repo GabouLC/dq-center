@@ -7,7 +7,7 @@ import { useVivo } from '@/stores/vivo'
 
 /**
  * Línea de tiempo de los cortes diarios. Cada día es una barra: su altura sigue el
- * score, el rojo marca días con alguna tabla sin certificar y el fin de semana va
+ * puntaje, el rojo marca días con alguna tabla no certificada y el fin de semana va
  * más claro. Se elige con clic, con las flechas del teclado o con los botones.
  */
 const cortes = useCortes()
@@ -25,6 +25,13 @@ const altura = (c: Corte) =>
   c.global === null ? 20 : 22 + ((c.global - escala.value.menor) / (escala.value.mayor - escala.value.menor)) * 78
 const meses = computed(() =>
   cortes.lista.flatMap((c, i) => (c.fecha_corte.endsWith('-01') || i === 0 ? [{ i, nombre: corteCorto(c.fecha_corte).split(' ')[1] }] : [])),
+)
+
+const noCertificadas = (n: number) => `${n} no ${n === 1 ? 'certificada' : 'certificadas'}`
+const valorTexto = computed(() =>
+  actual.value
+    ? `${corte(actual.value.fecha_corte)} · puntaje ${pct(actual.value.global)}${actual.value.no_certificadas ? ` · ${noCertificadas(actual.value.no_certificadas)}` : ''}`
+    : '',
 )
 
 function mover(paso: number) {
@@ -48,11 +55,11 @@ function teclado(e: KeyboardEvent) {
       class="franja"
       role="slider"
       tabindex="0"
-      aria-label="Fecha de corte"
+      aria-label="Día de datos"
       :aria-valuemin="0"
       :aria-valuemax="cortes.lista.length - 1"
       :aria-valuenow="indice"
-      :aria-valuetext="actual ? corte(actual.fecha_corte) : ''"
+      :aria-valuetext="valorTexto"
       @keydown="teclado"
     >
       <div class="barras">
@@ -62,10 +69,10 @@ function teclado(e: KeyboardEvent) {
           class="dia"
           :class="{ critico: c.no_certificadas > 0, finde: esFinDeSemana(c.fecha_corte), activo: c.fecha_corte === cortes.elegido }"
           :style="{ height: `${altura(c)}%` }"
-          :title="`${corte(c.fecha_corte)} · score ${pct(c.global)}${c.no_certificadas ? ` · ${c.no_certificadas} sin certificar` : ''}`"
+          :title="`${corte(c.fecha_corte)} · puntaje ${pct(c.global)}${c.no_certificadas ? ` · ${noCertificadas(c.no_certificadas)}` : ''}`"
           @click="cortes.elegido = c.fecha_corte"
         />
-        <span v-if="vivo.estado?.corte_en_curso" class="dia llegando" title="Corte que está llegando ahora" />
+        <span v-if="vivo.estado?.corte_en_curso" class="dia llegando" title="Día que está llegando ahora" />
       </div>
       <div class="meses" aria-hidden="true">
         <span v-for="m in meses" :key="m.i" :style="{ left: `calc(${m.i} * var(--paso))` }">{{ m.nombre }}</span>
@@ -79,7 +86,7 @@ function teclado(e: KeyboardEvent) {
       <span class="detalle">
         <CircleX v-if="actual.no_certificadas" :size="13" class="critico" />
         <CircleCheck v-else :size="13" class="bien" />
-        score {{ pct(actual.global) }}
+        puntaje {{ pct(actual.global) }}<template v-if="actual.no_certificadas"> · {{ noCertificadas(actual.no_certificadas) }}</template>
       </span>
     </div>
   </div>

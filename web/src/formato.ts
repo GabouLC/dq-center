@@ -11,9 +11,12 @@ const diaMedio = new Intl.DateTimeFormat('es-PE', { weekday: 'short', day: 'nume
 const relativoFmt = new Intl.RelativeTimeFormat('es-PE', { numeric: 'auto', style: 'short' })
 
 export const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${pct1.format(v)} %`)
-/** Variación con signo: +2.2 % / −1.3 pts. */
-export const signo = (v: number | null | undefined, sufijo = ' %') =>
-  v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}${pct1.format(Math.abs(v))}${sufijo}`
+/** Variación con signo: +2.2 % / −1.3 pts; lo que redondea a cero se muestra sin signo. */
+export const signo = (v: number | null | undefined, sufijo = ' %') => {
+  if (v === null || v === undefined) return '—'
+  const texto = pct1.format(Math.abs(v))
+  return Number(texto.replace(',', '.')) === 0 ? `${texto}${sufijo}` : `${v > 0 ? '+' : '−'}${texto}${sufijo}`
+}
 export const num = (v: number | null | undefined) => (v === null || v === undefined ? '—' : entero.format(v))
 export const hora = (iso: string | null | undefined) => (iso ? horaLima.format(new Date(iso)) : '—')
 /** "2026-07-14" -> "mar., 14 jul. 2026" */
@@ -55,4 +58,12 @@ export const NOMBRE_CERTIFICACION: Record<string, string> = {
   CERTIFICADO: 'Certificada',
   CERTIFICADO_CON_OBSERVACIONES: 'Con observaciones',
   NO_CERTIFICADO: 'No certificada',
+}
+
+/** Severidad para mostrar; la API sigue usando CRITICA, ALTA, MEDIA y BAJA. */
+export const NOMBRE_SEVERIDAD: Record<string, string> = {
+  CRITICA: 'Crítica',
+  ALTA: 'Alta',
+  MEDIA: 'Media',
+  BAJA: 'Baja',
 }

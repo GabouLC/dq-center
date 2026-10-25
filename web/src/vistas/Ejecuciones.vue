@@ -41,7 +41,7 @@ const origen = (o: string) => ORIGEN[o] ?? (o.startsWith('manual:') ? `Manual ·
     <div class="encabezado">
       <div>
         <h1>Ejecuciones</h1>
-        <p>Corridas del motor y del Quality &amp; Privacy Gate. Además de la corrida diaria, puedes reevaluar un corte, por ejemplo después de cambiar una regla.</p>
+        <p>Ejecuciones del motor y de la certificación. Además de la diaria, puedes volver a evaluar un corte (un día de datos), por ejemplo después de cambiar una regla.</p>
       </div>
     </div>
 
@@ -55,13 +55,13 @@ const origen = (o: string) => ORIGEN[o] ?? (o.startsWith('manual:') ? `Manual ·
             <option v-for="c in cortes.lista" :key="c.fecha_corte" :value="c.fecha_corte">{{ nombreCorte(c.fecha_corte) }}</option>
           </select>
           <button type="button" class="primario" :disabled="lanzando" @click="lanzar">
-            <Play :size="15" /> {{ lanzando ? 'Evaluando…' : 'Ejecutar' }}
+            <Play :size="15" /> {{ lanzando ? 'Evaluando…' : 'Evaluar corte' }}
           </button>
         </div>
       </div>
-      <p v-if="errorLanzar" class="aviso-caja error"><CircleX :size="17" />{{ errorLanzar }}</p>
+      <p v-if="errorLanzar" class="aviso-caja error" role="alert"><CircleX :size="17" />{{ errorLanzar }}</p>
       <div v-if="resultado" class="resultado" role="status">
-        <strong>{{ resultado.estado === 'terminada' ? 'Corrida terminada' : 'Corrida lanzada' }} · {{ nombreCorte(resultado.fecha_corte) }}</strong>
+        <strong>{{ resultado.estado === 'terminada' ? 'Ejecución terminada' : 'Ejecución iniciada' }} · {{ nombreCorte(resultado.fecha_corte) }}</strong>
         <div class="fila">
           <span v-for="(estado, tabla) in resultado.certificaciones ?? {}" :key="tabla" class="fila par">
             <span class="secundario">{{ NOMBRE_TABLA[tabla] }}</span><EstadoChip :estado="estado" compacto />
@@ -75,7 +75,7 @@ const origen = (o: string) => ORIGEN[o] ?? (o.startsWith('manual:') ? `Manual ·
         <h2 class="fila titulo"><History :size="18" /> Historial</h2>
         <div class="tabla-envoltura">
           <table>
-            <thead><tr><th>Corte</th><th>Origen</th><th>Inicio</th><th>Duración</th><th class="der">Reglas</th><th>Corrida</th></tr></thead>
+            <thead><tr><th>Corte</th><th>Origen</th><th>Inicio</th><th>Duración</th><th class="der">Reglas</th><th>Ejecución</th></tr></thead>
             <tbody>
               <tr v-for="e in datos ?? []" :key="e.id_ejecucion">
                 <td><strong>{{ nombreCorte(e.fecha_corte) }}</strong></td>

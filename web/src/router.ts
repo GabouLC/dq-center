@@ -5,14 +5,16 @@ declare module 'vue-router' {
   interface RouteMeta {
     publica?: boolean
     modulo?: string
+    /** Título de la pestaña para las rutas que no son módulos del menú. */
+    titulo?: string
   }
 }
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/entrar', component: () => import('@/vistas/Entrar.vue'), meta: { publica: true } },
-    { path: '/clave', component: () => import('@/vistas/CambiarClave.vue') },
+    { path: '/entrar', component: () => import('@/vistas/Entrar.vue'), meta: { publica: true, titulo: 'Iniciar sesión' } },
+    { path: '/clave', component: () => import('@/vistas/CambiarClave.vue'), meta: { titulo: 'Cambiar contraseña' } },
     { path: '/', redirect: '/resumen' },
     { path: '/resumen', component: () => import('@/vistas/Resumen.vue'), meta: { modulo: 'resumen' } },
     { path: '/validaciones', component: () => import('@/vistas/Validaciones.vue'), meta: { modulo: 'validaciones' } },
@@ -40,4 +42,10 @@ router.beforeEach(async (destino) => {
   const modulo = destino.meta.modulo
   if (modulo && !sesion.modulos.some((m) => m.clave === modulo)) return `/${sesion.modulos[0]?.clave ?? 'resumen'}`
   return true
+})
+
+// Título de la pestaña: el mismo nombre del módulo que muestra el menú (viene de la API).
+router.afterEach((destino) => {
+  const nombre = useSesion().modulos.find((m) => m.clave === destino.meta.modulo)?.nombre ?? destino.meta.titulo
+  document.title = nombre ? `${nombre} · Smart-DQ` : 'Smart-DQ · Calidad y privacidad de datos'
 })

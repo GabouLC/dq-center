@@ -5,8 +5,11 @@
   python -m dqc.gcp sembrar --admin correo@dominio [--reemplazar]
       Carga en Firestore las reglas, los contratos (con su clasificación DAC) y los administradores.
       A cada administrador sin contraseña le imprime una temporal, que debe cambiar al entrar.
-  python -m dqc.gcp simular [--datos data]
-      Corre los 6 cortes desde cero (ingesta, homologación, motor) y verifica contra el manifiesto.
+  python -m dqc.gcp simular [--datos data] [--desde AAAA-MM-DD]
+      Corre los 92 cortes desde cero (ingesta, homologación, motor, Gate y publicación) y verifica
+      contra el manifiesto. Con --desde reanuda una carga cortada: exige que los cortes anteriores
+      estén evaluados, borra todo lo de ese corte en adelante (incluidas las corridas manuales),
+      sigue desde ahí y verifica solo los cortes que procesó.
   python -m dqc.gcp ejecutar [--corte AAAA-MM-DD] [--origen programada]
       Corre el motor sobre un corte ya cargado (por defecto, el último).
 
@@ -31,7 +34,7 @@ from dqc.motor.motor import Ejecucion
 from dqc.motor.puntuacion import scores
 from dqc.motor.reglas import cargar_yaml
 from dqc.pipeline.configuracion import cargar_contratos, cargar_homologacion
-from dqc.pipeline.flujo import Flujo
+from dqc.pipeline.flujo import Flujo, cortes_por_procesar
 from dqc.pipeline.ingesta import RECHAZADA, leer_entregas
 from dqc.pipeline.verificacion import verificar
 from dqc.plataforma.bigquery import UBICACION, PlataformaBigQuery
@@ -60,12 +63,15 @@ def main() -> None:
     p.add_argument("--reemplazar", action="store_true", help="sobrescribir lo que ya existe")
     p = sub.add_parser("simular")
     p.add_argument("--datos", type=Path, default=Path("data"))
+    p.add_argument("--desde", type=date.fromisoformat, help="reanudar desde este corte (AAAA-MM-DD)")
     p = sub.add_parser("ejecutar")
     p.add_argument("--corte", type=date.fromisoformat)
     p.add_argument("--origen", default="programada")
     args = parser.parse_args()
     if not args.proyecto:
         parser.error("indica --proyecto o define DQC_PROYECTO")
+    if getattr(args, "desde", None) and args.desde not in CORTES:
+        parser.error(f"--desde debe ser un corte entre {CORTES[0]} y {CORTES[-1]}")
 
     plataforma = PlataformaBigQuery(bigquery.Client(project=args.proyecto, location=UBICACION), args.sandbox)
     db = firestore.Client(project=args.proyecto)
@@ -105,7 +111,15 @@ def main() -> None:
         _imprimir(e, "  " + ", ".join(f"{c.tabla} {c.estado}" for c in certificaciones))
         return
 
-    plataforma.reiniciar()
+    if args.desde is None:
+        plataforma.reiniciar()
+    try:
+        pendientes = cortes_por_procesar(plataforma, args.desde)
+    except ValueError as e:
+        parser.error(str(e))
+    if args.desde is not None:
+        for linea in plataforma.recortar(args.desde):
+            print(f"Recortada {linea}")
     flujo = Flujo(
         plataforma,
         cargar_homologacion(args.config / "homologacion.yaml"),
@@ -117,8 +131,8 @@ def main() -> None:
     flujo.preparar()
     entregas = leer_entregas(args.datos / "landing")
     resultados = []
-    for i, corte in enumerate(CORTES):
-        r = flujo.procesar_corte(corte, entregas, primero=i == 0)
+    for corte in pendientes:
+        r = flujo.procesar_corte(corte, entregas, primero=corte == CORTES[0])
         resultados.append(r)
         rechazos = sum(c.estado == RECHAZADA for c in r.cargas)
         _imprimir(r.ejecucion, f"  rechazos {rechazos}  incidencias {len(r.incidencias)}")

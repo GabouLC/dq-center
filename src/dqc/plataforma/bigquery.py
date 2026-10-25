@@ -5,7 +5,7 @@ en los datasets del flujo. Todo se escribe con load jobs o consultas con tabla
 destino, que funcionan en el sandbox (sin DML).
 
 Modo sandbox (proyecto sin facturación): BigQuery vence tablas y particiones a
-los 60 días, y las particiones de abril a julio vencerían al instante. En ese
+los 60 días, y las particiones de julio y agosto vencerían al instante. En ese
 modo las tablas se agrupan por fecha_corte en vez de particionarse, y cada
 corte se agrega (el primero vacía la tabla) en lugar de reemplazar su partición.
 """
@@ -24,6 +24,7 @@ from google.cloud import bigquery
 
 from dqc.modelo import BUSINESS, ENGINE, MASTER, RAW, SEGURIDAD
 from dqc.pipeline.funciones import LLAVE_ALEATORIA, LLAVE_DETERMINISTICA, FuncionesBigQuery
+from dqc.sql_util import fecha
 
 UBICACION = "US"
 DATASETS = (RAW, MASTER, ENGINE, SEGURIDAD, BUSINESS)
@@ -78,6 +79,50 @@ class PlataformaBigQuery:
                     self.cliente.delete_table(tabla.reference, not_found_ok=True)
             except NotFound:
                 pass
+
+    def recortar(self, desde: date) -> list[str]:
+        """Deja cada tabla del flujo solo con los cortes anteriores a `desde`, para reanudar una carga cortada.
+
+        Sin DML (sandbox): la tabla se reescribe con una consulta sobre sí misma, con su mismo
+        agrupamiento o particionado. Devuelve las que cambiaron.
+        """
+        recortadas = []
+        for dataset in sorted(ESCRIBIBLES):
+            try:
+                items = [t for t in self.cliente.list_tables(f"{self.proyecto}.{dataset}") if t.table_type == "TABLE"]
+            except NotFound:
+                continue
+            for item in items:
+                tabla = self.cliente.get_table(item.reference)
+                if any(c.name == "fecha_corte" for c in tabla.schema):
+                    if sobran := self._quitar(tabla, f"fecha_corte >= {fecha(desde)}"):
+                        recortadas.append(f"{dataset}.{item.table_id}: {sobran} filas desde el {desde}")
+        return recortadas
+
+    def quitar_corte(self, dataset: str, tabla: str, corte: date) -> int:
+        if dataset not in ESCRIBIBLES:
+            raise PermissionError(f"el flujo no escribe en {dataset}")
+        try:
+            existente = self.cliente.get_table(self._tabla(dataset, tabla))
+        except NotFound:
+            return 0
+        return self._quitar(existente, f"fecha_corte = {fecha(corte)}")
+
+    def _quitar(self, tabla: bigquery.Table, condicion: str) -> int:
+        """Reescribe la tabla sin las filas que cumplen la condición; las filas sin fecha se quedan.
+
+        Sin DML (sandbox): una consulta sobre sí misma con WRITE_TRUNCATE, con su mismo
+        agrupamiento o particionado. Devuelve cuántas filas quitó.
+        """
+        nombre = f"`{tabla.project}.{tabla.dataset_id}.{tabla.table_id}`"
+        sobran = self.consultar(f"SELECT COUNT(*) AS n FROM {nombre} WHERE {condicion}")[0]["n"]
+        if sobran:
+            config = self._config(destination=tabla.reference, write_disposition="WRITE_TRUNCATE")
+            config.clustering_fields = tabla.clustering_fields
+            config.time_partitioning = tabla.time_partitioning
+            consulta = f"SELECT * FROM {nombre} WHERE NOT ({condicion}) OR fecha_corte IS NULL"
+            self.cliente.query(consulta, job_config=config).result()
+        return sobran
 
     def crear_tabla(self, dataset: str, tabla: str, columnas: list[tuple[str, str]]) -> None:
         nueva = bigquery.Table(self._tabla(dataset, tabla), schema=[bigquery.SchemaField(n, t) for n, t in columnas])

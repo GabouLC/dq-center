@@ -78,8 +78,8 @@ const columnas = computed(() => {
         <h1>Fuentes</h1>
         <p>Cada archivo que llegó a RAW: a qué hora, cuántas filas, si se rechazó y cuántos registros no se pudieron homologar.</p>
       </div>
-      <div class="segmentos" role="tablist" aria-label="Tabla">
-        <button v-for="t in TABLAS" :key="t" type="button" role="tab" :aria-selected="t === tabla" :class="{ activo: t === tabla }" @click="tabla = t">
+      <div class="segmentos" role="group" aria-label="Tabla">
+        <button v-for="t in TABLAS" :key="t" type="button" :aria-pressed="t === tabla" :class="{ activo: t === tabla }" @click="tabla = t">
           {{ NOMBRE_TABLA[t] }}
         </button>
       </div>
@@ -94,7 +94,7 @@ const columnas = computed(() => {
             <p class="tenue pequeno">Dueño: {{ fuente.dueno }} · dominio {{ fuente.dominio }}</p>
           </div>
           <div class="cifras">
-            <span><FileCheck2 :size="18" class="bien" /><strong>{{ exitosas.length }}</strong> cargas</span>
+            <span><FileCheck2 :size="18" class="bien" /><strong>{{ exitosas.length }}</strong> cargas exitosas</span>
             <span><FileX2 :size="18" :class="rechazos ? 'critico' : 'tenue'" /><strong>{{ rechazos }}</strong> rechazadas</span>
             <span><Clock :size="18" :class="exitosas.some(tarde) ? 'critico' : 'bien'" /><strong>{{ exitosas.filter(tarde).length }}</strong> tarde</span>
           </div>
@@ -106,7 +106,8 @@ const columnas = computed(() => {
               <h2 class="fila"><Rows3 :size="18" class="marca-c" /> Volumen diario</h2>
               <span class="tenue pequeno">Rojo: variación de más de ±15 % contra el día anterior</span>
             </div>
-            <div class="mini">
+            <p class="visualmente-oculto">El detalle de cada día está en la tabla Cargas.</p>
+            <div class="mini" aria-hidden="true">
               <span
                 v-for="c in exitosas"
                 :key="c.archivo"
@@ -125,9 +126,10 @@ const columnas = computed(() => {
           <section class="panel pila">
             <div class="fila entre">
               <h2 class="fila"><Timer :size="18" class="marca-c" /> Hora de llegada</h2>
-              <span class="tenue pequeno">Límite: dos días después del corte, 09:00</span>
+              <span class="tenue pequeno">Límite: dos días después del día de datos, 09:00</span>
             </div>
-            <div class="mini llegadas">
+            <p class="visualmente-oculto">El detalle de cada día está en la tabla Cargas.</p>
+            <div class="mini llegadas" aria-hidden="true">
               <span class="linea-limite" :style="{ bottom: `${alturaEje(LIMITE_HORAS)}%` }"><span>límite</span></span>
               <span
                 v-for="(c, i) in exitosas"
@@ -139,6 +141,11 @@ const columnas = computed(() => {
               />
             </div>
             <div class="eje-mini tenue"><span>Día siguiente, madrugada</span><span>Más arriba, más tarde</span></div>
+            <p class="leyenda-llegada">
+              <span><i class="a-tiempo" /> A tiempo: antes de las 09:00 del día siguiente</span>
+              <span><i class="justo" /> Con retraso: menos de 24 h antes del límite</span>
+              <span><i class="tarde" /> Tarde: después del límite</span>
+            </p>
           </section>
         </div>
 
@@ -153,7 +160,7 @@ const columnas = computed(() => {
           <div class="tabla-envoltura">
             <table>
               <thead>
-                <tr><th>Corte</th><th>Archivo</th><th>Llegada (Lima)</th><th>Puntualidad</th><th class="der">Filas</th><th class="der">Variación</th><th>Estado</th><th class="der">Incidencias</th><th>Detalle</th></tr>
+                <tr><th>Día</th><th>Archivo</th><th>Llegada (Lima)</th><th>Puntualidad</th><th class="der">Filas</th><th class="der">Variación</th><th>Estado</th><th class="der">Incidencias</th><th>Detalle</th></tr>
               </thead>
               <tbody>
                 <tr
@@ -231,6 +238,11 @@ const columnas = computed(() => {
 .linea-limite span { position: absolute; right: 0; top: -18px; font-size: 11px; font-weight: 700; color: var(--critico-texto); }
 .filtros { gap: 10px; }
 .interruptor { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--tinta-2); }
+.leyenda-llegada { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--tinta-2); }
+.leyenda-llegada span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda-llegada i { width: 8px; height: 8px; border-radius: 50%; background: var(--s1); }
+.leyenda-llegada i.justo { background: var(--aviso); }
+.leyenda-llegada i.tarde { background: var(--critico); }
 .rechazada { background: var(--critico-suave); }
 .llegando { background: var(--bien-suave); }
 @media (max-width: 1000px) { .dos { grid-template-columns: 1fr; } }

@@ -47,11 +47,17 @@ async function salir() {
   await sesion.cerrar()
   await router.push('/entrar')
 }
+
+/** Enlace "Saltar al contenido": lleva el foco al área principal sin tocar la URL. */
+function irAlContenido() {
+  document.getElementById('contenido')?.focus()
+}
 </script>
 
 <template>
   <RouterView v-if="publica" />
   <div v-else class="marco">
+    <a href="#contenido" class="saltar" @click.prevent="irAlContenido">Saltar al contenido</a>
     <aside class="lateral" :class="{ abierto: menuAbierto }">
       <div class="marca">
         <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
@@ -114,7 +120,7 @@ async function salir() {
           <button type="button" class="icono fantasma" aria-label="Salir" title="Salir" @click="salir"><LogOut :size="18" /></button>
         </div>
       </header>
-      <main class="contenido">
+      <main id="contenido" class="contenido" tabindex="-1">
         <RouterView v-slot="{ Component }">
           <Transition name="vista" mode="out-in">
             <component :is="Component" :key="ruta.path" />
@@ -193,6 +199,21 @@ nav a.router-link-active svg { color: var(--nav-acento); }
 .datos strong { font-size: 13px; }
 .datos span { font-size: 12px; color: var(--tenue); }
 .contenido { padding: 28px; max-width: 1320px; width: 100%; }
+/* El área principal recibe el foco solo como destino del enlace "Saltar al contenido". */
+.contenido:focus, .contenido:focus-visible { outline: none; }
+.saltar {
+  position: fixed;
+  top: -60px;
+  left: 12px;
+  z-index: 100;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: var(--superficie);
+  color: var(--marca);
+  font-weight: 700;
+  box-shadow: var(--sombra-alta);
+}
+.saltar:focus { top: 12px; }
 
 .vista-enter-active, .vista-leave-active { transition: opacity 0.16s ease, transform 0.16s ease; }
 .vista-enter-from { opacity: 0; transform: translateY(6px); }
@@ -206,9 +227,11 @@ nav a.router-link-active svg { color: var(--nav-acento); }
     width: 272px;
     z-index: 30;
     transform: translateX(-100%);
-    transition: transform 0.22s ease;
+    /* Cerrado no se ve ni recibe foco; visibility espera a que termine la animación. */
+    visibility: hidden;
+    transition: transform 0.22s ease, visibility 0.22s;
   }
-  .lateral.abierto { transform: none; box-shadow: var(--sombra-alta); }
+  .lateral.abierto { transform: none; visibility: visible; box-shadow: var(--sombra-alta); }
   .velo { display: block; position: fixed; inset: 0; background: rgb(8 16 28 / 0.45); z-index: 25; }
   .cerrar-menu { display: inline-flex; color: var(--nav-tinta); border-color: transparent; background: transparent; }
   .abrir-menu { display: inline-flex; }

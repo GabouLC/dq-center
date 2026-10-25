@@ -2,7 +2,7 @@
 import {
   BadgeCheck, CircleAlert, CircleX, FastForward, FileInput, Info, Pause, Play, Radio, TriangleAlert, X,
 } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { corteCorto, relativo } from '@/formato'
 import { useSesion } from '@/stores/sesion'
 import { useVivo, type Evento } from '@/stores/vivo'
@@ -28,11 +28,41 @@ const texto = computed(() => {
   return 'Al día'
 })
 const enCurso = computed(() => !!vivo.estado?.activo && !vivo.estado.pausado && !!vivo.estado.dias_pendientes)
+
+// Foco del panel: al abrirse va a "Cerrar"; al cerrarse vuelve a quien lo abrió (la pastilla o "Ver todo").
+const pastilla = ref<HTMLButtonElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
+const botonCerrar = ref<HTMLButtonElement | null>(null)
+let abridor: HTMLElement | null = null
+watch(
+  () => vivo.panelAbierto,
+  async (abierto) => {
+    if (abierto) {
+      abridor = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      await nextTick()
+      botonCerrar.value?.focus()
+      return
+    }
+    // Solo se devuelve el foco si estaba dentro del panel (no se le roba a otro control).
+    const activo = document.activeElement
+    if (activo && activo !== document.body && !panel.value?.contains(activo)) return
+    const destino = abridor?.isConnected ? abridor : pastilla.value
+    destino?.focus()
+  },
+)
 </script>
 
 <template>
   <template v-if="vivo.estado?.activo">
-    <button type="button" class="pastilla" :class="{ pausado: vivo.estado.pausado, quieto: !enCurso }" :aria-expanded="vivo.panelAbierto" @click="vivo.panelAbierto = !vivo.panelAbierto">
+    <button
+      ref="pastilla"
+      type="button"
+      class="pastilla"
+      :class="{ pausado: vivo.estado.pausado, quieto: !enCurso }"
+      aria-controls="panel-vivo"
+      :aria-expanded="vivo.panelAbierto"
+      @click="vivo.panelAbierto = !vivo.panelAbierto"
+    >
       <span class="punto" aria-hidden="true" />
       <strong>En vivo</strong>
       <span class="texto">{{ texto }}</span>
@@ -40,20 +70,20 @@ const enCurso = computed(() => !!vivo.estado?.activo && !vivo.estado.pausado && 
 
     <Teleport to="body">
       <Transition name="panel">
-        <aside v-if="vivo.panelAbierto" class="panel-vivo" aria-label="Actividad en vivo">
+        <aside v-if="vivo.panelAbierto" id="panel-vivo" ref="panel" class="panel-vivo" aria-label="Actividad en vivo" @keydown.esc="vivo.panelAbierto = false">
           <header class="fila entre">
             <h2><Radio :size="18" /> Actividad en vivo</h2>
-            <button type="button" class="icono fantasma" aria-label="Cerrar" @click="vivo.panelAbierto = false"><X :size="18" /></button>
+            <button ref="botonCerrar" type="button" class="icono fantasma" aria-label="Cerrar" @click="vivo.panelAbierto = false"><X :size="18" /></button>
           </header>
           <p class="estado-vivo">
             <span class="punto" :class="{ quieto: !enCurso }" aria-hidden="true" />
             <span>
               <template v-if="vivo.estado.corte_en_curso">
-                Llegando el corte del <strong>{{ corteCorto(vivo.estado.corte_en_curso) }}</strong>:
+                Llegando los datos del <strong>{{ corteCorto(vivo.estado.corte_en_curso) }}</strong>:
                 {{ vivo.estado.archivos_recibidos }} archivos en RAW, {{ vivo.estado.archivos_pendientes }} por llegar.
               </template>
               <template v-else-if="vivo.estado.dias_pendientes">
-                Último corte publicado: <strong>{{ corteCorto(vivo.estado.ultimo_corte ?? '') }}</strong>. Quedan
+                Último día publicado: <strong>{{ corteCorto(vivo.estado.ultimo_corte ?? '') }}</strong>. Quedan
                 {{ vivo.estado.dias_pendientes }} días por llegar.
               </template>
               <template v-else>Todo al día: no hay entregas pendientes.</template>
@@ -73,7 +103,7 @@ const enCurso = computed(() => !!vivo.estado?.activo && !vivo.estado.pausado && 
               <div>
                 <strong>{{ e.titulo }}</strong>
                 <p v-if="e.detalle">{{ e.detalle }}</p>
-                <span class="tenue cuando">{{ relativo(e.cuando, ahora) }}<template v-if="e.fecha_corte"> · corte {{ corteCorto(e.fecha_corte) }}</template></span>
+                <span class="tenue cuando">{{ relativo(e.cuando, ahora) }}<template v-if="e.fecha_corte"> · datos del {{ corteCorto(e.fecha_corte) }}</template></span>
               </div>
             </li>
             <li v-if="!vivo.eventos.length" class="vacio tenue">Todavía no hay actividad. El próximo archivo llega en unos segundos.</li>

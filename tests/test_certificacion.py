@@ -1,13 +1,18 @@
 """Sprint 2: reglas N2 (HU-03), certificación (HU-04), Quality & Privacy Gate (HU-07) y BUSINESS (HU-08)."""
 
-from datetime import date
+from dataclasses import replace
+from datetime import date, timedelta
 
 from dqc.datagen import generador as g
-from dqc.modelo import BUSINESS, CERTIFICADO, CON_OBSERVACIONES, CORTES, NO_CERTIFICADO, TABLAS_CORTE
+from dqc.modelo import BUSINESS, CERTIFICADO, MASTER, CON_OBSERVACIONES, CORTES, NO_CERTIFICADO, TABLAS_CORTE
 from dqc.motor.certificacion import certificar
 from dqc.motor.puntuacion import ResultadoRegla
 from dqc.pipeline.configuracion import cifrados
+from dqc.pipeline.flujo import Flujo
+from dqc.pipeline.ingesta import leer_entregas
+from dqc.pipeline.privacidad import columnas_del_corte, revisar
 from dqc.pipeline.publicacion import vistas_contrato
+from dqc.plataforma.local import PlataformaDuckDB
 
 from conftest import CORTES_PRUEBA
 
@@ -82,6 +87,57 @@ def test_una_media_en_falla_no_bloquea():
     persona = next(c for c in certificar(ejecucion, [], "x") if c.tabla == "persona")
     assert persona.estado == CON_OBSERVACIONES
     assert persona.reglas_con_observacion == ["PER-VAL-03"]
+
+
+def test_una_tabla_cuyo_archivo_no_llego_no_se_certifica():
+    """Sin archivo, la regla de oportunidad queda sin datos: eso bloquea, no certifica en vacío."""
+    resultados = [
+        ResultadoRegla("GEN-OPO-01", "siniestro", "oportunidad", "CRITICA", "frescura", 100, CORTES[0], 0, 0, []),
+        ResultadoRegla("SIN-VAL-01", "siniestro", "validez", "ALTA", "regex", 99, CORTES[0], 0, 0, []),
+    ]
+    ejecucion = type("E", (), {"resultados": resultados, "fecha_corte": CORTES[0]})
+    certificaciones = {c.tabla: c for c in certificar(ejecucion, [], "x")}
+    assert certificaciones["siniestro"].estado == NO_CERTIFICADO
+    assert certificaciones["siniestro"].reglas_bloqueantes == ["GEN-OPO-01"]
+    assert certificaciones["pago"].estado == NO_CERTIFICADO  # ni una regla evaluada
+    assert certificaciones["pago"].reglas_bloqueantes == ["SIN_DATOS"]
+
+
+def _publicados(plataforma, tabla: str) -> list:
+    filas = plataforma.consultar(f"SELECT DISTINCT fecha_corte FROM {BUSINESS}.p_{tabla} ORDER BY 1")
+    return [f["fecha_corte"] for f in filas]
+
+
+def test_reevaluar_un_corte_que_deja_de_certificar_lo_saca_de_business(datos, fuentes, contratos, reglas):
+    plataforma = PlataformaDuckDB()
+    flujo = Flujo(plataforma, fuentes, contratos, reglas, datos.landing)
+    flujo.preparar()
+    entregas = leer_entregas(datos.landing)
+    antes, corte = CORTES_PRUEBA[:2]
+    for c in (antes, corte):
+        flujo.procesar_corte(c, entregas, primero=c == antes)
+    assert _publicados(plataforma, "persona") == [antes, corte]
+
+    # La misma evaluación con una regla de Persona que siempre falla, ahora CRÍTICA
+    estricta = [replace(r, sev="CRITICA") if r.id == "PER-VAL-03" else r for r in reglas]
+    _, certificaciones = Flujo(plataforma, fuentes, contratos, estricta, datos.landing).evaluar(corte, "manual")
+    assert next(c for c in certificaciones if c.tabla == "persona").estado == NO_CERTIFICADO
+    assert _publicados(plataforma, "persona") == [antes]
+    vista = plataforma.consultar(f"SELECT DISTINCT fecha_corte FROM {BUSINESS}.v_persona")
+    assert [f["fecha_corte"] for f in vista] == [antes]
+    # Lo que sigue certificado se vuelve a publicar una sola vez
+    publicadas = plataforma.consultar(f"SELECT COUNT(*) AS n FROM {BUSINESS}.p_poliza WHERE fecha_corte = DATE '{corte}'")
+    en_master = plataforma.consultar(f"SELECT COUNT(*) AS n FROM {MASTER}.poliza WHERE fecha_corte = DATE '{corte}'")
+    assert publicadas == en_master
+
+
+def test_la_columna_nueva_no_aparece_en_los_dias_anteriores(simulacion, contratos):
+    p, anterior = simulacion.plataforma, g.CANAL_VENTA - timedelta(days=1)
+    pactados = {c["nombre"] for c in contratos["poliza"]["campos"]}
+    assert "canal_venta" not in dict(columnas_del_corte(p, "poliza", anterior, pactados))
+    assert "canal_venta" in dict(columnas_del_corte(p, "poliza", g.CANAL_VENTA, pactados))
+    hallazgos = revisar(p, "poliza", anterior, contratos["poliza"], cifrados(contratos).get("poliza", {}))
+    assert not [h for h in hallazgos if h.tipo == "COLUMNA_SIN_CLASIFICAR"]
 
 
 # ── HU-03: reglas asociadas a dominios ──────────────────────────────────────

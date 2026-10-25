@@ -19,10 +19,12 @@ sirve para GitHub Actions. Además, una prueba que solo verifica que el motor
   - los archivos rechazados en la ingesta;
   - los registros enviados a incidencias en la homologación;
   - los registros fallidos de cada regla.
-- La misma simulación se puede correr contra BigQuery (`python -m dqc.gcp simular`).
+- La misma simulación se puede correr contra BigQuery (`python -m dqc.gcp simular`), y
+  `scripts/evidencia_bigquery.py` compara cada resultado con el de DuckDB, fila por fila,
+  con un tope de 1 GB estimado por dry run.
 
 ## Consecuencias
 
-- Las pruebas corren en segundos y sin credenciales, en local y en CI.
+- Las pruebas corren en menos de un minuto y sin credenciales, en local y en CI.
 - Si una traducción de sqlglot diverge de BigQuery, la simulación en GCP lo
   muestra. Por eso se corre al cambiar el motor o la homologación.

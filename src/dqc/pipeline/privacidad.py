@@ -29,10 +29,27 @@ class Hallazgo:
     llave: str | None = None
 
 
-def revisar(plataforma, tabla: str, corte: date, contrato: dict, cifrados_tabla: dict[str, str]) -> list[Hallazgo]:
+def columnas_del_corte(plataforma, tabla: str, corte: date, pactados: set[str]) -> list[tuple[str, str]]:
+    """Columnas de la tabla en MASTER tal como llegaron en el corte.
+
+    MASTER acumula columnas: una que llegó después (canal_venta) existe, vacía, en los cortes
+    anteriores. Las del contrato cuentan siempre; las demás, solo si ese día traen datos.
+    """
     columnas = plataforma.columnas(tabla, MASTER)
-    tipos = dict(columnas)
+    extras = [c for c, _ in columnas if c not in pactados]
+    if not extras:
+        return columnas
+    conteos = plataforma.consultar(
+        "SELECT " + ", ".join(f"COUNT({c}) AS {c}" for c in extras)
+        + f" FROM {MASTER}.{tabla} WHERE fecha_corte = {fecha(corte)}"
+    )[0]
+    return [(c, t) for c, t in columnas if c in pactados or conteos[c]]
+
+
+def revisar(plataforma, tabla: str, corte: date, contrato: dict, cifrados_tabla: dict[str, str]) -> list[Hallazgo]:
     pactados = {c["nombre"] for c in contrato["campos"]}
+    columnas = columnas_del_corte(plataforma, tabla, corte, pactados)
+    tipos = dict(columnas)
     hallazgos = [
         Hallazgo(tabla, "CAMPO_SIN_CIFRAR", campo, True)
         for campo in cifrados_tabla

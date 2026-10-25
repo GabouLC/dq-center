@@ -3,7 +3,7 @@ import { CircleCheck, CircleX, Plus, Search, X } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { hora, NOMBRE_DIMENSION, NOMBRE_TABLA, TABLAS } from '@/formato'
+import { hora, NOMBRE_DIMENSION, NOMBRE_SEVERIDAD, NOMBRE_TABLA, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 
 type Regla = {
@@ -38,13 +38,25 @@ async function cambiar(regla: Regla, cambios: Record<string, unknown>) {
   mensaje.value = null
   try {
     Object.assign(regla, await api<Regla>(`/api/v1/reglas/${regla.id}`, { metodo: 'PATCH', cuerpo: cambios }))
-    mensaje.value = { tipo: 'bien', texto: `${regla.id} guardada. El cambio se aplica en la próxima corrida.` }
+    mensaje.value = { tipo: 'bien', texto: `${regla.id} guardada. El cambio se aplica en la próxima ejecución.` }
   } catch (e) {
     mensaje.value = { tipo: 'error', texto: `${regla.id}: ${e instanceof Error ? e.message : e}` }
     await recargar()
   } finally {
     guardando.value = null
   }
+}
+
+// Severidad: con el teclado, las flechas sobre un select cerrado disparan "change" en Windows.
+// Por eso con teclado se guarda al salir del campo (o con Enter) y solo si el valor cambió;
+// con el mouse, al elegir la opción.
+const SEVERIDADES = ['CRITICA', 'ALTA', 'MEDIA']
+let conPuntero = false
+const usarPuntero = (si: boolean) => (conPuntero = si)
+function guardarSeveridad(regla: Regla, evento: Event, siempre = false) {
+  const valor = (evento.target as HTMLSelectElement).value
+  if (guardando.value === regla.id || !(siempre || conPuntero) || valor === regla.sev) return
+  cambiar(regla, { sev: valor })
 }
 
 // Nueva regla
@@ -84,14 +96,17 @@ const necesita = (campo: string) =>
     <div class="encabezado">
       <div>
         <h1>Reglas</h1>
-        <p>El catálogo de calidad, editable sin tocar código. Antes de guardar, la API valida la regla y compila su SQL contra el último corte (HU-03).</p>
+        <p>
+          El catálogo de calidad, editable sin tocar código. Antes de guardar, la API valida la regla y compila su SQL contra el
+          último corte, es decir, el último día de datos (HU-03).
+        </p>
       </div>
       <button type="button" class="primario" @click="creando = !creando">
         <component :is="creando ? X : Plus" :size="16" /> {{ creando ? 'Cancelar' : 'Nueva regla' }}
       </button>
     </div>
 
-    <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" role="status">
+    <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" :role="mensaje.tipo === 'error' ? 'alert' : 'status'">
       <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
     </p>
 
@@ -106,7 +121,9 @@ const necesita = (campo: string) =>
           <select v-model="nueva.dim"><option v-for="(n, d) in NOMBRE_DIMENSION" :key="d" :value="d">{{ n }}</option></select>
         </label>
         <label class="campo">Tipo <select v-model="nueva.tipo"><option v-for="t in TIPOS" :key="t">{{ t }}</option></select></label>
-        <label class="campo">Severidad <select v-model="nueva.sev"><option>CRITICA</option><option>ALTA</option><option>MEDIA</option></select></label>
+        <label class="campo">Severidad
+          <select v-model="nueva.sev"><option v-for="v in SEVERIDADES" :key="v" :value="v">{{ NOMBRE_SEVERIDAD[v] }}</option></select>
+        </label>
         <label class="campo">Umbral (%) <input v-model.number="nueva.umbral" type="number" min="0" max="100" step="0.5" /></label>
         <label v-if="necesita('campo')" class="campo">Campo <input v-model="nueva.campo" /></label>
         <label v-if="necesita('campos')" class="campo">Campos (coma) <input v-model="nueva.campos" /></label>
@@ -117,15 +134,15 @@ const necesita = (campo: string) =>
       <label v-if="necesita('cumple')" class="campo">Condición que debe cumplir cada fila (SQL) <input v-model="nueva.cumple" class="mono" placeholder="prima_total >= prima_neta" /></label>
       <label class="campo">Filtro del universo (SQL, opcional) <input v-model="nueva.filtro" class="mono" placeholder="estado = 'VIGENTE'" /></label>
       <label class="campo">Descripción <input v-model="nueva.descripcion" /></label>
-      <p v-if="errorNueva" class="aviso-caja error"><CircleX :size="17" />{{ errorNueva }}</p>
+      <p v-if="errorNueva" class="aviso-caja error" role="alert"><CircleX :size="17" />{{ errorNueva }}</p>
       <div><button type="button" class="primario" @click="crear">Validar y crear</button></div>
     </section>
 
     <div class="fila">
       <div class="segmentos" role="group" aria-label="Tabla">
-        <button type="button" :class="{ activo: !filtroTabla }" @click="filtroTabla = ''">Todas</button>
-        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: filtroTabla === t }" @click="filtroTabla = t">{{ NOMBRE_TABLA[t] }}</button>
-        <button type="button" :class="{ activo: filtroTabla === '*' }" @click="filtroTabla = '*'">Transversales</button>
+        <button type="button" :class="{ activo: !filtroTabla }" :aria-pressed="!filtroTabla" @click="filtroTabla = ''">Todas las reglas</button>
+        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: filtroTabla === t }" :aria-pressed="filtroTabla === t" @click="filtroTabla = t">{{ NOMBRE_TABLA[t] }}</button>
+        <button type="button" :class="{ activo: filtroTabla === '*' }" :aria-pressed="filtroTabla === '*'" @click="filtroTabla = '*'">De todas las tablas</button>
       </div>
       <label class="buscar"><Search :size="15" /><input v-model="filtro" type="search" placeholder="Buscar regla" aria-label="Buscar regla" /></label>
     </div>
@@ -148,14 +165,24 @@ const necesita = (campo: string) =>
                 </td>
                 <td>
                   <strong>{{ r.id }}</strong>
+                  <span v-if="r.activa === false" class="chip inactiva-etiqueta">Inactiva</span>
                   <p v-if="r.descripcion" class="tenue pequeno">{{ r.descripcion }}</p>
                 </td>
-                <td>{{ r.tabla === '*' ? 'Todas' : NOMBRE_TABLA[r.tabla] }}</td>
+                <td>{{ r.tabla === '*' ? 'Todas las tablas' : NOMBRE_TABLA[r.tabla] }}</td>
                 <td>{{ NOMBRE_DIMENSION[r.dim] }}</td>
                 <td><span class="chip">{{ r.tipo }}</span></td>
                 <td>
-                  <select :value="r.sev" :disabled="guardando === r.id" aria-label="Severidad" @change="cambiar(r, { sev: ($event.target as HTMLSelectElement).value })">
-                    <option>CRITICA</option><option>ALTA</option><option>MEDIA</option>
+                  <select
+                    :value="r.sev"
+                    :disabled="guardando === r.id"
+                    :aria-label="`Severidad de ${r.id}`"
+                    @pointerdown="usarPuntero(true)"
+                    @keydown="usarPuntero(false)"
+                    @keydown.enter="guardarSeveridad(r, $event, true)"
+                    @change="guardarSeveridad(r, $event)"
+                    @blur="guardarSeveridad(r, $event, true)"
+                  >
+                    <option v-for="v in SEVERIDADES" :key="v" :value="v">{{ NOMBRE_SEVERIDAD[v] }}</option>
                   </select>
                 </td>
                 <td>
@@ -174,15 +201,18 @@ const necesita = (campo: string) =>
 
 <style scoped>
 .formulario { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--linea-fuerte); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
+.buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borde-control); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
+.buscar:focus-within { border-color: var(--marca); box-shadow: 0 0 0 2px var(--marca-suave); }
 .buscar input { border: 0; background: transparent; padding: 7px 0; outline: none; }
 .lista { padding: 6px 8px; }
 .umbral { width: 84px; }
-.inactiva td:not(:first-child) { opacity: 0.45; }
+/* Regla inactiva: texto atenuado que mantiene el contraste (≥ 4.5:1) y la etiqueta "Inactiva". */
+.inactiva td:not(:first-child) { color: var(--tenue); }
+.inactiva-etiqueta { margin-left: 6px; vertical-align: 1px; }
 .pequeno { font-size: 12px; }
 .interruptor { position: relative; display: inline-block; width: 38px; height: 22px; }
 .interruptor input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.interruptor span { position: absolute; inset: 0; border-radius: 999px; background: var(--linea-fuerte); transition: background 0.15s; pointer-events: none; }
+.interruptor span { position: absolute; inset: 0; border-radius: 999px; background: var(--borde-control); transition: background 0.15s; pointer-events: none; }
 .interruptor span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgb(0 0 0 / 0.25); }
 .interruptor input:checked + span { background: var(--bien); }
 .interruptor input:checked + span::after { transform: translateX(16px); }

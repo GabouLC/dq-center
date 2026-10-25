@@ -34,7 +34,7 @@ async function intentar(accion: () => Promise<void>) {
     await router.replace(destino())
   } catch (e) {
     error.value = e instanceof TypeError
-      ? 'No hay conexión con la API. Levántala con: python -m dqc.api'
+      ? 'No pudimos conectar con el servidor. Intenta en un momento; si sigue, avisa al administrador.'
       : e instanceof Error ? e.message : String(e)
     clave.value = ''
     sacudir.value = true
@@ -64,8 +64,8 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
         <Sello estado="CERTIFICADO_CON_OBSERVACIONES" tabla="Persona" :tamano="120" />
         <Sello estado="NO_CERTIFICADO" tabla="Siniestro" :tamano="104" />
       </div>
-      <h1>Cada dato llega a negocio con su sello de calidad y privacidad.</h1>
-      <p>Ingesta validada, PII cifrada y certificación por corte, de RAW a BUSINESS.</p>
+      <h1>Cada dato llega a negocio certificado en calidad y privacidad.</h1>
+      <p>Ingesta validada, datos personales cifrados y certificación diaria, de RAW a BUSINESS.</p>
     </section>
 
     <section class="acceso">

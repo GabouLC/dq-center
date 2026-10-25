@@ -27,7 +27,11 @@ La API emite sus propias sesiones a partir de un correo y una contraseña
 - **Acceso cerrado por defecto.** Solo entra una cuenta con rol. Correo inexistente,
   contraseña equivocada y cuenta sin rol devuelven el mismo 401, y una cuenta inexistente
   cuesta el mismo cálculo PBKDF2, así que la respuesta no revela qué correos existen.
-- **Bloqueo.** Cinco intentos fallidos seguidos bloquean la cuenta 15 minutos (423).
+- **Bloqueo.** Cinco intentos fallidos seguidos bloquean la cuenta 15 minutos (423). El intento
+  se cuenta antes de verificar la contraseña, así que varios en paralelo no pasan el límite; un
+  correo que no existe se bloquea igual, para que el bloqueo tampoco revele qué cuentas hay; y
+  equivocar la contraseña actual al cambiarla también cuenta. En Firestore la credencial se lee
+  sin caché, para que un cambio o un bloqueo valga al instante en todas las instancias.
 - **Altas y olvidos.** El administrador da acceso y recibe una contraseña temporal de un
   solo uso; con ella solo se puede cambiar la contraseña. Cada inicio, intento fallido,
   bloqueo, cambio y restablecimiento queda en la auditoría.

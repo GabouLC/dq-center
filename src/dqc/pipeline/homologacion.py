@@ -19,6 +19,14 @@ from dqc.pipeline.funciones import SQL_LLAVES
 from dqc.sql_util import fecha, literal
 
 
+# Qué texto es un número. Sin esto, DuckDB acepta "12.5" como entero (lo redondea) o "1_000",
+# y BigQuery no: el mismo registro sería incidencia en una plataforma y no en la otra.
+NUMERO = {
+    "INT64": r"^[+-]?[0-9]+$",
+    "FLOAT64": r"^[+-]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+-]?[0-9]+)?$",
+}
+
+
 def _valor(c: ColumnaFuente) -> str:
     # En el CSV un campo vacío es un nulo.
     return f"NULLIF(o.{c.origen}, '')"
@@ -26,8 +34,8 @@ def _valor(c: ColumnaFuente) -> str:
 
 def _convertir(c: ColumnaFuente, funciones) -> str:
     valor = _valor(c)
-    if c.tipo in ("INT64", "FLOAT64"):
-        return f"SAFE_CAST({valor} AS {c.tipo})"
+    if c.tipo in NUMERO:
+        return f"IF(REGEXP_CONTAINS({valor}, {literal(NUMERO[c.tipo])}), SAFE_CAST({valor} AS {c.tipo}), NULL)"
     if c.tipo == "DATE":
         return funciones.parsear_fecha(valor, c.formato)
     if c.tipo == "BOOL":

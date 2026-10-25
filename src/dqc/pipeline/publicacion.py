@@ -42,8 +42,14 @@ def preparar_almacen(plataforma) -> None:
 
 
 def publicar(plataforma, certificaciones, corte: date, primero: bool) -> None:
-    """Copia a BUSINESS cada tabla certificada en el corte; las demás no se exponen."""
+    """Copia a BUSINESS cada tabla certificada en el corte; las demás no se exponen.
+
+    Si el corte ya estaba publicado (una reevaluación), primero se quita: así una tabla que
+    deja de estar certificada sale de BUSINESS, y en el sandbox el corte no se duplica.
+    """
     for c in certificaciones:
+        if not primero:
+            plataforma.quitar_corte(BUSINESS, f"p_{c.tabla}", corte)
         if not c.certificado:
             continue
         plataforma.materializar(
