@@ -1,5 +1,7 @@
 """Inicio de sesión (HU-13): contraseñas, sesiones firmadas, bloqueo por intentos y contraseñas temporales."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from dqc.api.autenticacion import (
@@ -110,3 +112,43 @@ def test_quitar_el_acceso_cierra_la_sesion(autenticador):
         autenticador.verificar(token)
     with pytest.raises(ErrorAcceso):
         autenticador.entrar(EMAIL, CLAVE)
+
+
+def test_intentos_en_paralelo_no_se_saltan_el_bloqueo(autenticador):
+    def intentar(_):
+        try:
+            autenticador.entrar(EMAIL, "equivocada")
+        except ErrorAcceso as error:
+            return error.codigo
+
+    with ThreadPoolExecutor(max_workers=10) as hilos:
+        codigos = list(hilos.map(intentar, range(20)))
+    assert codigos.count(401) <= MAX_INTENTOS and set(codigos) <= {401, 423}
+    with pytest.raises(ErrorAcceso) as error:
+        autenticador.entrar(EMAIL, CLAVE)
+    assert error.value.codigo == 423
+
+
+def test_el_bloqueo_no_revela_si_el_correo_existe(autenticador):
+    def codigos(email):
+        resultado = []
+        for _ in range(MAX_INTENTOS + 1):
+            try:
+                autenticador.entrar(email, "equivocada")
+            except ErrorAcceso as error:
+                resultado.append(error.codigo)
+        return resultado
+
+    assert codigos(EMAIL) == codigos("nadie@demo.local") == [401] * MAX_INTENTOS + [423]
+
+
+def test_equivocar_la_contrasena_actual_al_cambiarla_tambien_bloquea(autenticador):
+    for _ in range(MAX_INTENTOS):
+        with pytest.raises(ErrorAcceso) as error:
+            autenticador.cambiar(EMAIL, "equivocada", "una frase larga y propia")
+        assert error.value.codigo == 422
+    with pytest.raises(ErrorAcceso) as error:
+        autenticador.cambiar(EMAIL, CLAVE, "una frase larga y propia")
+    assert error.value.codigo == 423
+    detalles = [e["detalle"] for e in autenticador.config.auditoria() if e["accion"] == "INICIO_FALLIDO"]
+    assert detalles.count("contraseña actual incorrecta al cambiarla") == MAX_INTENTOS

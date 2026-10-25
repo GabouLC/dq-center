@@ -108,14 +108,14 @@ class ConfiguracionFirestore:
         self.db.collection(USUARIOS).document(email).delete()
         self.db.collection(CREDENCIALES).document(email).delete()
         self._cache.pop(USUARIOS, None)
-        self._cache.pop(CREDENCIALES, None)
 
     def credencial(self, email: str) -> dict | None:
-        return self._coleccion(CREDENCIALES).get(email)
+        # Sin caché: con varias instancias, un cambio o un bloqueo tiene que valer al instante en todas.
+        documento = self.db.collection(CREDENCIALES).document(email).get()
+        return documento.to_dict() if documento.exists else None
 
     def guardar_credencial(self, email: str, cambios: dict) -> None:
         self.db.collection(CREDENCIALES).document(email).set(cambios, merge=True)
-        self._cache.pop(CREDENCIALES, None)
 
     def auditar(self, evento: dict) -> None:
         self.db.collection(AUDITORIA).add({**evento, "fecha": datetime.now(timezone.utc)})

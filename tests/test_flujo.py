@@ -2,12 +2,16 @@
 
 import csv
 
+import pytest
+
 from dqc.datagen.generador import RECHAZO_SINIESTRO
-from dqc.modelo import CORTES, ESQUEMAS, MASTER, RAW, TABLAS_CORTE
+from dqc.modelo import BUSINESS, CORTES, ENGINE, ESQUEMAS, MASTER, RAW, TABLAS_CORTE
 from dqc.pipeline.configuracion import cifrados, clasificacion
+from dqc.pipeline.flujo import Flujo, cortes_por_procesar
 from dqc.pipeline.funciones import SQL_LLAVES
-from dqc.pipeline.ingesta import RECHAZADA
+from dqc.pipeline.ingesta import RECHAZADA, leer_entregas
 from dqc.pipeline.verificacion import verificar
+from dqc.plataforma.local import PlataformaDuckDB
 
 from conftest import CORTES_PRUEBA
 
@@ -130,3 +134,41 @@ def test_deterministico_iguala_documentos_y_aleatorio_no(simulacion):
     assert fila["filas"] > 0
     assert fila["documentos"] * 2 == fila["filas"]  # cada par comparte el mismo DNI cifrado
     assert fila["correos"] == fila["con_correo"]  # el mismo correo se cifra distinto cada vez
+
+
+# ── Reanudar una carga cortada ──────────────────────────────────────────────
+
+
+def _reglas(ejecucion):
+    return [(r.id_regla, r.tabla, r.universo, r.cumplen, r.estado) for r in ejecucion.resultados]
+
+
+def test_reanudar_desde_un_corte_da_lo_mismo_que_de_corrido(simulacion, datos, fuentes, contratos, reglas):
+    """Una carga que se corta en el cuarto corte y se reanuda desde el tercero termina igual."""
+    plataforma = PlataformaDuckDB()
+    flujo = Flujo(plataforma, fuentes, contratos, reglas, datos.landing)
+    flujo.preparar()
+    entregas = leer_entregas(datos.landing)
+    for corte in CORTES_PRUEBA[:4]:
+        flujo.procesar_corte(corte, entregas, primero=corte == PRIMERO)
+
+    with pytest.raises(ValueError, match="no está evaluado"):
+        cortes_por_procesar(plataforma, CORTES_PRUEBA[6], CORTES_PRUEBA)
+    desde = CORTES_PRUEBA[2]
+    assert cortes_por_procesar(plataforma, desde, CORTES_PRUEBA) == CORTES_PRUEBA[2:]
+    assert plataforma.recortar(desde)
+    reanudados = {c: flujo.procesar_corte(c, entregas) for c in CORTES_PRUEBA[2:4]}
+
+    for corte, r in reanudados.items():
+        esperado = simulacion.resultados[corte]
+        assert _reglas(r.ejecucion) == _reglas(esperado.ejecucion), corte
+        assert [(c.tabla, c.estado) for c in r.certificaciones] == [(c.tabla, c.estado) for c in esperado.certificaciones]
+    # Cada corte queda una sola vez en la evidencia, en RAW y en BUSINESS
+    contar = f"SELECT fecha_corte, COUNT(*) AS n FROM {{}} GROUP BY fecha_corte ORDER BY fecha_corte"
+    assert [(f["fecha_corte"], f["n"]) for f in plataforma.consultar(contar.format(f"{ENGINE}.ejecuciones"))] == [
+        (c, 1) for c in CORTES_PRUEBA[:4]
+    ]
+    for objeto in (f"{RAW}.registro_cargas", f"{MASTER}.persona", f"{BUSINESS}.p_persona"):
+        assert plataforma.consultar(contar.format(objeto)) == [
+            f for f in simulacion.plataforma.consultar(contar.format(objeto)) if f["fecha_corte"] in CORTES_PRUEBA[:4]
+        ], objeto

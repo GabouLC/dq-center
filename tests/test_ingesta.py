@@ -37,6 +37,9 @@ def test_archivo_valido_se_carga_tal_cual(tmp_path):
     (b'"ID_CUOTA","IMPORTE"\n"1","2","3"\n', "la línea 2 tiene 3 campos"),
     (b'"ID_CUOTA","IMPORTE","IMPORTE"\n', "columnas repetidas: IMPORTE"),
     (b"", "vacío"),
+    (b'"ID_CUOTA","IMPORTE","CANAL VENTA"\n"1","2","3"\n', "nombres de columna no válidos: 'CANAL VENTA'"),
+    (b'"ID_CUOTA","IMPORTE","X VARCHAR; DROP TABLE t; --"\n', "nombres de columna no válidos"),
+    (b'"ID_CUOTA","IMPORTE","fecha_corte"\n', "nombres de columna no válidos: 'fecha_corte'"),
     ('"ID_CUOTA","IMPORTE"\n"1","ñ"\n'.encode("latin-1"), "UTF-8"),
 ])
 def test_estructura_invalida_se_rechaza(tmp_path, contenido, motivo):

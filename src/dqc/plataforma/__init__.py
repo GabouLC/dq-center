@@ -7,6 +7,8 @@ Interfaz común:
   funciones                 funciones propias de la plataforma (cifrado, fechas)
   preparar()                datasets y llaves de cifrado
   reiniciar()               borra todo menos las llaves (para simular desde cero)
+  recortar(desde)           borra los cortes desde esa fecha en cada tabla (para reanudar)
+  quitar_corte(dataset, tabla, corte)                    borra un corte de una tabla (si existe)
   consultar(sql)            filas como dicts; dataset por defecto: dq_master
   probar(sql)               error de compilación o None (dry run)
   columnas(tabla, dataset)  [(columna, tipo BigQuery)]

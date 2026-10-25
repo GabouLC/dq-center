@@ -4,7 +4,10 @@
 - La sesión es un token firmado con HMAC-SHA256 que vence a las 8 horas. Lleva un
   sello de la contraseña vigente: cambiarla, restablecerla o quitar el acceso
   cierra las sesiones abiertas de esa cuenta.
-- Cinco intentos fallidos seguidos bloquean la cuenta 15 minutos.
+- Cinco intentos fallidos seguidos bloquean la cuenta 15 minutos. El intento se cuenta antes
+  de verificar la contraseña, así que varios en paralelo no se saltan el límite, y un correo
+  que no existe se bloquea igual que uno que existe: el bloqueo no revela qué cuentas hay.
+  Equivocar la contraseña actual al cambiarla también cuenta.
 - Una contraseña temporal (alta o restablecimiento) obliga a cambiarla al entrar.
 - Acceso cerrado por defecto: sin rol en el portal no se puede entrar, aunque la
   contraseña sea correcta, y el mensaje no distingue un caso del otro.
@@ -17,6 +20,7 @@ import hashlib
 import hmac
 import json
 import secrets
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -120,6 +124,9 @@ class Autenticador:
     sesiones: Sesiones
     iteraciones: int = ITERACIONES
     _senuelo: str = field(init=False, repr=False)
+    # correo -> [intentos contados, bloqueado hasta (epoch), último intento (epoch)]
+    _intentos: dict[str, list[float]] = field(init=False, repr=False, default_factory=dict)
+    _candado: threading.Lock = field(init=False, repr=False, default_factory=threading.Lock)
 
     def __post_init__(self):
         # Una cuenta inexistente cuesta lo mismo que una contraseña equivocada.
@@ -134,28 +141,63 @@ class Autenticador:
     def es_token(self, token: str) -> bool:
         return token.startswith(f"{PREFIJO}.")
 
+    # ── bloqueo por intentos ────────────────────────────────────────────────
+
+    def _reservar(self, email: str, credencial: dict | None) -> None:
+        """Cuenta el intento antes de verificar la contraseña; 423 si la cuenta está bloqueada.
+
+        Con cinco intentos ya contados (fallidos o todavía en curso) no se admite otro.
+        """
+        ahora = self.sesiones.reloj()
+        with self._candado:
+            if len(self._intentos) > 5_000:  # correos inventados: no dejar crecer la memoria
+                vigentes = ahora - BLOQUEO.total_seconds()
+                self._intentos = {e: v for e, v in self._intentos.items() if v[1] > ahora or v[2] > vigentes}
+            contados, hasta, _ = self._intentos.get(email, [0, 0.0, 0.0])
+            if credencial and credencial.get("bloqueado_hasta"):
+                hasta = max(hasta, datetime.fromisoformat(credencial["bloqueado_hasta"]).timestamp())
+            if hasta <= ahora and credencial:
+                contados = max(contados, int(credencial.get("intentos", 0)))
+            if hasta > ahora or contados >= MAX_INTENTOS:
+                minutos = max(1, round(((hasta if hasta > ahora else ahora + BLOQUEO.total_seconds()) - ahora) / 60))
+                raise ErrorAcceso(423, f"La cuenta está bloqueada por intentos fallidos. Prueba de nuevo en {minutos} min.")
+            self._intentos[email] = [contados + 1, 0.0, ahora]
+
+    def _fallo(self, email: str, credencial: dict | None, detalle: str) -> None:
+        """Deja contado el intento fallido; al quinto, bloquea la cuenta 15 minutos."""
+        ahora = self.sesiones.reloj()
+        with self._candado:
+            contados, hasta, _ = self._intentos.get(email, [1, 0.0, ahora])
+            bloquear = hasta <= ahora and contados >= MAX_INTENTOS
+            if bloquear:
+                hasta = ahora + BLOQUEO.total_seconds()
+                self._intentos[email] = [0, hasta, ahora]
+        self._auditar("INICIO_FALLIDO", email, detalle)
+        if bloquear:
+            if credencial:
+                bloqueo = datetime.fromtimestamp(hasta, timezone.utc).isoformat()
+                self.config.guardar_credencial(email, {"intentos": 0, "bloqueado_hasta": bloqueo})
+            self._auditar("CUENTA_BLOQUEADA", email, f"{MAX_INTENTOS} intentos fallidos seguidos")
+        elif credencial:
+            self.config.guardar_credencial(email, {"intentos": int(contados)})
+
+    def _olvidar(self, email: str) -> None:
+        with self._candado:
+            self._intentos.pop(email, None)
+
+    # ── sesión y contraseña ─────────────────────────────────────────────────
+
     def entrar(self, email: str, clave: str) -> dict:
         email = email.strip().lower()
         credencial = self.config.credencial(email)
-        ahora = self._ahora()
-        bloqueo = credencial and credencial.get("bloqueado_hasta")
-        if bloqueo and datetime.fromisoformat(bloqueo) > ahora:
-            minutos = max(1, round((datetime.fromisoformat(bloqueo) - ahora).total_seconds() / 60))
-            raise ErrorAcceso(423, f"La cuenta está bloqueada por intentos fallidos. Prueba de nuevo en {minutos} min.")
-
+        self._reservar(email, credencial)
         correcta = clave_correcta(clave, credencial["clave"] if credencial else self._senuelo)
         if not correcta or email not in self.config.usuarios():
-            if credencial:
-                intentos = int(credencial.get("intentos", 0)) + 1
-                if intentos >= MAX_INTENTOS:
-                    hasta = (ahora + BLOQUEO).isoformat()
-                    self.config.guardar_credencial(email, {"intentos": 0, "bloqueado_hasta": hasta})
-                    self._auditar("CUENTA_BLOQUEADA", email, f"{MAX_INTENTOS} intentos fallidos seguidos")
-                else:
-                    self.config.guardar_credencial(email, {"intentos": intentos})
-            self._auditar("INICIO_FALLIDO", email, "contraseña incorrecta o cuenta sin acceso")
+            self._fallo(email, credencial, "contraseña incorrecta o cuenta sin acceso")
             raise ErrorAcceso(401, "Correo o contraseña incorrectos")
 
+        self._olvidar(email)
+        ahora = self._ahora()
         self.config.guardar_credencial(email, {"intentos": 0, "bloqueado_hasta": None, "ultimo_acceso": ahora.isoformat()})
         self._auditar("INICIO_SESION", email, "correo y contraseña")
         token, expira = self.sesiones.emitir(email, credencial["clave"])
@@ -174,8 +216,11 @@ class Autenticador:
 
     def cambiar(self, email: str, actual: str, nueva: str) -> dict:
         credencial = self.config.credencial(email)
+        self._reservar(email, credencial)
         if not credencial or not clave_correcta(actual, credencial["clave"]):
+            self._fallo(email, credencial, "contraseña actual incorrecta al cambiarla")
             raise ErrorAcceso(422, ["la contraseña actual no es correcta"])
+        self._olvidar(email)
         problemas = problemas_de_clave(nueva, email)
         if nueva == actual:
             problemas.append("debe ser distinta de la actual")
@@ -188,6 +233,7 @@ class Autenticador:
         return {"token": token, "expira": expira, "debe_cambiar": False}
 
     def fijar(self, email: str, clave: str, debe_cambiar: bool) -> None:
+        self._olvidar(email)
         self.config.guardar_credencial(email, {
             "clave": cifrar_clave(clave, self.iteraciones), "debe_cambiar": debe_cambiar,
             "intentos": 0, "bloqueado_hasta": None,

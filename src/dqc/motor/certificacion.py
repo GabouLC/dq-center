@@ -1,7 +1,8 @@
 """Certificación por tabla y corte (HU-04): consolida los tres niveles y la privacidad.
 
 Una tabla queda certificada si ninguna regla de severidad CRITICA o ALTA está en
-FALLA y la revisión de privacidad no tiene hallazgos bloqueantes. Si además hay
+FALLA, la revisión de privacidad no tiene hallazgos bloqueantes y el archivo del día llegó
+(la regla de oportunidad tiene datos y al menos una regla pudo evaluarse). Si además hay
 reglas en ALERTA, reglas MEDIA en FALLA u observaciones de privacidad, queda
 "certificada con observaciones". Cada veredicto lleva su sello: la corrida, la
 versión del motor y la versión del catálogo de reglas con que se evaluó.
@@ -63,8 +64,12 @@ def certificar(ejecucion, hallazgos: list[Hallazgo], version: str) -> list[Certi
     certificaciones = []
     for tabla in TABLAS_CORTE:
         resultados = [r for r in ejecucion.resultados if r.tabla == tabla]
+        # Bloquea una regla CRÍTICA o ALTA en FALLA, y también la de oportunidad sin datos:
+        # si el archivo del día no llegó, no hay nada que certificar.
         bloqueantes = sorted(
-            r.id_regla for r in resultados if r.estado == "FALLA" and r.severidad in SEVERIDADES_BLOQUEANTES
+            r.id_regla for r in resultados
+            if r.severidad in SEVERIDADES_BLOQUEANTES
+            and (r.estado == "FALLA" or (r.estado == "SIN_DATOS" and r.dimension == "oportunidad"))
         )
         observadas = sorted(
             r.id_regla for r in resultados
@@ -72,6 +77,8 @@ def certificar(ejecucion, hallazgos: list[Hallazgo], version: str) -> list[Certi
         )
         de_la_tabla = [h for h in hallazgos if h.tabla == tabla]
         con_datos = sum(r.estado != "SIN_DATOS" for r in resultados)
+        if not con_datos and not bloqueantes:
+            bloqueantes = ["SIN_DATOS"]  # ninguna regla pudo evaluarse: la tabla no se certifica
         if bloqueantes or any(h.bloqueante for h in de_la_tabla):
             estado = NO_CERTIFICADO
         elif observadas or de_la_tabla:

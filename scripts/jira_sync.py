@@ -6,7 +6,7 @@ cada historia (con --asignar), enlaces a su issue de GitHub y a su evidencia, y 
 cerrados. Con --revision publica en cada historia sus criterios, pruebas y capturas.
 Se puede correr varias veces: lo que ya existe no se duplica.
 
-Credenciales en ~/.jira-usmp.env (JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN); nunca en el repo.
+Credenciales en variables de entorno (JIRA_SITE, JIRA_EMAIL, JIRA_API_TOKEN); nunca en el repo.
 
   python scripts/jira_sync.py                          # muestra lo que haría, sin escribir
   python scripts/jira_sync.py --aplicar                # lo hace
@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import re
 import unicodedata
 import urllib.error
@@ -56,7 +57,7 @@ SPRINTS = [
                     "Gabriel Leon")],
     },
     {
-        "numero": 2, "nombre": "SDGDCYP Sprint 2", "epica": "Motor y Gate", "estado": "en_curso",
+        "numero": 2, "nombre": "SDGDCYP Sprint 2", "epica": "Motor y Gate", "estado": "cerrado",
         "inicio": "2026-10-06T09:00:00.000-05:00", "fin": "2026-10-19T18:00:00.000-05:00",
         "objetivo": "Que cada corte salga del pipeline con un veredicto: reglas de Nivel 2 y 3, certificación "
                     "en tres estados, Quality & Privacy Gate y publicación en BUSINESS solo de lo certificado.",
@@ -77,10 +78,23 @@ SPRINTS = [
 # ── API de Jira ────────────────────────────────────────────────────────────
 
 
+CREDENCIALES = ("JIRA_SITE", "JIRA_EMAIL", "JIRA_API_TOKEN")
+
+
+def credenciales() -> dict[str, str]:
+    """Del entorno (variables de usuario de Windows); el archivo ~/.jira-usmp.env queda como respaldo."""
+    if all(os.environ.get(c) for c in CREDENCIALES):
+        return {c: os.environ[c] for c in CREDENCIALES}
+    archivo = Path.home() / ".jira-usmp.env"
+    if not archivo.exists():
+        raise SystemExit(f"Define {', '.join(CREDENCIALES)} como variables de entorno.")
+    print(f"Aviso: credenciales leídas de {archivo}; muévelas a variables de entorno y borra el archivo.")
+    return dict(l.strip().split("=", 1) for l in archivo.read_text(encoding="utf-8").splitlines() if "=" in l)
+
+
 class Jira:
     def __init__(self, aplicar: bool):
-        archivo = Path.home() / ".jira-usmp.env"
-        env = dict(l.strip().split("=", 1) for l in archivo.read_text(encoding="utf-8").splitlines() if "=" in l)
+        env = credenciales()
         self.sitio = env["JIRA_SITE"].rstrip("/")
         credencial = f"{env['JIRA_EMAIL']}:{env['JIRA_API_TOKEN']}".encode()
         self.cabeceras = {"Authorization": "Basic " + base64.b64encode(credencial).decode(),

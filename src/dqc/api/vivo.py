@@ -45,7 +45,8 @@ class Simulador:
         self._proxima = time.monotonic() + intervalo
         self._despertar = threading.Event()
         self._pendientes: list[Entrega] = []
-        self._aceptadas: dict[str, Carga] = {}
+        # Cargas aceptadas de cada día que todavía no se cierra (un archivo puede llegar tarde).
+        self._aceptadas: dict[date, dict[str, Carga]] = {}
         self._corte: date | None = None
         self._estados: dict[tuple[str, str], str] = {}
         self._ultimo: date | None = None
@@ -61,7 +62,7 @@ class Simulador:
             "proximo_en": max(0.0, round(self._proxima - time.monotonic(), 1)) if self._pendientes else None,
             "ultimo_corte": self._ultimo,
             "corte_en_curso": self._corte,
-            "archivos_recibidos": len(self._aceptadas),
+            "archivos_recibidos": len(self._aceptadas.get(self._corte, {})),
             "archivos_pendientes": len(en_curso),
             "dias_pendientes": len({e.fecha_corte for e in self._pendientes}),
             "version": self.version,
@@ -125,12 +126,11 @@ class Simulador:
 
     def _llega_un_archivo(self) -> None:
         entrega = self._pendientes.pop(0)
-        if entrega.fecha_corte != self._corte:
-            self._corte, self._aceptadas = entrega.fecha_corte, {}
         flujo = self._flujo()
         with self.candado:
             (carga,), aceptadas = flujo.ingerir([entrega], entrega.fecha_corte, primero=False)
-        self._aceptadas.update(aceptadas)
+        self._aceptadas.setdefault(entrega.fecha_corte, {}).update(aceptadas)
+        self._corte = min(self._aceptadas)
         tabla = NOMBRE_TABLA.get(entrega.tabla, entrega.tabla)
         if carga.estado == EXITOSA:
             self._evento("info", f"Llegó {entrega.nombre}", f"{tabla} · {carga.filas:,} filas cargadas en RAW",
@@ -138,14 +138,19 @@ class Simulador:
         else:
             self._evento("critico", f"Archivo rechazado: {entrega.nombre}", f"{tabla} · {carga.detalle}",
                          entrega.tabla, entrega.fecha_corte, "carga")
-        if not any(e.fecha_corte == self._corte for e in self._pendientes):
-            self._cerrar_corte(flujo, self._corte)
+        # Un día se cierra cuando llegaron todas sus entregas, y siempre en orden de fecha.
+        while self._aceptadas:
+            corte = min(self._aceptadas)
+            if any(e.fecha_corte == corte for e in self._pendientes):
+                break
+            self._cerrar_corte(flujo, corte)
 
     def _cerrar_corte(self, flujo: Flujo, corte: date) -> None:
+        aceptadas = self._aceptadas.pop(corte, {})
         with self.candado:
-            incidencias = flujo.homologar(self._aceptadas, corte, primero=False)
+            incidencias = flujo.homologar(aceptadas, corte, primero=False)
             ejecucion, certificaciones = flujo.evaluar(corte, origen="en_vivo")
-        self._ultimo, self._corte, self._aceptadas = corte, None, {}
+        self._ultimo, self._corte = corte, min(self._aceptadas, default=None)
         self.version += 1
         self.al_cerrar_corte()
 

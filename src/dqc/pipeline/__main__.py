@@ -2,8 +2,8 @@
 
 Uso: python -m dqc.pipeline [--datos data] [--db data/dq.duckdb] [--hasta AAAA-MM-DD]
 
-Ingesta (CSV -> RAW), homologación y cifrado (RAW -> MASTER) y motor de
-calidad. Al final compara cada etapa con el manifiesto de errores sembrados.
+Ingesta (CSV -> RAW), homologación y cifrado (RAW -> MASTER), motor de calidad,
+Quality & Privacy Gate y publicación en BUSINESS. Al final compara cada etapa con el manifiesto de errores sembrados.
 Con --hasta, los cortes posteriores quedan pendientes en la zona de aterrizaje:
 la API los procesa en vivo, uno por uno (DQC_EN_VIVO).
 """

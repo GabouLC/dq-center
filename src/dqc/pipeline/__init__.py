@@ -1,1 +1,2 @@
-"""Flujo RAW -> MASTER: ingesta de CSV, homologación y Privacy Gate (cifrado)."""
+"""Flujo RAW -> MASTER -> BUSINESS: ingesta, homologación con cifrado, revisión de privacidad,
+certificación y publicación."""

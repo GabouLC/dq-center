@@ -145,10 +145,11 @@ def _sql_tabla(r: Regla, corte: date) -> str:
             f"  FROM cargas WHERE fecha_corte = {fecha(corte)}"
         )
     elif r.tipo == "variacion_volumen":
-        # Sin corte anterior el universo queda vacío: "sin datos".
+        # Sin corte anterior el universo queda vacío: "sin datos". Si el anterior vino vacío, la
+        # variación no se puede calcular (NULLIF evita dividir por cero, que en BigQuery es un error).
         universo = (
             f"  SELECT {tabla} AS llave,\n"
-            f"    COALESCE(ABS(CAST(a.filas AS FLOAT64) / p.filas - 1) * 100 <= {float(r.max_variacion_pct)}, FALSE) AS ok\n"
+            f"    COALESCE(ABS(CAST(a.filas AS FLOAT64) / NULLIF(p.filas, 0) - 1) * 100 <= {float(r.max_variacion_pct)}, FALSE) AS ok\n"
             f"  FROM (SELECT filas FROM cargas WHERE fecha_corte = {fecha(corte)}) AS a\n"
             f"  CROSS JOIN (\n"
             f"    SELECT filas FROM cargas WHERE fecha_corte < {fecha(corte)}\n"
