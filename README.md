@@ -85,7 +85,8 @@ constante:
 
 ## Correrlo en local
 
-Requisitos: Python 3.12 y Node 24. No hace falta GCP.
+Requisitos: Python 3.12 y Node 24. No hace falta GCP. El paso a paso con comprobaciones,
+pensado también para agentes de IA, está en [AGENTS.md](AGENTS.md).
 
 ```bash
 python -m venv .venv
@@ -112,7 +113,7 @@ cuentas de demostración, una por rol, con la contraseña `SmartDQ-2026` (se cam
 
 | Cuenta | Rol | Qué ve |
 |---|---|---|
-| `admin@demo.local` | Administrador | Todo, más reglas, corridas, usuarios y auditoría |
+| `admin@demo.local` | Administrador | Todo, más reglas, ejecuciones, usuarios y auditoría |
 | `gobierno@demo.local` | Gobierno de datos | Los módulos de consulta, con los campos sensibles |
 | `lector@demo.local` | Lector | Los módulos de consulta, con los campos sensibles ocultos |
 

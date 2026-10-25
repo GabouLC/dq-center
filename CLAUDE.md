@@ -26,6 +26,8 @@ Datos 100 % sintéticos.
 
 ## Comandos
 
+Paso a paso desde un clon limpio, con comprobaciones: [AGENTS.md](AGENTS.md).
+
 ```bash
 .venv/Scripts/python -m dqc.datagen                       # genera data/landing y el manifiesto
 .venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24  # 86 cortes (1 jul–24 set); del 25 al 30 llegan en vivo
