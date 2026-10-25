@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { Clock, FileCheck2, FileX2, Rows3, Timer } from 'lucide-vue-next'
+import { Clock, FileCheck2, FileX2, Rows3, ShieldCheck, Timer } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, corteCorto, esFinDeSemana, hora, NOMBRE_TABLA, num, signo, TABLAS } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useVivo } from '@/stores/vivo'
 
@@ -69,21 +72,29 @@ const columnas = computed(() => {
   for (const c of cortes) for (const col of c.columnas) if (!desde.has(col.columna)) desde.set(col.columna, { tipo: col.tipo, desde: c.fecha_corte })
   return [...desde.entries()].map(([columna, v]) => ({ columna, ...v, nueva: v.desde !== cortes[0]?.fecha_corte }))
 })
+
+const LECTURA: Clave[] = [
+  { muestras: ['marca', 'critico'], texto: 'Volumen diario: cada barra es un día; en rojo, una variación de más de ±15 % frente al día anterior. Las más claras son fines de semana.' },
+  { muestras: ['limite'], texto: 'Hora de llegada: cada punto es un archivo; más arriba, más tarde. La línea roja punteada es el límite: dos días después del día de datos, a las 09:00.' },
+  { muestras: ['bien', 'aviso', 'critico'], texto: 'Puntualidad: a tiempo, con retraso (menos de 24 h antes del límite) o tarde (después del límite).' },
+  { texto: 'En Cargas, una fila roja es un archivo rechazado en la ingesta; una verde, el día que está llegando ahora.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Fuentes</h1>
-        <p>Cada archivo que llegó a RAW: a qué hora, cuántas filas, si se rechazó y cuántos registros no se pudieron homologar.</p>
-      </div>
+    <EncabezadoSeccion
+      modulo="fuentes"
+      titulo="Fuentes"
+      subtitulo="Cada archivo que llegó a RAW: a qué hora, cuántas filas, si se rechazó y cuántos registros no se pudieron homologar."
+      :lectura="LECTURA"
+    >
       <div class="segmentos" role="group" aria-label="Tabla">
         <button v-for="t in TABLAS" :key="t" type="button" :aria-pressed="t === tabla" :class="{ activo: t === tabla }" @click="tabla = t">
           {{ NOMBRE_TABLA[t] }}
         </button>
       </div>
-    </div>
+    </EncabezadoSeccion>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="fuente">
@@ -186,6 +197,15 @@ const columnas = computed(() => {
               </tbody>
             </table>
           </div>
+          <EstadoVacio
+            v-if="!cargasVisibles.length"
+            :tono="soloProblemas ? 'bien' : 'neutro'"
+            :icono="soloProblemas ? ShieldCheck : FileCheck2"
+            :titulo="soloProblemas ? 'Ninguna carga con problemas' : 'Todavía no llegó ningún archivo'"
+            :texto="soloProblemas
+              ? 'Todos los archivos de esta tabla llegaron a tiempo, completos y sin saltos de volumen. Quita el filtro para verlos.'
+              : 'Cada archivo que llegue a RAW aparecerá aquí con su hora, sus filas y su estado.'"
+          />
         </section>
       </template>
 

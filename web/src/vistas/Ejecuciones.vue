@@ -2,9 +2,12 @@
 import { CircleX, History, Play } from 'lucide-vue-next'
 import { ref } from 'vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, hora, NOMBRE_TABLA } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -32,18 +35,24 @@ async function lanzar() {
   }
 }
 const duracion = (e: Ejecucion) => `${Math.round((Date.parse(e.terminada_en) - Date.parse(e.iniciada_en)) / 1000)} s`
-const ORIGEN: Record<string, string> = { simulacion: 'Simulación', programada: 'Programada' }
+const ORIGEN: Record<string, string> = { simulacion: 'Simulación', programada: 'Programada', en_vivo: 'En vivo' }
 const origen = (o: string) => ORIGEN[o] ?? (o.startsWith('manual:') ? `Manual · ${o.slice(7)}` : o)
+
+const LECTURA: Clave[] = [
+  { texto: 'Cada fila es una evaluación de un día de datos: cuándo empezó, cuánto tardó y cuántas reglas corrió.' },
+  { muestras: ['marca'], texto: 'Origen: Simulación (la carga inicial) y En vivo (los días que llegan con la simulación) son automáticas; Manual, en azul, la lanzó una persona desde aquí.' },
+  { texto: 'Si un día se evalúa más de una vez, el resto del portal muestra su evaluación más reciente.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Ejecuciones</h1>
-        <p>Ejecuciones del motor y de la certificación. Además de la diaria, puedes volver a evaluar un corte (un día de datos), por ejemplo después de cambiar una regla.</p>
-      </div>
-    </div>
+    <EncabezadoSeccion
+      modulo="ejecuciones"
+      titulo="Ejecuciones"
+      subtitulo="Ejecuciones del motor y de la certificación. Además de la diaria, puedes volver a evaluar un corte (un día de datos), por ejemplo después de cambiar una regla."
+      :lectura="LECTURA"
+    />
 
     <section class="panel lanzar">
       <div class="icono-grande"><Play :size="26" /></div>
@@ -88,6 +97,12 @@ const origen = (o: string) => ORIGEN[o] ?? (o.startsWith('manual:') ? `Manual ·
             </tbody>
           </table>
         </div>
+        <EstadoVacio
+          v-if="!datos?.length"
+          :icono="History"
+          titulo="Todavía no hay ejecuciones"
+          texto="Cada día que se evalúa queda aquí: la carga diaria lo hace sola y también puedes lanzar una con «Evaluar corte»."
+        />
       </section>
     </BloqueCarga>
   </div>

@@ -118,7 +118,8 @@ class Simulador:
                 log.exception("error en la simulación en vivo")
                 self._evento("critico", "Error en la simulación", "Revisa el log de la API.", None, None)
             self._proxima = time.monotonic() + self.intervalo
-        self._evento("bien", "Todo al día", f"Se procesaron todas las entregas hasta {self._ultimo}.", None, self._ultimo)
+        detalle = f"Se procesaron todas las entregas hasta el {self._ultimo:%d/%m}." if self._ultimo else "No hay entregas pendientes."
+        self._evento("bien", "Todo al día", detalle, None, self._ultimo)
 
     def _flujo(self) -> Flujo:
         reglas = [desde_documento(d) for d in self.config.reglas()]

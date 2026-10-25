@@ -1,8 +1,8 @@
 """Capturas del portal para docs/evidencias/portal, con Playwright (Chromium sin ventana).
 
 Levanta una API local aislada sobre una copia de la corrida completa (sin simulación en vivo y
-con su propia configuración en data/capturas/), el portal en modo desarrollo, saca cada captura y
-apaga todo. Las capturas en vivo usan una copia de la base de la demo (cortes hasta el 24 de
+con su propia configuración en data/capturas/) y el portal en modo desarrollo, en los puertos 8001
+y 5174 para no chocar con una demo abierta; saca cada captura y apaga todo. Las capturas en vivo usan una copia de la base de la demo (cortes hasta el 24 de
 septiembre). No toca data/dq.duckdb ni data/config_local.json.
 
   python scripts/capturas_portal.py [--completa data/dq_completo.duckdb] [--demo data/dq.duckdb]
@@ -29,11 +29,12 @@ from pathlib import Path
 from playwright.sync_api import Page, sync_playwright
 
 RAIZ = Path(__file__).resolve().parents[1]
-API, WEB = "http://127.0.0.1:8000", "http://localhost:5173"
+PUERTO_API, PUERTO_WEB = 8001, 5174
+API, WEB = f"http://127.0.0.1:{PUERTO_API}", f"http://localhost:{PUERTO_WEB}"
 CLAVE = "SmartDQ-2026"
 ADMIN, GOBIERNO, LECTOR = "admin@demo.local", "gobierno@demo.local", "lector@demo.local"
 VENTANA = {"width": 1440, "height": 900}
-SOLO_VENTANA = {"hu13-validaciones-gobierno", "hu13-validaciones-lector", "hu09-panel-en-vivo"}
+SOLO_VENTANA = {"hu13-validaciones-gobierno", "hu13-validaciones-lector", "hu09-panel-en-vivo", "hu09-recorrido-viaje-datos"}
 
 
 # ── servidores ─────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ def levantar_api(base: Path, carpeta: Path, en_vivo: bool) -> subprocess.Popen:
         "DQC_EN_VIVO_SEGUNDOS": "2",
         "PYTHONIOENCODING": "utf-8",
     }
-    proceso = subprocess.Popen([sys.executable, "-m", "dqc.api", "--puerto", "8000"], cwd=RAIZ, env=entorno,
+    proceso = subprocess.Popen([sys.executable, "-m", "dqc.api", "--puerto", str(PUERTO_API)], cwd=RAIZ, env=entorno,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     esperar(f"{API}/health/readiness")
     return proceso
@@ -78,7 +79,8 @@ def levantar_api(base: Path, carpeta: Path, en_vivo: bool) -> subprocess.Popen:
 
 def levantar_web() -> subprocess.Popen:
     npm = "npm.cmd" if os.name == "nt" else "npm"
-    proceso = subprocess.Popen([npm, "run", "dev", "--", "--strictPort"], cwd=RAIZ / "web",
+    proceso = subprocess.Popen([npm, "run", "dev", "--", "--port", str(PUERTO_WEB), "--strictPort"], cwd=RAIZ / "web",
+                               env={**os.environ, "DQC_API": API},
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     esperar(WEB)
     return proceso
@@ -185,6 +187,14 @@ def capturas_completas(c: Capturador) -> dict[str, Callable[[], Page]]:
         p.click("button:has-text('Dar acceso')")
         p.get_by_text("Contraseña temporal").first.wait_for()
 
+    def recorrido(p):  # el último paso: cómo viajan los datos
+        p.click("#boton-recorrido")
+        p.get_by_role("dialog").wait_for()
+        for _ in range(4):
+            p.keyboard.press("ArrowRight")
+            p.wait_for_timeout(250)
+        p.wait_for_timeout(5_000)  # la animación del recorrido
+
     def cambio_obligatorio():
         temporal = pedir("PUT", "/api/v1/admin/usuarios/pendiente@demo.local", {"rol": "lector"}, admin["token"])
         p = c.pagina(sesion("pendiente@demo.local", temporal["clave_temporal"]))
@@ -203,6 +213,7 @@ def capturas_completas(c: Capturador) -> dict[str, Callable[[], Page]]:
         "hu13-login-error": login_con_error,
         "hu09-resumen": en(gobierno, "/resumen"),
         "hu09-resumen-14-julio": en(gobierno, "/resumen", "2026-07-14"),
+        "hu09-recorrido-viaje-datos": en(gobierno, "/resumen", None, recorrido),
         "hu02-hu03-validaciones-14-julio": en(gobierno, "/validaciones", "2026-07-14"),
         "hu13-validaciones-gobierno": en(gobierno, "/validaciones", "2026-07-01", detalle("PER-VAL-04")),
         "hu13-validaciones-lector": en(lector, "/validaciones", "2026-07-01", detalle("PER-VAL-04")),

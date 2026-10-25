@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Activity, ArrowDownRight, ArrowUpRight, BadgeCheck, CircleX, Gauge, ShieldCheck, TriangleAlert } from 'lucide-vue-next'
+import { Activity, ArrowDownRight, ArrowUpRight, CalendarClock, CircleX, Gauge, Minus, ShieldCheck, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import Anillo from '@/componentes/Anillo.vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import GraficoTendencia from '@/componentes/GraficoTendencia.vue'
 import Kpi from '@/componentes/Kpi.vue'
+import LecturaRapida from '@/componentes/LecturaRapida.vue'
 import MapaDias from '@/componentes/MapaDias.vue'
 import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
@@ -13,6 +16,7 @@ import { usarConteo } from '@/composables/usarConteo'
 import {
   corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_TABLA, pct, relativo, signo, TABLAS,
 } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 import { useVivo } from '@/stores/vivo'
@@ -50,7 +54,14 @@ const nombresNoCertificadas = computed(() => noCertificadas.value.map((t) => NOM
 const diferencia = (a?: number | null, b?: number | null) => (a != null && b != null ? a - b : null)
 const deltaPass = computed(() => diferencia(actual.value?.pct_pass, anterior.value?.pct_pass))
 const deltaScore = computed(() => diferencia(actual.value?.global, anterior.value?.global))
+// Lo que redondea a 0,0 no sube ni baja: se muestra como "sin cambio".
+const sentido = (d: number | null) => (d === null ? null : Math.abs(d) < 0.05 ? 'igual' : d > 0 ? 'sube' : 'baja')
+
+// Cifras principales: suben hasta su valor al cargar y al cambiar de día.
 const passAnimado = usarConteo(computed(() => actual.value?.pct_pass ?? null))
+const puntajeAnimado = usarConteo(computed(() => actual.value?.global ?? null), 700)
+const alertasAnimadas = usarConteo(computed(() => actual.value?.estados.ALERTA ?? 0), 700)
+const fallasAnimadas = usarConteo(computed(() => actual.value?.estados.FALLA ?? 0), 700)
 const tonoPass = (v: number | null | undefined) => (v == null ? undefined : v >= 85 ? 'bien' : v >= 70 ? 'aviso' : 'critico')
 const tonoScore = (v: number | null | undefined) => (v == null ? undefined : v >= 99 ? 'bien' : v >= 97 ? 'aviso' : 'critico')
 
@@ -82,31 +93,41 @@ function abrirValidaciones(fecha: string, tabla: string) {
 }
 const DIMENSIONES = Object.keys(NOMBRE_DIMENSION)
 const actividad = computed(() => vivo.eventos.slice(0, 6))
+
+const LECTURA: Clave[] = [
+  { muestras: ['bien', 'aviso', 'critico'], texto: 'Cada sello es una tabla en el día elegido: Certificada, Con observaciones o No certificada. Las no certificadas no llegan a negocio (BUSINESS).' },
+  { texto: '% de reglas que cumplen: de las reglas con datos, cuántas alcanzan su umbral. El puntaje de calidad, en cambio, pondera cada regla por su severidad.' },
+  { muestras: ['punto', 'finde'], texto: 'En la tendencia, un punto rojo bajo el eje marca un día con alguna tabla no certificada; las franjas grises son fines de semana.' },
+  { muestras: ['critico'], texto: 'En el mapa, cada cuadro es una tabla en un día; los no certificados llevan además un borde oscuro. Clic en un cuadro para ver sus validaciones.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Resumen</h1>
-        <p>Calidad, privacidad y certificación de cada tabla en el día elegido.</p>
-      </div>
-    </div>
+    <EncabezadoSeccion
+      modulo="resumen"
+      titulo="Resumen"
+      subtitulo="Calidad, privacidad y certificación de cada tabla en el día elegido."
+      :lectura="LECTURA"
+    />
 
-    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
+    <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="resumen" @reintentar="recargar">
       <template v-if="actual">
+        <LecturaRapida :dia="actual.fecha_corte" :anterior="anterior?.fecha_corte ?? null" :certificacion="actual.certificacion" />
+
         <!-- Lo característico del sistema: el indicador del backlog (PASS) y la certificación de cada tabla -->
         <section class="panel portada">
           <div class="score">
             <span class="etiqueta">Reglas que cumplen (PASS) · {{ nombreCorte(actual.fecha_corte) }}</span>
-            <strong class="cifra" :class="tonoPass(actual.pct_pass)">{{ pct(passAnimado) }}</strong>
-            <span v-if="deltaPass !== null && anterior" class="delta" :class="deltaPass >= 0 ? 'sube' : 'baja'">
-              <component :is="deltaPass >= 0 ? ArrowUpRight : ArrowDownRight" :size="16" :stroke-width="2.6" />
-              {{ signo(deltaPass, ' pts') }} vs. {{ corteCorto(anterior.fecha_corte) }}
+            <strong class="cifra num" :class="tonoPass(actual.pct_pass)">{{ pct(passAnimado) }}</strong>
+            <span v-if="deltaPass !== null && anterior" class="delta" :class="sentido(deltaPass)">
+              <component :is="{ sube: ArrowUpRight, baja: ArrowDownRight, igual: Minus }[sentido(deltaPass) ?? 'igual']" :size="16" :stroke-width="2.6" />
+              <template v-if="sentido(deltaPass) === 'igual'">Sin cambio vs. {{ corteCorto(anterior.fecha_corte) }}</template>
+              <template v-else>{{ signo(deltaPass, ' pts') }} vs. {{ corteCorto(anterior.fecha_corte) }}</template>
             </span>
             <Anillo :parte="certificadas" :total="TABLAS.length" etiqueta="tablas publicadas" :tamano="132" />
           </div>
-          <div class="sellos">
+          <div class="sellos" data-recorrido="sellos">
             <div class="fila entre">
               <h2>Certificación de cada tabla</h2>
               <RouterLink to="/certificacion" class="enlace">Ver certificación</RouterLink>
@@ -133,13 +154,13 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
         <section class="indicadores">
           <Kpi
             titulo="Puntaje de calidad"
-            :valor="pct(actual.global)"
+            :valor="pct(puntajeAnimado)"
             :detalle="deltaScore !== null ? `${signo(deltaScore, ' pts')} vs. día anterior · ponderado por severidad` : 'Ponderado por severidad'"
             :tono="tonoScore(actual.global)"
             :icono="Gauge"
           />
-          <Kpi titulo="Reglas en alerta" :valor="String(actual.estados.ALERTA ?? 0)" :detalle="`De ${conDatos} con datos · hasta 2 puntos bajo el umbral`" :tono="actual.estados.ALERTA ? 'aviso' : 'bien'" :icono="TriangleAlert" />
-          <Kpi titulo="Reglas que fallan" :valor="String(actual.estados.FALLA ?? 0)" detalle="Más de 2 puntos bajo el umbral" :tono="actual.estados.FALLA ? 'critico' : 'bien'" :icono="CircleX" />
+          <Kpi titulo="Reglas en alerta" :valor="String(Math.round(alertasAnimadas ?? 0))" :detalle="`De ${conDatos} con datos · hasta 2 puntos bajo el umbral`" :tono="actual.estados.ALERTA ? 'aviso' : 'bien'" :icono="TriangleAlert" />
+          <Kpi titulo="Reglas que fallan" :valor="String(Math.round(fallasAnimadas ?? 0))" detalle="Más de 2 puntos bajo el umbral" :tono="actual.estados.FALLA ? 'critico' : 'bien'" :icono="CircleX" />
         </section>
 
         <div class="dos-columnas">
@@ -167,7 +188,7 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
               <h2><Activity :size="18" class="marca-c" /> Actividad en vivo</h2>
               <button type="button" class="fantasma enlace" @click="vivo.panelAbierto = true">Ver todo</button>
             </div>
-            <ol class="feed">
+            <TransitionGroup v-if="actividad.length" tag="ol" name="evento" class="feed">
               <li v-for="e in actividad" :key="e.id" :class="e.tono">
                 <span class="punto-feed" />
                 <div>
@@ -176,8 +197,13 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
                   <span class="tenue cuando">{{ relativo(e.cuando) }}</span>
                 </div>
               </li>
-              <li v-if="!actividad.length" class="tenue">Esperando el próximo archivo…</li>
-            </ol>
+            </TransitionGroup>
+            <EstadoVacio
+              v-else
+              :icono="CalendarClock"
+              titulo="Esperando el próximo archivo"
+              texto="Aquí aparece cada archivo que llega, cada día que se evalúa y cada tabla que se certifica o se retiene."
+            />
           </section>
         </div>
 
@@ -227,7 +253,13 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
           </p>
         </section>
       </template>
-      <p v-else class="tenue">Todavía no hay resultados. Aparecerán cuando se evalúe el primer día de datos.</p>
+      <section v-else class="panel">
+        <EstadoVacio
+          :icono="CalendarClock"
+          titulo="Todavía no hay días evaluados"
+          texto="El resumen aparece cuando llegan los cinco archivos de un día y el motor termina de evaluarlo y certificarlo."
+        />
+      </section>
     </BloqueCarga>
   </div>
 </template>
@@ -240,12 +272,13 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
 .cifra.bien { color: var(--bien-texto); }
 .cifra.aviso { color: var(--aviso-texto); }
 .cifra.critico { color: var(--critico-texto); }
-.delta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.delta { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--tinta-2); }
 .delta.sube { color: var(--bien-texto); }
 .delta.baja { color: var(--critico-texto); }
 .sellos { display: grid; gap: 14px; }
 .grilla-sellos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.sin-subrayado { color: inherit; text-decoration: none !important; border-radius: 12px; }
+.sin-subrayado { color: inherit; text-decoration: none !important; border-radius: 12px; transition: transform 0.14s var(--ease-out); }
+.sin-subrayado:active { transform: scale(0.97); }
 .enlace { font-weight: 700; font-size: 13.5px; }
 .indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .pequeno { font-size: 12.5px; }
@@ -254,8 +287,9 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
 .dos-columnas { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
 .dos-columnas > :only-child { grid-column: 1 / -1; }
 .actividad h2 { display: inline-flex; align-items: center; gap: 8px; }
+.actividad :deep(.estado-vacio) { padding: 20px 6px; }
 .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.feed li { display: grid; grid-template-columns: 12px 1fr; gap: 10px; animation: entra 0.4s ease; }
+.feed li { display: grid; grid-template-columns: 12px 1fr; gap: 10px; }
 .feed li > div { display: grid; gap: 1px; font-size: 12.5px; min-width: 0; }
 .feed strong { font-size: 13px; }
 .cuando { font-size: 11.5px; }
@@ -263,8 +297,10 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
 .feed .bien .punto-feed { background: var(--bien); }
 .feed .aviso .punto-feed { background: var(--aviso); }
 .feed .critico .punto-feed { background: var(--critico); }
-@keyframes entra { from { opacity: 0; transform: translateY(-6px); } }
-
+/* Evento nuevo: entra desde arriba; los demás bajan para hacerle sitio. */
+.evento-enter-active { transition: opacity 0.26s var(--ease-out), transform 0.26s var(--ease-out); }
+.evento-enter-from { opacity: 0; transform: translateY(-10px); }
+.evento-move { transition: transform 0.26s var(--ease-out); }
 
 .dimensiones { display: grid; grid-template-columns: 130px 1fr 72px; gap: 12px 16px; align-items: center; }
 .nombre-dim { font-weight: 600; }

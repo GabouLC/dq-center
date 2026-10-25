@@ -97,7 +97,7 @@ watch(
               <FastForward :size="15" /> Siguiente archivo ahora
             </button>
           </div>
-          <ol class="eventos">
+          <TransitionGroup tag="ol" name="evento" class="eventos">
             <li v-for="e in vivo.eventos" :key="e.id" :class="e.tono">
               <span class="marca-evento"><component :is="icono(e)" :size="15" /></span>
               <div>
@@ -106,8 +106,8 @@ watch(
                 <span class="tenue cuando">{{ relativo(e.cuando, ahora) }}<template v-if="e.fecha_corte"> · datos del {{ corteCorto(e.fecha_corte) }}</template></span>
               </div>
             </li>
-            <li v-if="!vivo.eventos.length" class="vacio tenue">Todavía no hay actividad. El próximo archivo llega en unos segundos.</li>
-          </ol>
+            <li v-if="!vivo.eventos.length" key="vacio" class="vacio tenue">Todavía no hay actividad. El próximo archivo llega en unos segundos.</li>
+          </TransitionGroup>
         </aside>
       </Transition>
 
@@ -143,7 +143,7 @@ watch(
 .estado-vivo .punto { margin-top: 5px; }
 .controles { gap: 8px; flex-wrap: wrap; }
 .eventos { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 2px; align-content: start; }
-.eventos li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--linea); animation: entra 0.35s ease; }
+.eventos li { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--linea); }
 .eventos li strong { font-size: 13px; }
 .eventos li p { font-size: 12.5px; color: var(--tinta-2); margin: 1px 0; }
 .cuando { font-size: 11.5px; }
@@ -152,7 +152,10 @@ watch(
 .aviso .marca-evento { background: var(--aviso-suave); color: var(--aviso-texto); }
 .bien .marca-evento { background: var(--bien-suave); color: var(--bien); }
 .vacio { display: block !important; font-size: 13px; }
-@keyframes entra { from { opacity: 0; transform: translateY(-6px); } }
+/* Evento nuevo: entra desde arriba; los demás bajan para hacerle sitio. */
+.evento-enter-active { transition: opacity 0.26s var(--ease-out), transform 0.26s var(--ease-out); }
+.evento-enter-from { opacity: 0; transform: translateY(-10px); }
+.evento-move { transition: transform 0.26s var(--ease-out); }
 
 .avisos { position: fixed; right: 16px; bottom: 16px; z-index: 70; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); }
 .aviso { justify-content: flex-start; align-items: flex-start; gap: 10px; text-align: left; border-radius: 12px; padding: 12px 14px; background: var(--superficie); box-shadow: var(--sombra-alta); border-color: var(--linea); font-weight: 500; }
@@ -162,9 +165,12 @@ watch(
 .aviso.critico svg { color: var(--critico); }
 .aviso.bien, .aviso.info { border-left: 4px solid var(--bien); }
 .aviso.bien svg { color: var(--bien); }
-.panel-enter-active, .panel-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.panel-enter-active { transition: opacity 0.22s var(--ease-out), transform 0.22s var(--ease-out); }
+.panel-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
 .panel-enter-from, .panel-leave-to { opacity: 0; transform: translateX(16px); }
-.aviso-enter-active, .aviso-leave-active { transition: opacity 0.25s, transform 0.25s; }
+/* Avisos: entran y salen por abajo, por donde aparecen. */
+.aviso-enter-active { transition: opacity 0.24s var(--ease-out), transform 0.24s var(--ease-out); }
+.aviso-leave-active { transition: opacity 0.16s ease, transform 0.16s ease; }
 .aviso-enter-from, .aviso-leave-to { opacity: 0; transform: translateY(12px); }
 @media (max-width: 1360px) { .pastilla .texto { display: none; } }
 </style>

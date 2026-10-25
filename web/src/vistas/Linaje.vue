@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ArrowRight, BadgeCheck, ChevronDown, Database, Eye, FileInput, Lock, Search } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { ArrowRight, BadgeCheck, ChevronDown, Database, Eye, FileInput, Lock, Search, SearchX } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import DacChip from '@/componentes/DacChip.vue'
+import EncabezadoSeccion from '@/componentes/EncabezadoSeccion.vue'
+import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, NOMBRE_TABLA, TABLAS } from '@/formato'
+import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 
 type Nodo = { id: string; capa: string; objeto: string; detalle: string }
@@ -31,6 +34,8 @@ const foco = ref<string | null>(null)
 const abierto = ref<string | null>(null)
 const filtro = ref('')
 const filtroDac = ref('')
+// La vista se reutiliza al cambiar de tabla: el campo abierto era de la tabla anterior.
+watch(tabla, () => (abierto.value = null))
 
 const ICONO_NODO: Record<string, unknown> = { raw: FileInput, master: Database, p: BadgeCheck, v: Eye }
 const COLOR_DAC: Record<string, string> = {
@@ -51,19 +56,27 @@ const cuenta = (dac: string) => (datos.value?.campos ?? []).filter((c) => c.dac 
 const proceso = (desde: string) => datos.value?.aristas.find((a) => a.desde === desde)?.proceso ?? ''
 const cifrado = (c: Campo) => c.transformacion.includes('cifrado')
 const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== 'copia')
+
+const LECTURA: Clave[] = [
+  { texto: 'Arriba, las capas por las que pasa la tabla: RAW (tal como llega), MASTER (homologada y con los datos personales cifrados) y BUSINESS (solo los días certificados).' },
+  { muestras: ['publico', 'sensible', 'cifrado'], texto: 'Cada fila es un campo; el color del borde y de las flechas es su sensibilidad: Público, Sensible o Sensible cifrado.' },
+  { muestras: ['candado'], texto: 'El candado indica que el campo viaja cifrado desde MASTER: nadie lo ve en claro en el portal ni en BUSINESS.' },
+  { texto: 'Pasa el puntero por un campo para resaltarlo; haz clic para ver su recorrido paso a paso y en qué términos del glosario aparece.' },
+]
 </script>
 
 <template>
   <div class="pila">
-    <div class="encabezado">
-      <div>
-        <h1>Linaje</h1>
-        <p>De dónde viene cada dato, qué le pasa en el camino y dónde se expone. Elige un campo para ver su recorrido paso a paso.</p>
-      </div>
+    <EncabezadoSeccion
+      modulo="linaje"
+      titulo="Linaje"
+      subtitulo="De dónde viene cada dato, qué le pasa en el camino y dónde se expone. Elige un campo para ver su recorrido paso a paso."
+      :lectura="LECTURA"
+    >
       <div class="segmentos" role="group" aria-label="Tabla">
         <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: t === tabla }" :aria-pressed="t === tabla" @click="router.push(`/linaje/${t}`)">{{ NOMBRE_TABLA[t] }}</button>
       </div>
-    </div>
+    </EncabezadoSeccion>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="datos">
@@ -151,7 +164,14 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
               </div>
             </div>
           </div>
-          <p v-if="!campos.length" class="tenue">Ningún campo coincide.</p>
+          <EstadoVacio
+            v-if="!campos.length"
+            :icono="SearchX"
+            titulo="Ningún campo coincide"
+            :texto="filtro ? `No hay campos de ${NOMBRE_TABLA[tabla]} que contengan «${filtro}» con esa clasificación. Revisa la palabra o elige «Todos».` : 'Esta tabla no tiene campos con esa clasificación. Elige «Todos» para verlos todos.'"
+          >
+            <button type="button" @click="(filtro = ''), (filtroDac = '')">Ver todos los campos</button>
+          </EstadoVacio>
         </section>
       </template>
     </BloqueCarga>
@@ -193,6 +213,8 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
 .recorrido.foco, .recorrido.abierto { background: var(--superficie-2); }
 .linea-campo { width: 100%; border: 0; border-radius: 12px; background: transparent; padding: 6px 12px; font-weight: 600; text-align: left; color: var(--tinta); }
 .linea-campo:hover { color: var(--tinta); }
+/* Fila ancha: se hunde apenas al presionar. */
+.linea-campo:active { transform: scale(0.995); }
 .pastilla { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--color-dac); background: var(--superficie); font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
 .pastilla.origen { font-size: 12px; }
 .candado { color: var(--sello); flex: none; }
@@ -202,7 +224,7 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
 .conector .punta { stroke-linecap: round; stroke-linejoin: round; }
 .recorrido.foco .conector path:first-child { stroke-dasharray: 6 4; animation: fluye 0.7s linear infinite; }
 @keyframes fluye { to { stroke-dashoffset: -10; } }
-.flecha { color: var(--tenue); transition: transform 0.15s; }
+.flecha { color: var(--tenue); transition: transform 0.2s var(--ease-out); }
 .recorrido.abierto .flecha { transform: rotate(180deg); }
 .detalle { padding: 4px 18px 16px; display: grid; gap: 10px; }
 .pasos { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; counter-reset: paso; }

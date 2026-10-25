@@ -148,8 +148,8 @@ tipos. Es lo mismo que corre el CI de GitHub Actions en cada pull request.
 ## Más allá de lo local
 
 - **Capturas de evidencia:** `.venv\Scripts\python scripts\capturas_portal.py` levanta su propia
-  API y su propio portal en los puertos 8000 y 5173 y regenera `docs/evidencias/portal`. Necesita
-  `pip install playwright` y `playwright install chromium`, y que esos puertos estén libres.
+  API y su propio portal en los puertos 8001 y 5174 (no choca con una demo abierta) y regenera
+  `docs/evidencias/portal`. Necesita `pip install playwright` y `playwright install chromium`.
 - **GCP (BigQuery y Firestore):** requiere acceso al proyecto `dq-center-gabou`; ver la sección
   «Correrlo en GCP» del [README](README.md).
 - **Decisiones de diseño:** [docs/adr](docs/adr/README.md). **Seguimiento Scrum:** [docs/sprints](docs/sprints/README.md).
