@@ -1,5 +1,11 @@
 # Brief de dq-center
 
+> **Documento histórico (15 de octubre de 2026).** No se actualiza. Después cambiaron los datos
+> (92 cortes diarios, [ADR 0012](adr/0012-cortes-diarios.md)), el inicio de sesión y los roles
+> ([ADR 0011](adr/0011-inicio-de-sesion.md)), el indicador del portal
+> ([ADR 0015](adr/0015-indicador-pass.md)) y el uso del sandbox ([ADR 0008](adr/0008-sandbox.md)).
+> Lo vigente está en el [README](../README.md).
+
 Especificación de origen del proyecto. El catálogo de reglas vive aparte, en
 [config/reglas_iniciales.yaml](../config/reglas_iniciales.yaml).
 

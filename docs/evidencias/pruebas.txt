@@ -1,130 +1,143 @@
 ============================= test session starts =============================
-platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.7.0 -- .venv\Scripts\python.exe
-rootdir: .
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.7.0 -- C:\Proyectos\dq-center\.venv\Scripts\python.exe
+rootdir: C:\Proyectos\dq-center
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.15.1, Faker-40.43.0
-collecting ... collected 114 items
+collecting ... collected 127 items
 
-tests/test_api.py::test_sin_token_o_con_token_invalido_responde_401 PASSED
-tests/test_api.py::test_cuenta_sin_rol_responde_403_y_queda_auditada PASSED
-tests/test_api.py::test_inicio_de_sesion_con_correo_y_contrasena PASSED
-tests/test_api.py::test_el_error_de_inicio_no_dice_si_la_cuenta_existe PASSED
-tests/test_api.py::test_alta_con_contrasena_temporal_que_obliga_a_cambiarla PASSED
-tests/test_api.py::test_restablecer_la_contrasena_cierra_las_sesiones_abiertas PASSED
-tests/test_api.py::test_cada_rol_ve_solo_sus_modulos PASSED
-tests/test_api.py::test_un_lector_no_puede_administrar PASSED
-tests/test_api.py::test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno PASSED
-tests/test_api.py::test_el_portal_solo_lee_la_capa_business PASSED
-tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion PASSED
-tests/test_api.py::test_validaciones_de_un_corte_empiezan_por_las_fallas PASSED
-tests/test_api.py::test_comparar_cortes_muestra_primero_lo_que_empeoro PASSED
-tests/test_api.py::test_certificacion_integral_del_dia_de_la_fuga PASSED
-tests/test_api.py::test_fuentes_muestran_rechazos_volumen_e_incidencias PASSED
-tests/test_api.py::test_estructura_detecta_columna_nueva PASSED
-tests/test_api.py::test_contrato_con_dac_y_columna_fuera_de_contrato PASSED
-tests/test_api.py::test_linaje_de_persona_de_raw_a_business PASSED
-tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio PASSED
-tests/test_api.py::test_solo_gobierno_y_admin_editan_el_glosario PASSED
-tests/test_api.py::test_admin_cambia_un_umbral_y_queda_auditado PASSED
-tests/test_api.py::test_una_regla_invalida_o_con_sql_roto_no_se_guarda PASSED
-tests/test_api.py::test_admin_lanza_una_corrida_y_aparece_en_el_portal PASSED
-tests/test_api.py::test_admin_gestiona_usuarios_pero_no_se_quita_el_acceso PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/resumen] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/validaciones] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/certificacion] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/fuentes] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/contratos] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/linaje/poliza] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/glosario] PASSED
-tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/fuentes/persona/estructura] PASSED
-tests/test_api.py::test_una_solicitud_lenta_queda_registrada_en_la_auditoria PASSED
-tests/test_api.py::test_sondas_de_salud PASSED
-tests/test_api.py::test_sin_simulacion_en_vivo_el_estado_dice_inactivo PASSED
-tests/test_autenticacion.py::test_la_contrasena_se_guarda_con_sal_y_nunca_en_claro PASSED
-tests/test_autenticacion.py::test_reglas_de_una_contrasena_nueva PASSED
-tests/test_autenticacion.py::test_sesion_valida_alterada_y_vencida PASSED
-tests/test_autenticacion.py::test_cinco_intentos_fallidos_bloquean_la_cuenta_15_minutos PASSED
-tests/test_autenticacion.py::test_cambiar_la_contrasena_cierra_las_sesiones_anteriores PASSED
-tests/test_autenticacion.py::test_la_contrasena_temporal_desbloquea_y_obliga_a_cambiarla PASSED
-tests/test_autenticacion.py::test_quitar_el_acceso_cierra_la_sesion PASSED
-tests/test_certificacion.py::test_matriz_de_certificacion PASSED
-tests/test_certificacion.py::test_vehiculo_certifica_sin_observaciones_despues_de_la_limpieza PASSED
-tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean PASSED
-tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien PASSED
-tests/test_certificacion.py::test_columna_nueva_sin_clasificar_es_observacion PASSED
-tests/test_certificacion.py::test_cada_certificacion_lleva_su_sello PASSED
-tests/test_certificacion.py::test_una_media_en_falla_no_bloquea PASSED
-tests/test_certificacion.py::test_los_resultados_se_asocian_a_los_dominios_poliza_y_persona PASSED
-tests/test_certificacion.py::test_business_solo_tiene_cortes_certificados PASSED
-tests/test_certificacion.py::test_la_vista_de_cada_tabla_muestra_su_ultimo_corte_certificado PASSED
-tests/test_certificacion.py::test_business_no_expone_pii_en_claro PASSED
-tests/test_certificacion.py::test_las_vistas_de_contrato_responden PASSED
-tests/test_datagen.py::test_es_determinista PASSED
-tests/test_datagen.py::test_un_corte_por_dia_de_julio_a_septiembre PASSED
-tests/test_datagen.py::test_solo_el_reproceso_varia_mas_de_15_por_ciento PASSED
-tests/test_datagen.py::test_solo_persona_del_14_de_julio_llega_tarde PASSED
-tests/test_datagen.py::test_las_llaves_del_manifiesto_existen_en_su_corte PASSED
-tests/test_datagen.py::test_canal_venta_aparece_desde_el_9_de_septiembre PASSED
-tests/test_datagen.py::test_los_dni_de_7_digitos_se_corrigen_el_15_de_septiembre PASSED
-tests/test_datagen.py::test_el_fin_de_semana_casi_no_hay_polizas_nuevas PASSED
-tests/test_datagen.py::test_los_errores_transitorios_cambian_de_un_dia_a_otro PASSED
-tests/test_datagen.py::test_las_campanas_mejoran_y_el_atraso_de_bajas_empeora PASSED
-tests/test_firestore.py::test_las_reglas_sobreviven_el_viaje_a_firestore PASSED
-tests/test_firestore.py::test_los_contratos_cubren_las_tablas_con_sus_tipos_reales PASSED
-tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado PASSED
-tests/test_flujo.py::test_archivo_mal_formado_se_rechaza_con_su_motivo PASSED
-tests/test_flujo.py::test_lo_rechazado_no_llega_a_raw_y_queda_registrado PASSED
-tests/test_flujo.py::test_raw_conserva_los_valores_tal_cual_vienen PASSED
-tests/test_flujo.py::test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos PASSED
-tests/test_flujo.py::test_master_usa_los_nombres_estandar PASSED
-tests/test_flujo.py::test_los_registros_no_homologables_quedan_fuera_de_master PASSED
-tests/test_flujo.py::test_dni_nombres_y_correo_son_sensibles_cifrados PASSED
-tests/test_flujo.py::test_ningun_campo_pii_queda_en_texto_plano_en_master PASSED
-tests/test_flujo.py::test_el_dni_en_master_no_coincide_con_raw_pero_se_descifra_igual PASSED
-tests/test_flujo.py::test_deterministico_iguala_documentos_y_aleatorio_no PASSED
-tests/test_ingesta.py::test_archivo_valido_se_carga_tal_cual PASSED
-tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA"\n"1"\n-faltan columnas: IMPORTE] PASSED
-tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE"\n"1","2","3"\n-la l\xednea 2 tiene 3 campos] PASSED
-tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE","IMPORTE"\n-columnas repetidas: IMPORTE] PASSED
-tests/test_ingesta.py::test_estructura_invalida_se_rechaza[-vac\xedo] PASSED
-tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE"\n"1","\xf1"\n-UTF-8] PASSED
-tests/test_ingesta.py::test_columna_desconocida_se_acepta_y_se_anota PASSED
-tests/test_motor.py::test_catalogo_tiene_36_reglas_y_48_expandidas PASSED
-tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel PASSED
-tests/test_motor.py::test_hay_reglas_en_ok_alerta_y_falla PASSED
-tests/test_motor.py::test_variacion_de_volumen_sin_corte_anterior_es_sin_datos PASSED
-tests/test_motor.py::test_muestras_traen_la_fila_sin_exponer_pii PASSED
-tests/test_motor.py::test_estructura_detecta_canal_venta_el_9_de_septiembre PASSED
-tests/test_motor.py::test_los_incidentes_bajan_el_score_del_dia PASSED
-tests/test_motor.py::test_las_tendencias_del_periodo PASSED
-tests/test_reglas.py::test_regla_valida_no_tiene_errores PASSED
-tests/test_reglas.py::test_regla_invalida[cambios0-requiere 'patron'] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios1-no puede contener ';'] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios2-SQL inv\xe1lido] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios3-nombre de campo inv\xe1lido] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios4-tabla desconocida] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios5-todas las tablas] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios6-entre 0 y 100] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios7-referencia inv\xe1lida] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios8-el l\xedmite debe tener la forma] PASSED
-tests/test_reglas.py::test_regla_invalida[cambios9-atributos desconocidos] PASSED
-tests/test_reglas.py::test_desde_dict_rechaza_reglas_invalidas PASSED
-tests/test_reglas.py::test_campos_usados_incluye_los_de_expresiones PASSED
-tests/test_reglas.py::test_limite_de_frescura_en_hora_de_lima PASSED
-tests/test_reglas.py::test_estado_segun_umbral[None-SIN_DATOS] PASSED
-tests/test_reglas.py::test_estado_segun_umbral[100-OK] PASSED
-tests/test_reglas.py::test_estado_segun_umbral[99.5-OK] PASSED
-tests/test_reglas.py::test_estado_segun_umbral[98.0-ALERTA] PASSED
-tests/test_reglas.py::test_estado_segun_umbral[97.5-ALERTA] PASSED
-tests/test_reglas.py::test_estado_segun_umbral[97.4-FALLA] PASSED
-tests/test_reglas.py::test_scores_ponderados_por_severidad_e_ignoran_sin_datos PASSED
-tests/test_vivo.py::test_el_dia_siguiente_llega_archivo_por_archivo PASSED
+tests/test_api.py::test_sin_token_o_con_token_invalido_responde_401 PASSED [  0%]
+tests/test_api.py::test_cuenta_sin_rol_responde_403_y_queda_auditada PASSED [  1%]
+tests/test_api.py::test_inicio_de_sesion_con_correo_y_contrasena PASSED  [  2%]
+tests/test_api.py::test_el_error_de_inicio_no_dice_si_la_cuenta_existe PASSED [  3%]
+tests/test_api.py::test_alta_con_contrasena_temporal_que_obliga_a_cambiarla PASSED [  3%]
+tests/test_api.py::test_restablecer_la_contrasena_cierra_las_sesiones_abiertas PASSED [  4%]
+tests/test_api.py::test_cada_rol_ve_solo_sus_modulos PASSED              [  5%]
+tests/test_api.py::test_un_lector_no_puede_administrar PASSED            [  6%]
+tests/test_api.py::test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno PASSED [  7%]
+tests/test_api.py::test_incidencias_ocultan_los_valores_sensibles_al_lector PASSED [  7%]
+tests/test_api.py::test_la_contrasena_temporal_sin_cambiar_queda_auditada PASSED [  8%]
+tests/test_api.py::test_el_portal_solo_lee_la_capa_business PASSED       [  9%]
+tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion PASSED [ 10%]
+tests/test_api.py::test_validaciones_de_un_corte_empiezan_por_las_fallas PASSED [ 11%]
+tests/test_api.py::test_comparar_cortes_muestra_primero_lo_que_empeoro PASSED [ 11%]
+tests/test_api.py::test_certificacion_integral_del_dia_de_la_fuga PASSED [ 12%]
+tests/test_api.py::test_fuentes_muestran_rechazos_volumen_e_incidencias PASSED [ 13%]
+tests/test_api.py::test_estructura_detecta_columna_nueva PASSED          [ 14%]
+tests/test_api.py::test_contrato_con_dac_y_columna_fuera_de_contrato PASSED [ 14%]
+tests/test_api.py::test_linaje_de_persona_de_raw_a_business PASSED       [ 15%]
+tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio PASSED [ 16%]
+tests/test_api.py::test_solo_gobierno_y_admin_editan_el_glosario PASSED  [ 17%]
+tests/test_api.py::test_admin_cambia_un_umbral_y_queda_auditado PASSED   [ 18%]
+tests/test_api.py::test_una_regla_invalida_o_con_sql_roto_no_se_guarda PASSED [ 18%]
+tests/test_api.py::test_admin_lanza_una_corrida_y_aparece_en_el_portal PASSED [ 19%]
+tests/test_api.py::test_admin_gestiona_usuarios_pero_no_se_quita_el_acceso PASSED [ 20%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/resumen] PASSED [ 21%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/validaciones] PASSED [ 22%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/certificacion] PASSED [ 22%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/fuentes] PASSED [ 23%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/contratos] PASSED [ 24%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/linaje/poliza] PASSED [ 25%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/glosario] PASSED [ 25%]
+tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos[/api/v1/fuentes/persona/estructura] PASSED [ 26%]
+tests/test_api.py::test_una_solicitud_lenta_queda_registrada_en_la_auditoria PASSED [ 27%]
+tests/test_api.py::test_sondas_de_salud PASSED                           [ 28%]
+tests/test_api.py::test_sin_simulacion_en_vivo_el_estado_dice_inactivo PASSED [ 29%]
+tests/test_autenticacion.py::test_la_contrasena_se_guarda_con_sal_y_nunca_en_claro PASSED [ 29%]
+tests/test_autenticacion.py::test_reglas_de_una_contrasena_nueva PASSED  [ 30%]
+tests/test_autenticacion.py::test_sesion_valida_alterada_y_vencida PASSED [ 31%]
+tests/test_autenticacion.py::test_cinco_intentos_fallidos_bloquean_la_cuenta_15_minutos PASSED [ 32%]
+tests/test_autenticacion.py::test_cambiar_la_contrasena_cierra_las_sesiones_anteriores PASSED [ 33%]
+tests/test_autenticacion.py::test_la_contrasena_temporal_desbloquea_y_obliga_a_cambiarla PASSED [ 33%]
+tests/test_autenticacion.py::test_quitar_el_acceso_cierra_la_sesion PASSED [ 34%]
+tests/test_autenticacion.py::test_intentos_en_paralelo_no_se_saltan_el_bloqueo PASSED [ 35%]
+tests/test_autenticacion.py::test_el_bloqueo_no_revela_si_el_correo_existe PASSED [ 36%]
+tests/test_autenticacion.py::test_equivocar_la_contrasena_actual_al_cambiarla_tambien_bloquea PASSED [ 37%]
+tests/test_certificacion.py::test_matriz_de_certificacion PASSED         [ 37%]
+tests/test_certificacion.py::test_vehiculo_certifica_sin_observaciones_despues_de_la_limpieza PASSED [ 38%]
+tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean PASSED [ 39%]
+tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien PASSED [ 40%]
+tests/test_certificacion.py::test_columna_nueva_sin_clasificar_es_observacion PASSED [ 40%]
+tests/test_certificacion.py::test_cada_certificacion_lleva_su_sello PASSED [ 41%]
+tests/test_certificacion.py::test_una_media_en_falla_no_bloquea PASSED   [ 42%]
+tests/test_certificacion.py::test_una_tabla_cuyo_archivo_no_llego_no_se_certifica PASSED [ 43%]
+tests/test_certificacion.py::test_reevaluar_un_corte_que_deja_de_certificar_lo_saca_de_business PASSED [ 44%]
+tests/test_certificacion.py::test_la_columna_nueva_no_aparece_en_los_dias_anteriores PASSED [ 44%]
+tests/test_certificacion.py::test_los_resultados_se_asocian_a_los_dominios_poliza_y_persona PASSED [ 45%]
+tests/test_certificacion.py::test_business_solo_tiene_cortes_certificados PASSED [ 46%]
+tests/test_certificacion.py::test_la_vista_de_cada_tabla_muestra_su_ultimo_corte_certificado PASSED [ 47%]
+tests/test_certificacion.py::test_business_no_expone_pii_en_claro PASSED [ 48%]
+tests/test_certificacion.py::test_las_vistas_de_contrato_responden PASSED [ 48%]
+tests/test_datagen.py::test_es_determinista PASSED                       [ 49%]
+tests/test_datagen.py::test_un_corte_por_dia_de_julio_a_septiembre PASSED [ 50%]
+tests/test_datagen.py::test_solo_el_reproceso_varia_mas_de_15_por_ciento PASSED [ 51%]
+tests/test_datagen.py::test_solo_persona_del_14_de_julio_llega_tarde PASSED [ 51%]
+tests/test_datagen.py::test_las_llaves_del_manifiesto_existen_en_su_corte PASSED [ 52%]
+tests/test_datagen.py::test_canal_venta_aparece_desde_el_9_de_septiembre PASSED [ 53%]
+tests/test_datagen.py::test_los_dni_de_7_digitos_se_corrigen_el_15_de_septiembre PASSED [ 54%]
+tests/test_datagen.py::test_el_fin_de_semana_casi_no_hay_polizas_nuevas PASSED [ 55%]
+tests/test_datagen.py::test_los_errores_transitorios_cambian_de_un_dia_a_otro PASSED [ 55%]
+tests/test_datagen.py::test_las_campanas_mejoran_y_el_atraso_de_bajas_empeora PASSED [ 56%]
+tests/test_firestore.py::test_las_reglas_sobreviven_el_viaje_a_firestore PASSED [ 57%]
+tests/test_firestore.py::test_los_contratos_cubren_las_tablas_con_sus_tipos_reales PASSED [ 58%]
+tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado PASSED [ 59%]
+tests/test_flujo.py::test_archivo_mal_formado_se_rechaza_con_su_motivo PASSED [ 59%]
+tests/test_flujo.py::test_lo_rechazado_no_llega_a_raw_y_queda_registrado PASSED [ 60%]
+tests/test_flujo.py::test_raw_conserva_los_valores_tal_cual_vienen PASSED [ 61%]
+tests/test_flujo.py::test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos PASSED [ 62%]
+tests/test_flujo.py::test_master_usa_los_nombres_estandar PASSED         [ 62%]
+tests/test_flujo.py::test_los_registros_no_homologables_quedan_fuera_de_master PASSED [ 63%]
+tests/test_flujo.py::test_dni_nombres_y_correo_son_sensibles_cifrados PASSED [ 64%]
+tests/test_flujo.py::test_ningun_campo_pii_queda_en_texto_plano_en_master PASSED [ 65%]
+tests/test_flujo.py::test_el_dni_en_master_no_coincide_con_raw_pero_se_descifra_igual PASSED [ 66%]
+tests/test_flujo.py::test_deterministico_iguala_documentos_y_aleatorio_no PASSED [ 66%]
+tests/test_flujo.py::test_reanudar_desde_un_corte_da_lo_mismo_que_de_corrido PASSED [ 67%]
+tests/test_ingesta.py::test_archivo_valido_se_carga_tal_cual PASSED      [ 68%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA"\n"1"\n-faltan columnas: IMPORTE] PASSED [ 69%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE"\n"1","2","3"\n-la l\xednea 2 tiene 3 campos] PASSED [ 70%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE","IMPORTE"\n-columnas repetidas: IMPORTE] PASSED [ 70%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza[-vac\xedo] PASSED [ 71%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE","CANAL VENTA"\n"1","2","3"\n-nombres de columna no v\xe1lidos: 'CANAL VENTA'] PASSED [ 72%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE","X VARCHAR; DROP TABLE t; --"\n-nombres de columna no v\xe1lidos] PASSED [ 73%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE","fecha_corte"\n-nombres de columna no v\xe1lidos: 'fecha_corte'] PASSED [ 74%]
+tests/test_ingesta.py::test_estructura_invalida_se_rechaza["ID_CUOTA","IMPORTE"\n"1","\xf1"\n-UTF-8] PASSED [ 74%]
+tests/test_ingesta.py::test_columna_desconocida_se_acepta_y_se_anota PASSED [ 75%]
+tests/test_motor.py::test_catalogo_tiene_36_reglas_y_48_expandidas PASSED [ 76%]
+tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel PASSED [ 77%]
+tests/test_motor.py::test_hay_reglas_en_ok_alerta_y_falla PASSED         [ 77%]
+tests/test_motor.py::test_variacion_de_volumen_sin_corte_anterior_es_sin_datos PASSED [ 78%]
+tests/test_motor.py::test_muestras_traen_la_fila_sin_exponer_pii PASSED  [ 79%]
+tests/test_motor.py::test_estructura_detecta_canal_venta_el_9_de_septiembre PASSED [ 80%]
+tests/test_motor.py::test_los_incidentes_bajan_el_score_del_dia PASSED   [ 81%]
+tests/test_motor.py::test_las_tendencias_del_periodo PASSED              [ 81%]
+tests/test_reglas.py::test_regla_valida_no_tiene_errores PASSED          [ 82%]
+tests/test_reglas.py::test_regla_invalida[cambios0-requiere 'patron'] PASSED [ 83%]
+tests/test_reglas.py::test_regla_invalida[cambios1-no puede contener ';'] PASSED [ 84%]
+tests/test_reglas.py::test_regla_invalida[cambios2-SQL inv\xe1lido] PASSED [ 85%]
+tests/test_reglas.py::test_regla_invalida[cambios3-nombre de campo inv\xe1lido] PASSED [ 85%]
+tests/test_reglas.py::test_regla_invalida[cambios4-tabla desconocida] PASSED [ 86%]
+tests/test_reglas.py::test_regla_invalida[cambios5-todas las tablas] PASSED [ 87%]
+tests/test_reglas.py::test_regla_invalida[cambios6-entre 0 y 100] PASSED [ 88%]
+tests/test_reglas.py::test_regla_invalida[cambios7-referencia inv\xe1lida] PASSED [ 88%]
+tests/test_reglas.py::test_regla_invalida[cambios8-el l\xedmite debe tener la forma] PASSED [ 89%]
+tests/test_reglas.py::test_regla_invalida[cambios9-atributos desconocidos] PASSED [ 90%]
+tests/test_reglas.py::test_desde_dict_rechaza_reglas_invalidas PASSED    [ 91%]
+tests/test_reglas.py::test_campos_usados_incluye_los_de_expresiones PASSED [ 92%]
+tests/test_reglas.py::test_limite_de_frescura_en_hora_de_lima PASSED     [ 92%]
+tests/test_reglas.py::test_estado_segun_umbral[None-SIN_DATOS] PASSED    [ 93%]
+tests/test_reglas.py::test_estado_segun_umbral[100-OK] PASSED            [ 94%]
+tests/test_reglas.py::test_estado_segun_umbral[99.5-OK] PASSED           [ 95%]
+tests/test_reglas.py::test_estado_segun_umbral[98.0-ALERTA] PASSED       [ 96%]
+tests/test_reglas.py::test_estado_segun_umbral[97.5-ALERTA] PASSED       [ 96%]
+tests/test_reglas.py::test_estado_segun_umbral[97.4-FALLA] PASSED        [ 97%]
+tests/test_reglas.py::test_scores_ponderados_por_severidad_e_ignoran_sin_datos PASSED [ 98%]
+tests/test_vivo.py::test_el_dia_siguiente_llega_archivo_por_archivo PASSED [ 99%]
+tests/test_vivo.py::test_un_archivo_que_llega_tarde_no_se_pierde PASSED  [100%]
 
 ============================== warnings summary ===============================
 .venv\Lib\site-packages\fastapi\testclient.py:1
-  .venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  C:\Proyectos\dq-center\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 114 passed, 1 warning in 51.97s =======================
+================== 127 passed, 1 warning in 62.43s (0:01:02) ==================

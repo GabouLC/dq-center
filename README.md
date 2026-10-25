@@ -8,7 +8,7 @@ técnicas frente al Documento de Arquitectura, en [docs/adr](docs/adr/README.md)
 
 ## Qué hace
 
-Cada fin de mes llegan archivos CSV de cinco sistemas de origen: personas, pólizas,
+Cada día llegan archivos CSV de cinco sistemas de origen: personas, pólizas,
 vehículos, siniestros y pagos. Cada corte pasa por una tubería de etapas:
 
 ```mermaid
@@ -124,7 +124,7 @@ La configuración local vive en `data/config_local.json` y el secreto que firma 
 sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
 detenla antes de volver a correr `dqc.pipeline`.
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (114 pruebas) y `npm run build` en `web/`.
+Pruebas: `.venv/Scripts/python -m pytest -q` (127 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -133,12 +133,14 @@ proyecto no tenga facturación activa, todo corre en el **sandbox** de BigQuery
 (ADR 0008): sin particiones, con tablas que vencen a los 60 días.
 
 ```bash
+pip install -e ".[datagen,local,gcp,api,dev]"     # con data/ ya generado por dqc.datagen
 export DQC_PROYECTO=dq-center-gabou DQC_SANDBOX=1
 gcloud auth login --update-adc
 
 python -m dqc.gcp preparar                        # datasets y llaves de cifrado
 python -m dqc.gcp sembrar --admin tu@correo.com   # reglas, contratos, glosario y admins (imprime su clave temporal)
 python -m dqc.gcp simular                         # 92 cortes diarios desde cero + verificación
+python -m dqc.gcp simular --desde 2026-09-08      # reanuda una carga que se cortó
 python -m dqc.gcp ejecutar                        # reevalúa el último corte
 
 DQC_MODO=gcp DQC_SECRETO=... python -m dqc.api    # API sobre BigQuery + Firestore
@@ -182,13 +184,14 @@ El Documento de Arquitectura estimaba USD 30 a 45, sobre todo por Cloud SQL. Los
 
 ## Sprints y evidencia
 
-- [docs/sprints](docs/sprints/README.md): el Sprint 1 terminado (1 al 5 de octubre), el Sprint 2
-  en curso (6 al 19 de octubre, 10 de 23 SP) y el Sprint 3 planificado (20 de octubre al 2 de
-  noviembre), con la priorización y el burndown del release. El portal es un prototipo adelantado
-  del Sprint 3.
+- [docs/sprints](docs/sprints/README.md): los Sprints 1 y 2 terminados (22 y 23 SP, del 1 al 19 de
+  octubre) y el Sprint 3 planificado (20 de octubre al 2 de noviembre), con la priorización, las
+  actas y el burndown del release. El portal es un prototipo adelantado del Sprint 3.
 - [docs/evidencias](docs/evidencias/README.md): capturas del portal por historia, la corrida del
   pipeline, las consultas en BigQuery y el reporte de las pruebas.
-- Cada historia es un issue cerrado en su milestone:
+- [docs/auditoria-reglas.md](docs/auditoria-reglas.md): el catálogo de reglas frente a las seis
+  dimensiones de DAMA, con propuestas para decidir.
+- Cada historia es un issue en el milestone de su sprint; las terminadas están cerradas:
   [Sprint 1](https://github.com/GabouLC/dq-center/milestone/1),
   [Sprint 2](https://github.com/GabouLC/dq-center/milestone/3) y
   [Sprint 3](https://github.com/GabouLC/dq-center/milestone/4).
@@ -205,7 +208,7 @@ src/dqc/
   api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           114 pruebas, incluida la de aceptación contra el manifiesto
+tests/           127 pruebas, incluida la de aceptación contra el manifiesto
 docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 ```
 

@@ -6,7 +6,7 @@
 
 Sin facturación, BigQuery funciona en modo sandbox: vence tablas y particiones a
 los 60 días y no admite DML. Con particiones por `fecha_corte`, los cortes de
-abril a julio de 2026 vencerían apenas se cargan, porque su fecha ya tiene más
+julio y agosto de 2026 vencerían apenas se cargan, porque su fecha ya tiene más
 de 60 días.
 
 ## Decisión
@@ -18,7 +18,9 @@ sandbox sí admite. Sin `--sandbox`, cada corte reemplaza su partición.
 
 ## Consecuencias
 
-- En el sandbox, volver a procesar un corte suelto lo duplicaría. La simulación
-  siempre empieza desde cero (`reiniciar`).
-- Las tablas vencen a los 60 días: la simulación se puede repetir en minutos.
+- En el sandbox, volver a procesar un corte suelto lo duplicaría. `simular` empieza desde
+  cero (`reiniciar`) o reanuda con `--desde`, que antes recorta cada tabla (ADR 0014). La
+  publicación en BUSINESS reemplaza el corte antes de escribirlo, así que reevaluar un día no
+  lo duplica.
+- Las tablas vencen a los 60 días: hay que volver a cargar los 92 cortes, unas 9 horas.
 - Al activar la facturación se vuelve a correr sin `--sandbox`.

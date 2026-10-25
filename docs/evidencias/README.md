@@ -10,11 +10,8 @@ Los datos cubren 92 cortes diarios, del 1 de julio al 30 de septiembre de 2026.
 | Archivo | Qué muestra | Historias |
 |---|---|---|
 | [pipeline-local.txt](pipeline-local.txt) | Corrida completa de los 92 cortes en DuckDB: score por tabla y día, reglas fuera de OK, días de cada sello, los no certificados con su motivo y la verificación contra el manifiesto (0 diferencias en las 4 etapas) | HU-01 a HU-08, HU-14 |
-| [bigquery.txt](bigquery.txt) | Consultas al proyecto `dq-center-gabou` (sandbox): cargas y rechazos en RAW, incidencias de homologación, PII cifrada en MASTER, reglas por nivel, certificaciones, hallazgos del Gate y objetos de BUSINESS | HU-01 a HU-08, HU-14 |
+| [bigquery.txt](bigquery.txt) | Los 92 cortes en el proyecto `dq-center-gabou` (sandbox): verificación contra el manifiesto con lo que quedó en BigQuery, paridad fila por fila con la corrida de DuckDB, y por historia: cargas y rechazos, incidencias, PII cifrada, reglas por nivel, sellos, hallazgos del Gate y objetos de BUSINESS | HU-01 a HU-08, HU-14 |
 | [pruebas.txt](pruebas.txt) | Reporte de pytest con el nombre de cada prueba | Todas |
-
-`bigquery.txt` todavía corresponde a la carga anterior de seis cortes mensuales: la recarga de los
-92 días diarios en BigQuery está en curso y el archivo se regenera cuando termine.
 
 El CI corre las mismas pruebas y el build de la web en cada push:
 [GitHub Actions](https://github.com/GabouLC/dq-center/actions).
@@ -22,15 +19,16 @@ El CI corre las mismas pruebas y el build de la web en cada push:
 Para regenerarlos:
 
 ```bash
-python -m dqc.pipeline > docs/evidencias/pipeline-local.txt
+python -m dqc.pipeline --db data/dq_completo.duckdb > docs/evidencias/pipeline-local.txt
 python -m pytest -v > docs/evidencias/pruebas.txt
+python scripts/evidencia_bigquery.py      # con DQC_PROYECTO; antes, python -m dqc.gcp --sandbox simular
 ```
 
 ## Capturas del portal (`portal/`)
 
 Las capturas de HU-09 a HU-15 muestran el prototipo adelantado del portal: son evidencia
-preliminar hasta la revisión del Sprint 3. Las de HU-07 y HU-08 se confirman al cierre del
-Sprint 2.
+preliminar hasta la revisión del Sprint 3. Las de HU-01 a HU-08 y HU-14 respaldan historias ya
+aceptadas en los Sprints 1 y 2.
 
 | Captura | Historias | Qué muestra |
 |---|---|---|

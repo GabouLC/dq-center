@@ -14,13 +14,14 @@ comentarios antes de planificar. Las historias se planifican, terminan y aceptan
 
 ## 1. Sprint Planning (preliminar)
 
-**Fecha:** martes 20 de octubre de 2026, al iniciar el sprint. Este plan se confirma ese día.
+**Fecha:** prevista para el martes 20 de octubre de 2026; al 24 de octubre todavía no se hizo.
+Este plan se confirma en esa reunión.
 
 **Objetivo del sprint.** Llevar los resultados al negocio: un portal donde cada rol ve la salud
 y la certificación de los datos, su linaje y su glosario, con acceso controlado y cada sección
 en menos de 8 segundos.
 
-**Capacidad.** Velocidad sugerida de 20 a 24 SP; el Sprint 1 cerró 22 y el Sprint 2 compromete
+**Capacidad.** Velocidad sugerida de 20 a 24 SP; el Sprint 1 cerró 22 y el Sprint 2 cerró
 23. Las seis historias suman 31 SP: por encima de la velocidad. En la Sprint Planning hay que
 decidir si entra todo (el prototipo reduce el riesgo) o si HU-15 pasa a un sprint siguiente.
 
@@ -48,7 +49,7 @@ decidir si entra todo (el prototipo reduce el riesgo) o si HU-15 pasa a un sprin
 
 ## 2. Sprint Backlog
 
-Se arma en la Sprint Planning del 20 de octubre. Refinamiento previo, a partir del prototipo:
+Se arma en la Sprint Planning. Refinamiento previo, a partir del prototipo:
 
 **Base del portal**
 - API FastAPI con prefijo `/api/v1`, sondas `/health` y errores con el formato del documento de arquitectura (`src/dqc/api/app.py`)
@@ -89,7 +90,7 @@ Se arma en la Sprint Planning del 20 de octubre. Refinamiento previo, a partir d
 
 ## 3. Seguimiento · Daily Scrum
 
-Empieza el 20 de octubre. Riesgos conocidos gracias al prototipo:
+Empieza después de la Sprint Planning. Riesgos conocidos gracias al prototipo:
 
 | Riesgo o impedimento | Efecto | Respuesta prevista | Estado |
 |---|---|---|---|

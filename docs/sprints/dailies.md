@@ -26,7 +26,7 @@ registrados en cada sprint.*
 | Cristhian Pimentel | Zona de aterrizaje y validación de la estructura del CSV, con rechazo y motivo (HU-01) | Carga a RAW sin transformar y registro de cada carga | Nada |
 | Jesus de la Cruz | Función `parsear_fecha` por plataforma: se destrabó la homologación | Incidencias de homologación fuera de MASTER | Nada |
 | Franco Delgado | Pruebas de ingesta (`test_ingesta.py`) | Pruebas de homologación | Nada |
-| Gabriel León | Decisión: trabajar en el sandbox de BigQuery mientras no haya facturación (ADR 0008) | CI con GitHub Actions | Facturación, sigue igual |
+| Gabriel León | Decisión: trabajar en el sandbox de BigQuery mientras no haya facturación (registrada después en el ADR 0008) | CI con GitHub Actions | Facturación, sigue igual |
 
 **Impedimentos resueltos:** traducción de fechas.
 
@@ -52,7 +52,7 @@ registrados en cada sprint.*
 
 **Impedimentos resueltos:** `COUNTIF` vacío; `duckdb.typing`. **Abierto:** facturación.
 
-## Sprint 2 · 6 al 19 de octubre de 2026 (en curso)
+## Sprint 2 · 6 al 19 de octubre de 2026
 
 ### Daily 1 · miércoles 7 de octubre
 
@@ -126,3 +126,23 @@ registrados en cada sprint.*
 | Gabriel León | Recarga de los 92 cortes en BigQuery, en marcha | Seguir la recarga | La recarga en el sandbox tarda horas |
 
 **Impedimento nuevo:** la recarga en BigQuery tarda horas (la evidencia de HU-08 depende de ella).
+
+### Daily 8 · viernes 16 de octubre
+
+| Integrante | Qué terminé | Qué haré | Qué me bloquea |
+|---|---|---|---|
+| Franco Delgado | Tareas de HU-07 cerradas: el Gate encuentra las 8 fugas sembradas, ni una más | Pruebas de BUSINESS (HU-08) | Nada |
+| Cristhian Pimentel | Flujo por corte con privacidad: ingesta, homologación, motor, Gate, certificación y publicación (HU-07) | Tablas `p_` y vistas `v_` por tabla (HU-08) | Nada |
+| Jesus de la Cruz | Bloqueo por hallazgos: una fuga de PII impide certificar aunque la calidad esté bien | Vistas de contrato `v_calidad_*` | Nada |
+| Gabriel León | Revisión de los criterios de HU-07 con el equipo | Preparar la revisión del sprint | La recarga de BigQuery se cortó a mitad de camino |
+
+**Impedimento:** la recarga de BigQuery se cortó y no se puede reanudar; volver a empezar toma unas 9 horas.
+
+### Daily 9 · lunes 19 de octubre
+
+| Integrante | Qué terminé | Qué haré | Qué me bloquea |
+|---|---|---|---|
+| Franco Delgado | Pruebas de BUSINESS: solo cortes certificados, el último certificado en cada vista y nada de PII en claro | Demostración en la revisión | Nada |
+| Cristhian Pimentel | Tablas `p_` y vistas `v_` de las cinco tablas (HU-08) | Demostración en la revisión | Nada |
+| Jesus de la Cruz | Vistas de contrato; el portal solo lee BUSINESS | Demostración en la revisión | Nada |
+| Gabriel León | Criterios de HU-07 y HU-08 revisados contra las pruebas | Revisión y retrospectiva | La evidencia de BigQuery sigue con los datos mensuales |
