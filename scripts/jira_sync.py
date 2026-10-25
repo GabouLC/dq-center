@@ -43,7 +43,8 @@ RESPONSABLES = {
     "HU-01": "Cristhian Pimentel", "HU-02": "Cristhian Pimentel",
     "HU-14": "Jesus de la Cruz", "HU-05": "Jesus de la Cruz", "HU-06": "Jesus de la Cruz", "HU-13": "Jesus de la Cruz",
     "HU-03": "Franco Delgado", "HU-04": "Franco Delgado", "HU-07": "Franco Delgado", "HU-08": "Franco Delgado",
-    "HU-09": "Josue Borda", "HU-11": "Josue Borda", "HU-12": "Josue Borda", "HU-15": "Josue Borda",
+    # Sprint 3: las historias de Josue Borda se reasignaron en la Sprint Planning del 24 de octubre.
+    "HU-11": "Jesus de la Cruz", "HU-12": "Franco Delgado", "HU-15": "Franco Delgado", "HU-09": "Cristhian Pimentel",
     "HU-10": "Gabriel Leon",
 }
 SPRINTS = [
@@ -65,12 +66,12 @@ SPRINTS = [
         "tareas": [],
     },
     {
-        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ", "estado": "planificado",
-        "inicio": "2026-10-20T09:00:00.000-05:00", "fin": "2026-11-02T18:00:00.000-05:00",
+        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ", "estado": "en_curso",
+        "inicio": "2026-10-24T09:00:00.000-05:00", "fin": "2026-11-02T18:00:00.000-05:00",
         "objetivo": "Llevar los resultados al negocio: un portal donde cada rol ve la salud y la certificación "
                     "de los datos, su linaje y su glosario, con acceso controlado y cada sección en menos de 8 s.",
         "historias": ["HU-13", "HU-09", "HU-12", "HU-11", "HU-10", "HU-15"],
-        "tareas": [],  # su sprint backlog se arma en la Sprint Planning
+        "tareas": [],
     },
 ]
 
@@ -303,8 +304,9 @@ def sincronizar(jira: Jira, numeros: list[int], con_epicas: bool, con_responsabl
             transicionar(jira, clave, HECHA if sprint["estado"] == "cerrado" else categoria_de(tareas))
 
         # Tareas que no son de una historia (base técnica del sprint)
-        sueltas = [(resumen(t), RESPONSABLES["HU-09"]) for t, _ in grupos.get("sin_historia", [])] + sprint["tareas"]
-        for titulo, responsable in sueltas:
+        sueltas = [(resumen(t), RESPONSABLES["HU-09"], hecha) for t, hecha in grupos.get("sin_historia", [])]
+        sueltas += [(titulo, responsable, True) for titulo, responsable in sprint["tareas"]]
+        for titulo, responsable, hecha in sueltas:
             if titulo in existentes:
                 clave = existentes[titulo]["key"]
             else:
@@ -313,7 +315,7 @@ def sincronizar(jira: Jira, numeros: list[int], con_epicas: bool, con_responsabl
                     extra["assignee"] = {"accountId": cuentas[responsable]}
                 clave = crear(jira, "Tarea", titulo, extra)
             claves_sprint.append(clave)
-            finalizar(jira, clave)
+            transicionar(jira, clave, HECHA if hecha else POR_HACER)
         if epica and sprint["estado"] == "cerrado":
             finalizar(jira, epica)
 

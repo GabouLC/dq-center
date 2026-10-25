@@ -185,7 +185,7 @@ El Documento de Arquitectura estimaba USD 30 a 45, sobre todo por Cloud SQL. Los
 ## Sprints y evidencia
 
 - [docs/sprints](docs/sprints/README.md): los Sprints 1 y 2 terminados (22 y 23 SP, del 1 al 19 de
-  octubre) y el Sprint 3 planificado (20 de octubre al 2 de noviembre), con la priorización, las
+  octubre) y el Sprint 3 en curso (24 de octubre al 2 de noviembre), con la priorización, las
   actas y el burndown del release. El portal es un prototipo adelantado del Sprint 3.
 - [docs/evidencias](docs/evidencias/README.md): capturas del portal por historia, la corrida del
   pipeline, las consultas en BigQuery y el reporte de las pruebas.
