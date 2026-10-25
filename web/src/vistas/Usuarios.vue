@@ -22,8 +22,9 @@ type Temporal = { email: string; clave: string }
 const ROLES: [string, string, string, unknown][] = [
   ['lector', 'Lector', 'Consulta indicadores; los campos sensibles aparecen ocultos.', ShieldCheck],
   ['gobierno', 'Gobierno de datos', 'Ve los campos sensibles y edita el glosario.', BookOpen],
-  ['admin', 'Administrador', 'Configura reglas, lanza corridas y gestiona usuarios.', SlidersHorizontal],
+  ['admin', 'Administrador', 'Configura reglas, lanza ejecuciones y gestiona usuarios.', SlidersHorizontal],
 ]
+const nombreRol = (rol: string) => ROLES.find(([r]) => r === rol)?.[1] ?? rol
 const sesion = useSesion()
 const { datos, cargando, error, recargar } = usarCarga(() => api<Usuario[]>('/api/v1/admin/usuarios'))
 const nuevoEmail = ref('')
@@ -36,7 +37,7 @@ const porRol = computed(() => Object.fromEntries(ROLES.map(([r]) => [r, (datos.v
 function estado(u: Usuario): { texto: string; tono: string } {
   if (u.bloqueada) return { texto: 'Bloqueada', tono: 'critico' }
   if (u.sin_clave) return { texto: 'Sin contraseña', tono: '' }
-  if (u.clave_temporal) return { texto: 'Clave temporal', tono: 'aviso' }
+  if (u.clave_temporal) return { texto: 'Contraseña temporal', tono: 'aviso' }
   return { texto: 'Activa', tono: 'bien' }
 }
 
@@ -54,12 +55,27 @@ async function guardar(email: string, rol: string) {
   try {
     const r = await api<{ clave_temporal?: string }>(`/api/v1/admin/usuarios/${encodeURIComponent(email)}`, { metodo: 'PUT', cuerpo: { rol } })
     if (r.clave_temporal) mostrarTemporal(email, r.clave_temporal)
-    else mensaje.value = { tipo: 'bien', texto: `${email} ahora tiene el rol ${rol}.` }
+    else mensaje.value = { tipo: 'bien', texto: `${email} ahora tiene el rol ${nombreRol(rol)}.` }
     nuevoEmail.value = ''
   } catch (e) {
     fallo(e)
   }
   await recargar()
+}
+
+/**
+ * Cambio de rol desde la tabla. En Windows, las flechas sobre un select cerrado disparan
+ * "change": se pide confirmación y, si se cancela, el select vuelve al rol actual.
+ */
+async function cambiarRol(u: Usuario, evento: Event) {
+  const select = evento.target as HTMLSelectElement
+  const rol = select.value
+  if (rol === u.rol) return
+  if (!window.confirm(`¿Cambiar el rol de ${u.email} de ${nombreRol(u.rol)} a ${nombreRol(rol)}?`)) {
+    select.value = u.rol
+    return
+  }
+  await guardar(u.email, rol)
 }
 
 async function restablecer(email: string) {
@@ -139,7 +155,7 @@ async function copiar() {
       <button type="button" class="icono fantasma" aria-label="Ocultar la contraseña temporal" @click="temporal = null"><X :size="17" /></button>
     </section>
 
-    <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" role="status">
+    <p v-if="mensaje" class="aviso-caja" :class="mensaje.tipo" :role="mensaje.tipo === 'error' ? 'alert' : 'status'">
       <component :is="mensaje.tipo === 'bien' ? CircleCheck : CircleX" :size="17" />{{ mensaje.texto }}
     </p>
 
@@ -147,18 +163,18 @@ async function copiar() {
       <section class="panel lista">
         <div class="tabla-envoltura">
           <table>
-            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th /></tr></thead>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th><span class="visualmente-oculto">Acciones</span></th></tr></thead>
             <tbody>
               <tr v-for="u in datos ?? []" :key="u.email">
                 <td>
                   <span class="fila persona">
-                    <span class="avatar">{{ u.email.slice(0, 2).toUpperCase() }}</span>
+                    <span class="avatar" aria-hidden="true">{{ u.email.slice(0, 2).toUpperCase() }}</span>
                     {{ u.email }}
                     <span v-if="u.email === sesion.perfil?.email" class="chip marca">tú</span>
                   </span>
                 </td>
                 <td>
-                  <select :value="u.rol" :aria-label="`Rol de ${u.email}`" @change="guardar(u.email, ($event.target as HTMLSelectElement).value)">
+                  <select :value="u.rol" :aria-label="`Rol de ${u.email}`" @change="cambiarRol(u, $event)">
                     <option v-for="[r, n] in ROLES" :key="r" :value="r">{{ n }}</option>
                   </select>
                 </td>
@@ -166,7 +182,7 @@ async function copiar() {
                 <td class="secundario num">{{ hora(u.ultimo_acceso) }}</td>
                 <td class="der">
                   <span v-if="u.email !== sesion.perfil?.email" class="fila acciones">
-                    <button type="button" @click="restablecer(u.email)"><KeyRound :size="15" /> Restablecer clave</button>
+                    <button type="button" @click="restablecer(u.email)"><KeyRound :size="15" /> Restablecer contraseña</button>
                     <button type="button" class="peligro" @click="quitar(u.email)"><UserMinus :size="15" /> Quitar acceso</button>
                   </span>
                 </td>

@@ -38,7 +38,8 @@ type Contrato = {
 const { datos, cargando, error, recargar } = usarCarga(() => api<Contrato[]>('/api/v1/contratos'))
 const abierto = ref<string | null>('persona')
 const cuenta = (c: Contrato, dac: string) => c.campos.filter((f) => f.dac === dac).length
-const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensible', 'var(--aviso)'], ['SENSIBLE_CIFRADO', 'Cifrado', 'var(--sello)']]
+const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensible', 'var(--aviso)'], ['SENSIBLE_CIFRADO', 'Sensible cifrado', 'var(--sello)']]
+const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
 </script>
 
 <template>
@@ -47,36 +48,38 @@ const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensi
       <div>
         <h1>Contrato de datos</h1>
         <p>
-          Lo pactado con el dueño de cada tabla: campos, tipos y clasificación DAC (HU-05). La cobertura dice cuántos campos
-          vigila al menos una regla; el impacto, qué consumidores sufren si una regla falla en el último corte.
+          Lo pactado con el dueño de cada tabla: campos, tipos y clasificación de sensibilidad (DAC). La cobertura dice cuántos
+          campos vigila al menos una regla; el impacto, qué consumidores sufren si una regla falla en el último día de datos.
         </p>
       </div>
     </div>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <article v-for="c in datos ?? []" :key="c.tabla" class="panel contrato" :class="{ abierto: abierto === c.tabla }">
-        <button type="button" class="cabecera" :aria-expanded="abierto === c.tabla" @click="abierto = abierto === c.tabla ? null : c.tabla">
-          <Anillo :parte="c.campos.filter((f) => f.reglas.length).length" :total="c.campos.length" etiqueta="campos vigilados" :tamano="96" />
-          <div class="identidad">
-            <h2>{{ NOMBRE_TABLA[c.tabla] }} <span class="tenue">· {{ c.dominio }}</span></h2>
-            <p class="secundario">{{ c.descripcion }}</p>
-            <p class="tenue pequeno">Dueño: {{ c.dueno }}</p>
-          </div>
-          <div class="dac">
-            <div class="distribucion" :title="DAC.map(([k, n]) => `${n}: ${cuenta(c, k)}`).join(' · ')">
-              <span v-for="[k, , color] in DAC" :key="k" :style="{ flex: cuenta(c, k), background: color }" />
-            </div>
-            <div class="fila leyenda">
-              <span v-for="[k, n, color] in DAC" :key="k"><i :style="{ background: color }" />{{ n }} {{ cuenta(c, k) }}</span>
-            </div>
-          </div>
-          <div class="impacto">
-            <span v-if="c.consumidores_afectados.length" class="chip critico"><CircleAlert :size="13" /> Impacto</span>
-            <span v-else-if="c.consumidores_en_riesgo.length" class="chip aviso"><TriangleAlert :size="13" /> En riesgo</span>
-            <span v-else class="chip bien"><ShieldCheck :size="13" /> Sin impacto</span>
-            <ChevronDown :size="18" class="flecha" />
-          </div>
-        </button>
+        <h2 class="titulo-contrato">
+          <button type="button" class="cabecera" :aria-expanded="abierto === c.tabla" @click="abierto = abierto === c.tabla ? null : c.tabla">
+            <Anillo :parte="c.campos.filter((f) => f.reglas.length).length" :total="c.campos.length" etiqueta="campos vigilados" :tamano="96" />
+            <span class="identidad">
+              <span class="nombre-tabla">{{ NOMBRE_TABLA[c.tabla] }} <span class="tenue">· {{ c.dominio }}</span></span>
+              <span class="secundario">{{ c.descripcion }}</span>
+              <span class="tenue pequeno">Dueño: {{ c.dueno }}</span>
+            </span>
+            <span class="dac">
+              <span class="distribucion" :title="DAC.map(([k, n]) => `${n}: ${cuenta(c, k)}`).join(' · ')">
+                <span v-for="[k, , color] in DAC" :key="k" :style="{ flex: cuenta(c, k), background: color }" />
+              </span>
+              <span class="fila leyenda">
+                <span v-for="[k, n, color] in DAC" :key="k"><i :style="{ background: color }" />{{ n }} {{ cuenta(c, k) }}</span>
+              </span>
+            </span>
+            <span class="impacto">
+              <span v-if="c.consumidores_afectados.length" class="chip critico"><CircleAlert :size="13" /> Afecta a consumidores</span>
+              <span v-else-if="c.consumidores_en_riesgo.length" class="chip aviso"><TriangleAlert :size="13" /> En riesgo</span>
+              <span v-else class="chip bien"><ShieldCheck :size="13" /> Sin impacto</span>
+              <ChevronDown :size="18" class="flecha" />
+            </span>
+          </button>
+        </h2>
 
         <div v-if="abierto === c.tabla" class="pila cuerpo">
           <p v-if="c.fuera_de_contrato.length" class="aviso-caja">
@@ -85,11 +88,18 @@ const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensi
           </p>
           <p v-if="c.consumidores_afectados.length" class="aviso-caja error">
             <CircleAlert :size="17" />
-            <span><strong>{{ c.reglas_en_falla.join(', ') }}</strong> en FAIL afecta a {{ c.consumidores_afectados.join(', ') }}.</span>
+            <span>
+              <strong>{{ c.reglas_en_falla.join(', ') }}</strong>
+              {{ plural(c.reglas_en_falla.length, 'falla y afecta a', 'fallan y afectan a') }} {{ c.consumidores_afectados.join(', ') }}.
+            </span>
           </p>
           <p v-else-if="c.consumidores_en_riesgo.length" class="aviso-caja">
             <Users :size="17" />
-            <span>{{ c.reglas_en_alerta.length }} reglas en alerta ponen en riesgo a {{ c.consumidores_en_riesgo.join(', ') }}.</span>
+            <span>
+              {{ c.reglas_en_alerta.length }}
+              {{ plural(c.reglas_en_alerta.length, 'regla en alerta pone', 'reglas en alerta ponen') }} en riesgo a
+              {{ c.consumidores_en_riesgo.join(', ') }}.
+            </span>
           </p>
           <div class="tabla-envoltura">
             <table>
@@ -111,7 +121,7 @@ const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensi
                   </td>
                   <td>
                     <span v-if="!f.en_esquema" class="chip critico">Falta</span>
-                    <span v-else-if="f.dac === 'SENSIBLE_CIFRADO'" class="chip" :class="f.protegido ? 'sello' : 'critico'">{{ f.protegido ? 'Cifrado' : 'En claro' }}</span>
+                    <span v-else-if="f.dac === 'SENSIBLE_CIFRADO'" class="chip" :class="f.protegido ? 'sello' : 'critico'">{{ f.protegido ? 'Cifrado' : 'Sin cifrar' }}</span>
                     <span v-else class="tenue">{{ f.tipo_real }}</span>
                   </td>
                 </tr>
@@ -141,7 +151,10 @@ const DAC = [['PUBLICO', 'Público', 'var(--linea-fuerte)'], ['SENSIBLE', 'Sensi
   font-weight: 400;
 }
 .cabecera:hover { color: inherit; }
+/* El h2 solo da la estructura; el aspecto lo pone el botón y sus partes. */
+.titulo-contrato { font: inherit; letter-spacing: normal; }
 .identidad { display: grid; gap: 3px; }
+.nombre-tabla { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .dac { display: grid; gap: 6px; }
 .distribucion { display: flex; gap: 2px; height: 12px; border-radius: 999px; overflow: hidden; }
 .leyenda { gap: 12px; font-size: 12px; color: var(--tinta-2); font-weight: 600; }

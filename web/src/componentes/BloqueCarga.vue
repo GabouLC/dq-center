@@ -9,7 +9,7 @@ defineEmits<{ reintentar: [] }>()
 <template>
   <div v-if="error" class="aviso-caja error entre" role="alert">
     <CircleAlert :size="18" />
-    <span class="mensaje">No se pudo leer: {{ error }}</span>
+    <span class="mensaje">No pudimos cargar estos datos: {{ error }}</span>
     <button type="button" @click="$emit('reintentar')"><RotateCw :size="15" /> Reintentar</button>
   </div>
   <div v-else-if="cargando && vacio" class="cargando" aria-live="polite">

@@ -58,10 +58,10 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
     <div class="encabezado">
       <div>
         <h1>Linaje</h1>
-        <p>De dónde viene cada dato, qué le pasa en el camino y dónde se expone (HU-11). Pasa el cursor por un campo para seguir su recorrido; haz clic para ver el paso a paso.</p>
+        <p>De dónde viene cada dato, qué le pasa en el camino y dónde se expone. Elige un campo para ver su recorrido paso a paso.</p>
       </div>
       <div class="segmentos" role="group" aria-label="Tabla">
-        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: t === tabla }" @click="router.push(`/linaje/${t}`)">{{ NOMBRE_TABLA[t] }}</button>
+        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: t === tabla }" :aria-pressed="t === tabla" @click="router.push(`/linaje/${t}`)">{{ NOMBRE_TABLA[t] }}</button>
       </div>
     </div>
 
@@ -78,8 +78,8 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
                 </span>
                 <span class="tenue pequeno">{{ n.detalle }}</span>
               </li>
-              <li v-if="i < datos.nodos.length - 1" class="paso" aria-hidden="true">
-                <ArrowRight :size="20" />
+              <li v-if="i < datos.nodos.length - 1" class="paso">
+                <ArrowRight :size="20" aria-hidden="true" />
                 <span>{{ proceso(n.id) }}</span>
               </li>
             </template>
@@ -88,7 +88,7 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
             <span class="secundario">Publicado en BUSINESS:</span>
             <span v-for="c in datos.cortes_publicados" :key="c" class="chip bien"><BadgeCheck :size="12" />{{ nombreCorte(c) }}</span>
             <template v-if="datos.cortes_retenidos.length">
-              <span class="secundario">Retenido por el Gate:</span>
+              <span class="secundario">No publicado en BUSINESS:</span>
               <RouterLink v-for="c in datos.cortes_retenidos" :key="c" to="/certificacion" class="chip critico">{{ nombreCorte(c) }}</RouterLink>
             </template>
           </div>
@@ -99,10 +99,10 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
             <h2>Recorrido de cada campo</h2>
             <div class="fila">
               <div class="segmentos" role="group" aria-label="Clasificación DAC">
-                <button type="button" :class="{ activo: !filtroDac }" @click="filtroDac = ''">Todos</button>
-                <button type="button" :class="{ activo: filtroDac === 'PUBLICO' }" @click="filtroDac = 'PUBLICO'">Público <span class="cuenta">{{ cuenta('PUBLICO') }}</span></button>
-                <button type="button" :class="{ activo: filtroDac === 'SENSIBLE' }" @click="filtroDac = 'SENSIBLE'">Sensible <span class="cuenta">{{ cuenta('SENSIBLE') }}</span></button>
-                <button type="button" :class="{ activo: filtroDac === 'SENSIBLE_CIFRADO' }" @click="filtroDac = 'SENSIBLE_CIFRADO'">Cifrado <span class="cuenta">{{ cuenta('SENSIBLE_CIFRADO') }}</span></button>
+                <button type="button" :class="{ activo: !filtroDac }" :aria-pressed="!filtroDac" @click="filtroDac = ''">Todos</button>
+                <button type="button" :class="{ activo: filtroDac === 'PUBLICO' }" :aria-pressed="filtroDac === 'PUBLICO'" @click="filtroDac = 'PUBLICO'">Público <span class="cuenta">{{ cuenta('PUBLICO') }}</span></button>
+                <button type="button" :class="{ activo: filtroDac === 'SENSIBLE' }" :aria-pressed="filtroDac === 'SENSIBLE'" @click="filtroDac = 'SENSIBLE'">Sensible <span class="cuenta">{{ cuenta('SENSIBLE') }}</span></button>
+                <button type="button" :class="{ activo: filtroDac === 'SENSIBLE_CIFRADO' }" :aria-pressed="filtroDac === 'SENSIBLE_CIFRADO'" @click="filtroDac = 'SENSIBLE_CIFRADO'">Sensible cifrado <span class="cuenta">{{ cuenta('SENSIBLE_CIFRADO') }}</span></button>
               </div>
               <label class="buscar"><Search :size="15" /><input v-model="filtro" type="search" placeholder="Buscar campo" aria-label="Buscar campo" /></label>
             </div>
@@ -142,7 +142,7 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
                     <span v-else-if="p.startsWith('cifrado aleatorio')" class="tenue">cada cifrado es distinto; solo el motor lo descifra en memoria</span>
                     <span v-else-if="p.startsWith('convertir')" class="tenue">si no se puede convertir, el registro va a incidencias</span>
                   </li>
-                  <li><strong class="mono">{{ c.master }}</strong><span class="tenue">en dq_master y en BUSINESS solo si el corte se certifica</span></li>
+                  <li><strong class="mono">{{ c.master }}</strong><span class="tenue">en dq_master y en BUSINESS solo si ese día se certifica</span></li>
                 </ol>
                 <div v-if="terminosDe(c.master).length" class="fila">
                   <span class="secundario">En el glosario:</span>
@@ -176,7 +176,8 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
 .paso span { color: var(--tinta-2); }
 .publicacion { gap: 6px; }
 .pequeno { font-size: 12.5px; }
-.buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--linea-fuerte); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
+.buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borde-control); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
+.buscar:focus-within { border-color: var(--marca); box-shadow: 0 0 0 2px var(--marca-suave); }
 .buscar input { border: 0; background: transparent; min-width: 140px; padding: 7px 0; outline: none; }
 
 .cabecera-recorrido, .linea-campo {

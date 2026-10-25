@@ -11,11 +11,13 @@
   --superficie-3: #e3e9f3;
   --tinta: #0f1b2d;
   --tinta-2: #46536a;
-  --tenue: #6f7b90;
+  --tenue: #5f6b80;
   --linea: #e1e6ef;
   --linea-fuerte: #c9d2e0;
+  /* borde de campos (select, input, textarea): ≥ 3:1 contra la superficie */
+  --borde-control: #8792a6;
 
-  --marca: #2a78d6;
+  --marca: #2468c4;
   --marca-fuerte: #1c5cab;
   --marca-suave: #e6f0fc;
   --sobre-marca: #ffffff;
@@ -40,6 +42,9 @@
   --critico-texto: #a32020;
   --critico-suave: #fde8e8;
   --neutro-suave: #edf0f4;
+  /* celdas de estado en mapas y barras: rojo más oscuro para separarlo del verde con daltonismo */
+  --celda-aviso: color-mix(in srgb, var(--aviso) 70%, var(--superficie));
+  --celda-critico: var(--critico-texto);
 
   /* series categóricas (orden fijo) */
   --s1: #2a78d6;
@@ -69,6 +74,7 @@
     --tenue: #8794aa;
     --linea: #253147;
     --linea-fuerte: #34425c;
+    --borde-control: #5d6c86;
     --marca: #5598e7;
     --marca-fuerte: #86b6ef;
     --marca-suave: #16283f;
@@ -84,6 +90,8 @@
     --critico-texto: #ff8a80;
     --critico-suave: #3d1c1e;
     --neutro-suave: #1f2a3d;
+    --celda-aviso: var(--aviso);
+    --celda-critico: #f07167;
     --s1: #3987e5;
     --s2: #d95926;
     --s3: #199e70;
@@ -105,6 +113,7 @@
   --tenue: #8794aa;
   --linea: #253147;
   --linea-fuerte: #34425c;
+  --borde-control: #5d6c86;
   --marca: #5598e7;
   --marca-fuerte: #86b6ef;
   --marca-suave: #16283f;
@@ -120,6 +129,8 @@
   --critico-texto: #ff8a80;
   --critico-suave: #3d1c1e;
   --neutro-suave: #1f2a3d;
+  --celda-aviso: var(--aviso);
+  --celda-critico: #f07167;
   --s1: #3987e5;
   --s2: #d95926;
   --s3: #199e70;
@@ -149,6 +160,8 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 .tenue { color: var(--tenue); }
 .secundario { color: var(--tinta-2); }
 .num { font-variant-numeric: tabular-nums; }
+/* Solo para lectores de pantalla */
+.visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ── superficies ─────────────────────────────────────────────────────── */
 .panel {
@@ -211,7 +224,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   outline-offset: 2px;
 }
 select, input, textarea {
-  border: 1px solid var(--linea-fuerte);
+  border: 1px solid var(--borde-control);
   background: var(--superficie);
   border-radius: 10px;
   padding: 7px 11px;

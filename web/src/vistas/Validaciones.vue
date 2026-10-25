@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { EyeOff, GitCompareArrows, Lock, X } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BarraCumplimiento from '@/componentes/BarraCumplimiento.vue'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
 import EstadoChip from '@/componentes/EstadoChip.vue'
-import { usarCarga } from '@/composables/usarCarga'
-import { corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_TABLA, num, pct, signo, TABLAS } from '@/formato'
+import { mensajeDeError, usarCarga } from '@/composables/usarCarga'
+import { corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_SEVERIDAD, NOMBRE_TABLA, num, pct, signo, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
 
@@ -54,6 +54,38 @@ const atajos = computed(() => {
 })
 const elegida = ref<Regla | null>(null)
 
+// Detalle como diálogo: al abrir, el foco va a "Cerrar"; Esc lo cierra y el foco vuelve a quien lo abrió.
+const cajon = ref<HTMLElement | null>(null)
+const botonCerrar = ref<HTMLButtonElement | null>(null)
+let abridor: HTMLElement | null = null
+watch(
+  () => elegida.value !== null,
+  async (abierto) => {
+    if (abierto) {
+      abridor = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
+      await nextTick()
+      botonCerrar.value?.focus()
+    } else if (abridor?.isConnected) {
+      abridor.focus()
+    }
+  },
+)
+/** Mantiene el foco dentro del detalle mientras está abierto (Tab y Mayús+Tab dan la vuelta). */
+function atraparFoco(evento: KeyboardEvent) {
+  if (evento.key !== 'Tab' || !cajon.value) return
+  const enfocables = [...cajon.value.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+  if (!enfocables.length) return
+  const primero = enfocables[0]
+  const ultimo = enfocables[enfocables.length - 1]
+  if (evento.shiftKey && document.activeElement === primero) {
+    evento.preventDefault()
+    ultimo.focus()
+  } else if (!evento.shiftKey && document.activeElement === ultimo) {
+    evento.preventDefault()
+    primero.focus()
+  }
+}
+
 const { datos, cargando, error, recargar } = usarCarga(
   () => api<{ reglas: Regla[] }>('/api/v1/validaciones', { params: { corte: cortes.elegido } }),
   [() => cortes.elegido],
@@ -63,7 +95,7 @@ const reglas = computed(() =>
   deLaTabla.value.filter((r) => (!filtroNivel.value || r.nivel === filtroNivel.value) && (!filtroEstado.value || r.estado === filtroEstado.value)),
 )
 const cuenta = (campo: 'estado' | 'nivel', valor: string) => deLaTabla.value.filter((r) => r[campo] === valor).length
-const ESTADOS = [['', 'Todos'], ['FALLA', 'FAIL'], ['ALERTA', 'Alerta'], ['OK', 'PASS'], ['SIN_DATOS', 'Sin datos']]
+const ESTADOS = [['', 'Todos'], ['FALLA', 'Falla'], ['ALERTA', 'Alerta'], ['OK', 'Cumple'], ['SIN_DATOS', 'Sin datos']]
 const NIVELES = [['', 'Todos'], ['N1', 'N1 básico'], ['N2', 'N2 negocio'], ['N3', 'N3 carga']]
 
 const comparacion = usarCarga(
@@ -86,14 +118,19 @@ watch([elegida, () => cortes.elegido], async ([regla]) => {
       params: { corte: cortes.elegido, limite: 10 },
     })
   } catch (e) {
-    errorFallidos.value = e instanceof Error ? e.message : String(e)
+    errorFallidos.value = `No pudimos cargar los registros fallidos: ${mensajeDeError(e)}`
   }
 })
 // fecha_corte es la misma en toda la muestra: no hace falta repetirla.
 const columnas = computed(() =>
   Object.keys(fallidos.value?.muestras.find((m) => m.fila)?.fila ?? {}).filter((c) => c !== 'fecha_corte'),
 )
-const valor = (v: unknown) => (v === null || v === undefined ? '∅' : String(v))
+const valor = (v: unknown) => (v === null || v === undefined ? '(vacío)' : String(v))
+/** Nombre de cada parte de la definición: "campos_ref" -> "Campos ref". */
+const etiqueta = (clave: string | number) => {
+  const texto = String(clave).replace(/_/g, ' ')
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
 const oculto = (v: unknown) => String(v).startsWith('••••')
 </script>
 
@@ -102,11 +139,11 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
     <div class="encabezado">
       <div>
         <h1>Validaciones</h1>
-        <p>Cada regla del corte contra su umbral (la marca vertical). Primero las más graves; elige una para ver sus registros fallidos.</p>
+        <p>Cada regla del día elegido contra su umbral (la línea vertical). Primero las más graves; elige una para ver sus registros fallidos.</p>
       </div>
       <label class="fila comparar">
         <GitCompareArrows :size="17" />
-        <select v-model="compararCon" aria-label="Comparar con otro corte">
+        <select v-model="compararCon" aria-label="Comparar con otro día">
           <option value="">Comparar con otro día…</option>
           <optgroup label="Atajos">
             <option v-for="a in atajos" :key="a.fecha" :value="a.fecha">{{ a.nombre }} · {{ corteCorto(a.fecha) }}</option>
@@ -122,16 +159,16 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
 
     <div class="filtros">
       <div class="segmentos" role="group" aria-label="Tabla">
-        <button type="button" :class="{ activo: !filtroTabla }" @click="filtroTabla = ''">Todas</button>
-        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: filtroTabla === t }" @click="filtroTabla = t">{{ NOMBRE_TABLA[t] }}</button>
+        <button type="button" :class="{ activo: !filtroTabla }" :aria-pressed="!filtroTabla" @click="filtroTabla = ''">Todas</button>
+        <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: filtroTabla === t }" :aria-pressed="filtroTabla === t" @click="filtroTabla = t">{{ NOMBRE_TABLA[t] }}</button>
       </div>
       <div class="segmentos" role="group" aria-label="Estado">
-        <button v-for="[v, n] in ESTADOS" :key="v" type="button" :class="{ activo: filtroEstado === v }" @click="filtroEstado = v">
+        <button v-for="[v, n] in ESTADOS" :key="v" type="button" :class="{ activo: filtroEstado === v }" :aria-pressed="filtroEstado === v" @click="filtroEstado = v">
           {{ n }} <span v-if="v" class="cuenta">{{ cuenta('estado', v) }}</span>
         </button>
       </div>
       <div class="segmentos" role="group" aria-label="Nivel">
-        <button v-for="[v, n] in NIVELES" :key="v" type="button" :class="{ activo: filtroNivel === v }" @click="filtroNivel = v">
+        <button v-for="[v, n] in NIVELES" :key="v" type="button" :class="{ activo: filtroNivel === v }" :aria-pressed="filtroNivel === v" @click="filtroNivel = v">
           {{ n }} <span v-if="v" class="cuenta">{{ cuenta('nivel', v) }}</span>
         </button>
       </div>
@@ -143,7 +180,7 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
         <button type="button" class="fantasma" @click="compararCon = ''"><X :size="16" /> Cerrar</button>
       </div>
       <BloqueCarga :cargando="comparacion.cargando.value" :error="comparacion.error.value" :vacio="!comparacion.datos.value" @reintentar="comparacion.recargar">
-        <p v-if="!empeoradas.length" class="aviso-caja bien">Ninguna regla empeoró entre esos cortes.</p>
+        <p v-if="!empeoradas.length" class="aviso-caja bien">Ninguna regla empeoró entre esos días.</p>
         <div v-else class="tabla-envoltura">
           <table>
             <thead>
@@ -171,7 +208,7 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
             <thead>
               <tr>
                 <th>Regla</th><th>Tabla</th><th>Nivel</th><th>Dimensión</th><th>Severidad</th>
-                <th class="ancho-barra">Cumplimiento vs. umbral</th><th>Estado</th><th class="der">Fallidos</th>
+                <th class="ancho-barra">Cumplimiento (escala 90–100 %) vs. umbral</th><th>Estado</th><th class="der">Fallidos</th>
               </tr>
             </thead>
             <tbody>
@@ -180,15 +217,15 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
                 :key="r.id_regla + r.tabla"
                 class="clicable"
                 :class="{ seleccionada: elegida?.id_regla === r.id_regla && elegida?.tabla === r.tabla }"
-                tabindex="0"
                 @click="elegida = r"
-                @keydown.enter="elegida = r"
               >
-                <td class="id">{{ r.id_regla }}</td>
+                <td class="id">
+                  <button type="button" class="abrir-regla" aria-haspopup="dialog" @click.stop="elegida = r">{{ r.id_regla }}</button>
+                </td>
                 <td>{{ NOMBRE_TABLA[r.tabla] }}</td>
                 <td><span class="chip marca">{{ r.nivel }}</span></td>
                 <td>{{ NOMBRE_DIMENSION[r.dimension] }}</td>
-                <td><span class="severidad" :class="r.severidad">{{ r.severidad }}</span></td>
+                <td><span class="severidad" :class="r.severidad">{{ NOMBRE_SEVERIDAD[r.severidad] ?? r.severidad }}</span></td>
                 <td class="ancho-barra"><BarraCumplimiento :valor="r.cumplimiento" :umbral="r.umbral" :estado="r.estado" /></td>
                 <td><EstadoChip :estado="r.estado" /></td>
                 <td class="der num">{{ num(r.fallidos) }}</td>
@@ -201,13 +238,22 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
     </BloqueCarga>
 
     <Transition name="cajon">
-      <aside v-if="elegida" class="cajon" aria-label="Detalle de la regla">
+      <aside
+        v-if="elegida"
+        ref="cajon"
+        class="cajon"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-regla"
+        @keydown.esc="elegida = null"
+        @keydown="atraparFoco"
+      >
         <div class="fila entre">
           <div>
             <span class="tenue pequeno">{{ elegida.dominio }} · {{ NOMBRE_TABLA[elegida.tabla] }} · {{ elegida.nivel }}</span>
-            <h2 class="titulo-cajon">{{ elegida.id_regla }}</h2>
+            <h2 id="titulo-regla" class="titulo-cajon">{{ elegida.id_regla }}</h2>
           </div>
-          <button type="button" class="icono fantasma" aria-label="Cerrar" @click="elegida = null"><X :size="18" /></button>
+          <button ref="botonCerrar" type="button" class="icono fantasma" aria-label="Cerrar" @click="elegida = null"><X :size="18" /></button>
         </div>
         <p v-if="elegida.descripcion">{{ elegida.descripcion }}</p>
         <div class="fila">
@@ -217,16 +263,16 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
         </div>
         <BarraCumplimiento :valor="elegida.cumplimiento" :umbral="elegida.umbral" :estado="elegida.estado" />
         <dl class="definicion">
-          <dt>Universo</dt><dd class="num">{{ num(elegida.universo) }} filas · {{ num(elegida.fallidos) }} fallidas</dd>
+          <dt>Filas evaluadas</dt><dd class="num">{{ num(elegida.universo) }} · {{ num(elegida.fallidos) }} fallidas</dd>
           <template v-for="(v, k) in elegida.definicion" :key="k">
-            <dt>{{ String(k).replace('_', ' ') }}</dt>
+            <dt>{{ etiqueta(k) }}</dt>
             <dd><code>{{ Array.isArray(v) ? v.join(', ') : v }}</code></dd>
           </template>
         </dl>
 
         <template v-if="elegida.fallidos">
           <h3>Registros fallidos</h3>
-          <p v-if="errorFallidos" class="aviso-caja error">{{ errorFallidos }}</p>
+          <p v-if="errorFallidos" class="aviso-caja error" role="alert">{{ errorFallidos }}</p>
           <p v-else-if="!fallidos" class="tenue">Cargando…</p>
           <template v-else>
             <p v-if="fallidos.campos_restringidos.length" class="aviso-caja">
@@ -261,6 +307,9 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
 .filtros { display: flex; gap: 10px; flex-wrap: wrap; }
 .lista { padding: 6px 8px; }
 .id { font-weight: 800; white-space: nowrap; letter-spacing: -0.01em; }
+/* El id de la regla es el botón que abre el detalle; se ve como el texto de la celda. */
+.abrir-regla { border: 0; background: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; font: inherit; font-weight: 800; letter-spacing: inherit; }
+.abrir-regla:hover { text-decoration: underline; }
 .ancho-barra { min-width: 220px; }
 .severidad { font-size: 12px; font-weight: 800; color: var(--tinta-2); }
 .severidad.CRITICA { color: var(--critico-texto); }
@@ -289,7 +338,7 @@ const oculto = (v: unknown) => String(v).startsWith('••••')
 .titulo-cajon { font-size: 22px; font-weight: 800; }
 .grande { font-size: 22px; font-weight: 800; }
 .definicion { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13px; padding: 12px; background: var(--superficie-2); border-radius: 10px; }
-.definicion dt { color: var(--tenue); font-weight: 600; text-transform: capitalize; }
+.definicion dt { color: var(--tenue); font-weight: 600; }
 .definicion dd { margin: 0; overflow-wrap: anywhere; }
 .muestra td { font-size: 12.5px; white-space: nowrap; }
 .cajon-enter-active, .cajon-leave-active { transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }

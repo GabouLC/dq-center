@@ -72,7 +72,7 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
     <div class="encabezado">
       <div>
         <h1>Glosario de negocio</h1>
-        <p>Qué significa cada término y dónde vive en los datos (HU-10).</p>
+        <p>Qué significa cada término y dónde vive en los datos.</p>
       </div>
       <button v-if="sesion.puede('editar_glosario')" type="button" class="primario" @click="editar(null)"><Plus :size="16" /> Nuevo término</button>
     </div>
@@ -80,21 +80,22 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
     <div class="panel buscador-grande">
       <label class="buscar"><Search :size="20" /><input v-model="q" type="search" placeholder="Busca un término: prima, DNI, vigencia, cifrado…" aria-label="Buscar término" /></label>
       <div class="fila">
-        <button type="button" class="dominio" :class="{ activo: !dominio }" @click="dominio = ''"><BookOpen :size="15" /> Todos <span class="cuenta">{{ datos?.length ?? 0 }}</span></button>
-        <button v-for="[d, icono] in DOMINIOS" :key="d" type="button" class="dominio" :class="{ activo: dominio === d }" @click="dominio = dominio === d ? '' : d">
+        <button type="button" class="dominio" :class="{ activo: !dominio }" :aria-pressed="!dominio" @click="dominio = ''"><BookOpen :size="15" /> Todos <span class="cuenta">{{ datos?.length ?? 0 }}</span></button>
+        <button v-for="[d, icono] in DOMINIOS" :key="d" type="button" class="dominio" :class="{ activo: dominio === d }" :aria-pressed="dominio === d" @click="dominio = dominio === d ? '' : d">
           <component :is="icono" :size="15" /> {{ d }} <span class="cuenta">{{ cuenta(d) }}</span>
         </button>
       </div>
-      <nav class="abc" aria-label="Índice alfabético">
+      <div class="abc" role="group" aria-label="Índice alfabético">
         <button
           v-for="l in ABC"
           :key="l"
           type="button"
           :disabled="!letras.has(l)"
           :class="{ activo: letra === l }"
+          :aria-pressed="letra === l"
           @click="letra = letra === l ? '' : l"
         >{{ l }}</button>
-      </nav>
+      </div>
     </div>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
@@ -107,7 +108,7 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
           </RouterLink>
         </nav>
 
-        <article v-if="editando && borrador" class="panel pila">
+        <form v-if="editando && borrador" class="panel pila" @submit.prevent="guardar">
           <h2>{{ borrador.id ? 'Editar término' : 'Nuevo término' }}</h2>
           <label class="campo">Término <input v-model="borrador.termino" required /></label>
           <label class="campo">Dominio
@@ -120,12 +121,12 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
           <label class="campo">Campos relacionados (tabla.campo, separados por coma)
             <input :value="borrador.campos?.join(', ')" @change="borrador.campos = lista(($event.target as HTMLInputElement).value)" />
           </label>
-          <p v-if="errorGuardar" class="aviso-caja error">{{ errorGuardar }}</p>
+          <p v-if="errorGuardar" class="aviso-caja error" role="alert">{{ errorGuardar }}</p>
           <div class="fila">
-            <button type="button" class="primario" @click="guardar">Guardar término</button>
+            <button type="submit" class="primario">Guardar término</button>
             <button type="button" class="fantasma" @click="editando = false">Cancelar</button>
           </div>
-        </article>
+        </form>
 
         <article v-else-if="elegido" class="panel ficha">
           <div class="fila entre">
@@ -157,8 +158,8 @@ const lista = (texto: string) => texto.split(',').map((s) => s.trim()).filter(Bo
 
 <style scoped>
 .buscador-grande { display: grid; gap: 14px; }
-.buscar { display: flex; align-items: center; gap: 10px; border: 2px solid var(--linea-fuerte); border-radius: 14px; padding: 4px 16px; color: var(--tenue); transition: border-color 0.12s; }
-.buscar:focus-within { border-color: var(--marca); }
+.buscar { display: flex; align-items: center; gap: 10px; border: 2px solid var(--borde-control); border-radius: 14px; padding: 4px 16px; color: var(--tenue); transition: border-color 0.12s; }
+.buscar:focus-within { border-color: var(--marca); box-shadow: 0 0 0 2px var(--marca-suave); }
 .buscar input { border: 0; outline: none; background: transparent; font-size: 16px; padding: 10px 0; flex: 1; min-width: 0; }
 .dominio .cuenta { font-size: 11.5px; color: var(--tenue); font-weight: 800; }
 .dominio.activo { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }

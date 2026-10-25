@@ -7,10 +7,11 @@ import { corte, corteCorto, esFinDeSemana, pct } from '@/formato'
  * Tendencia diaria (dataviz): líneas de 2 px en una sola escala, crosshair que se
  * ajusta al día más cercano con un tooltip de todas las series, leyenda que
  * activa/desactiva series (el color sigue a la serie), etiquetas directas al final,
- * fines de semana sombreados, días sin certificar marcados y vista de tabla.
+ * fines de semana sombreados, días con tablas no certificadas marcados y vista de tabla.
+ * `alertas`: cuántas tablas quedaron sin certificar cada día (0 = ninguna).
  */
 type Serie = { clave: string; nombre: string; color: string; valores: (number | null)[]; destacada?: boolean }
-const props = defineProps<{ etiquetas: string[]; series: Serie[]; elegido?: string | null; alertas?: boolean[]; unidad?: string }>()
+const props = defineProps<{ etiquetas: string[]; series: Serie[]; elegido?: string | null; alertas?: number[]; unidad?: string }>()
 const emit = defineEmits<{ elegir: [fecha: string] }>()
 
 const contenedor = ref<HTMLDivElement | null>(null)
@@ -36,7 +37,7 @@ function alternar(clave: string) {
 
 const angosto = computed(() => ancho.value < 560)
 const ALTO = 300
-const M = computed(() => ({ arriba: 18, derecha: angosto.value ? 76 : 104, abajo: 34, izquierda: 38 }))
+const M = computed(() => ({ arriba: 18, derecha: angosto.value ? 76 : 104, abajo: 34, izquierda: 50 }))
 const n = computed(() => props.etiquetas.length)
 const paso = computed(() => (ancho.value - M.value.izquierda - M.value.derecha) / Math.max(1, n.value - 1))
 
@@ -102,7 +103,7 @@ const tooltip = computed(() => {
     .map((s) => ({ nombre: s.nombre, color: s.color, valor: s.valores[i] }))
     .sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0))
   const izquierda = x(i) > ancho.value / 2
-  return { i, filas, alerta: props.alertas?.[i], estilo: { top: '12px', [izquierda ? 'right' : 'left']: `${izquierda ? ancho.value - x(i) + 14 : x(i) + 14}px` } }
+  return { i, filas, alerta: props.alertas?.[i] ?? 0, estilo: { top: '12px', [izquierda ? 'right' : 'left']: `${izquierda ? ancho.value - x(i) + 14 : x(i) + 14}px` } }
 })
 const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value - 1].filter((i): i is number => i !== null && i >= 0))])
 </script>
@@ -136,7 +137,7 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
         :height="ALTO"
         :viewBox="`0 0 ${ancho} ${ALTO}`"
         role="img"
-        :aria-label="`Tendencia diaria por fecha de corte${unidad ? ` (${unidad})` : ''}. Usa las flechas para recorrer los días y Enter para elegir uno.`"
+        :aria-label="`Tendencia diaria por día${unidad ? ` (${unidad})` : ''}. Usa las flechas para recorrer los días y Enter para elegir uno.`"
         tabindex="0"
         @pointermove="mover"
         @pointerleave="foco = null"
@@ -164,11 +165,11 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
         />
         <g v-for="t in escala.ticks" :key="t">
           <line :x1="M.izquierda" :x2="ancho - M.derecha" :y1="y(t)" :y2="y(t)" class="guia" />
-          <text :x="M.izquierda - 8" :y="y(t) + 4" text-anchor="end" class="eje num">{{ t }}</text>
+          <text :x="M.izquierda - 8" :y="y(t) + 4" text-anchor="end" class="eje num">{{ t }} %</text>
         </g>
         <text v-for="m in marcas" :key="m.i" :x="x(m.i)" :y="ALTO - 10" text-anchor="middle" class="eje">{{ m.texto }}</text>
         <template v-for="(a, i) in alertas ?? []" :key="`a-${i}`">
-          <circle v-if="a" :cx="x(i)" :cy="ALTO - M.abajo + 7" r="2.6" class="alerta" />
+          <circle v-if="a" :cx="x(i)" :cy="ALTO - M.abajo + 7" r="4" class="alerta" />
         </template>
         <line v-if="foco !== null" :x1="x(foco)" :x2="x(foco)" :y1="M.arriba" :y2="ALTO - M.abajo" class="cruz" />
         <g v-for="s in visibles" :key="s.clave">
@@ -201,7 +202,7 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
           <span class="secundario">{{ f.nombre }}</span>
           <strong>{{ pct(f.valor) }}</strong>
         </div>
-        <div v-if="tooltip.alerta" class="t-alerta">Alguna tabla quedó sin certificar</div>
+        <div v-if="tooltip.alerta" class="t-alerta">{{ tooltip.alerta }} {{ tooltip.alerta === 1 ? 'tabla no certificada' : 'tablas no certificadas' }}</div>
         <div class="t-pie tenue">Clic para ver este día</div>
       </div>
     </div>
@@ -209,12 +210,17 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
     <div v-if="vistaTabla" class="tabla-envoltura alta">
       <table>
         <thead>
-          <tr><th>Día</th><th v-for="s in series" :key="s.clave" class="der">{{ s.nombre }}</th></tr>
+          <tr>
+            <th scope="col">Día</th>
+            <th v-for="s in series" :key="s.clave" scope="col" class="der">{{ s.nombre }}</th>
+            <th v-if="alertas" scope="col" class="der">Tablas no certificadas</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="(e, i) in etiquetas" :key="e" :class="{ marcado: e === elegido }">
-            <td>{{ corte(e) }}</td>
+            <th scope="row" class="dia">{{ corte(e) }}</th>
             <td v-for="s in series" :key="s.clave" class="der num">{{ pct(s.valores[i]) }}</td>
+            <td v-if="alertas" class="der num">{{ alertas[i] ?? '—' }}</td>
           </tr>
         </tbody>
       </table>
@@ -240,5 +246,7 @@ svg { display: block; max-width: 100%; cursor: crosshair; outline-offset: 4px; b
 .t-pie { margin-top: 6px; font-size: 11.5px; }
 .t-alerta { margin-top: 6px; font-size: 11.5px; font-weight: 700; color: var(--critico-texto); }
 .alta { max-height: 320px; overflow-y: auto; }
-tr.marcado td { background: var(--marca-suave); }
+tr.marcado :is(td, th) { background: var(--marca-suave); }
+/* La fecha es el encabezado de cada fila, con el mismo aspecto que una celda. */
+th.dia { font-size: inherit; font-weight: 600; color: var(--tinta); }
 </style>

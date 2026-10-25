@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { usarConteo } from '@/composables/usarConteo'
 
-/** Proporción como anillo (parte de un todo): p. ej. reglas en PASS sobre las reglas con datos. */
+/** Proporción como anillo (parte de un todo): p. ej. tablas publicadas o campos vigilados. Es un span: puede ir dentro de un botón. */
 const props = withDefaults(defineProps<{ parte: number; total: number; etiqueta: string; tamano?: number }>(), { tamano: 150 })
 
 const R = 52
@@ -13,7 +13,7 @@ const parteAnimada = usarConteo(computed(() => props.parte), 1100)
 </script>
 
 <template>
-  <div class="anillo" :style="{ width: `${tamano}px` }">
+  <span class="anillo" :style="{ width: `${tamano}px` }">
     <svg viewBox="0 0 120 120" :width="tamano" :height="tamano" role="img" :aria-label="`${etiqueta}: ${parte} de ${total}`">
       <circle cx="60" cy="60" :r="R" fill="none" stroke="var(--superficie-3)" stroke-width="11" />
       <circle
@@ -30,7 +30,7 @@ const parteAnimada = usarConteo(computed(() => props.parte), 1100)
       <text x="60" y="58" text-anchor="middle" class="valor">{{ Math.round(parteAnimada ?? 0) }}<tspan class="de">/{{ total }}</tspan></text>
       <text x="60" y="76" text-anchor="middle" class="pie">{{ etiqueta }}</text>
     </svg>
-  </div>
+  </span>
 </template>
 
 <style scoped>

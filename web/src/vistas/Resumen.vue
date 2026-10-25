@@ -11,7 +11,7 @@ import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
 import { usarConteo } from '@/composables/usarConteo'
 import {
-  corte as nombreCorte, corteCorto, NOMBRE_CERTIFICACION, NOMBRE_DIMENSION, NOMBRE_TABLA, pct, relativo, signo, TABLAS,
+  corte as nombreCorte, corteCorto, NOMBRE_DIMENSION, NOMBRE_TABLA, pct, relativo, signo, TABLAS,
 } from '@/formato'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
@@ -64,7 +64,8 @@ const series = computed(() => {
     ...TABLAS.map((t) => ({ clave: t, nombre: NOMBRE_TABLA[t], color: COLOR_TABLA[t], valores: lista.value.map((c) => tabla(c, t)) })),
   ]
 })
-const alertas = computed(() => lista.value.map((c) => Object.values(c.certificacion).includes('NO_CERTIFICADO')))
+// Tablas no certificadas por día: marcan el gráfico y van como columna en su vista de tabla.
+const alertas = computed(() => lista.value.map((c) => Object.values(c.certificacion).filter((e) => e === 'NO_CERTIFICADO').length))
 
 const filasMapa = computed(() =>
   TABLAS.map((t) => ({
@@ -72,7 +73,7 @@ const filasMapa = computed(() =>
     nombre: NOMBRE_TABLA[t],
     color: COLOR_TABLA[t],
     estados: Object.fromEntries(lista.value.map((c) => [c.fecha_corte, c.certificacion[t]])),
-    detalle: (d: string) => `score ${pct(lista.value.find((c) => c.fecha_corte === d)?.por_tabla[t])}`,
+    detalle: (d: string) => `puntaje ${pct(lista.value.find((c) => c.fecha_corte === d)?.por_tabla[t])}`,
   })),
 )
 function abrirValidaciones(fecha: string, tabla: string) {
@@ -87,27 +88,27 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
   <div class="pila">
     <div class="encabezado">
       <div>
-        <h1>Salud de los datos</h1>
-        <p>Calidad, privacidad y certificación de cada tabla en el día elegido (HU-09).</p>
+        <h1>Resumen</h1>
+        <p>Calidad, privacidad y certificación de cada tabla en el día elegido.</p>
       </div>
     </div>
 
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" @reintentar="recargar">
       <template v-if="actual">
-        <!-- Lo característico del sistema: el indicador del backlog y los sellos del Gate -->
+        <!-- Lo característico del sistema: el indicador del backlog (PASS) y la certificación de cada tabla -->
         <section class="panel portada">
           <div class="score">
-            <span class="etiqueta">Reglas en PASS · {{ nombreCorte(actual.fecha_corte) }}</span>
+            <span class="etiqueta">Reglas que cumplen (PASS) · {{ nombreCorte(actual.fecha_corte) }}</span>
             <strong class="cifra" :class="tonoPass(actual.pct_pass)">{{ pct(passAnimado) }}</strong>
             <span v-if="deltaPass !== null && anterior" class="delta" :class="deltaPass >= 0 ? 'sube' : 'baja'">
               <component :is="deltaPass >= 0 ? ArrowUpRight : ArrowDownRight" :size="16" :stroke-width="2.6" />
               {{ signo(deltaPass, ' pts') }} vs. {{ corteCorto(anterior.fecha_corte) }}
             </span>
-            <Anillo :parte="certificadas" :total="TABLAS.length" etiqueta="en BUSINESS" :tamano="132" />
+            <Anillo :parte="certificadas" :total="TABLAS.length" etiqueta="tablas publicadas" :tamano="132" />
           </div>
           <div class="sellos">
             <div class="fila entre">
-              <h2>Sellos del Quality &amp; Privacy Gate</h2>
+              <h2>Certificación de cada tabla</h2>
               <RouterLink to="/certificacion" class="enlace">Ver certificación</RouterLink>
             </div>
             <div class="grilla-sellos">
@@ -131,14 +132,14 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
 
         <section class="indicadores">
           <Kpi
-            titulo="Score de calidad"
+            titulo="Puntaje de calidad"
             :valor="pct(actual.global)"
             :detalle="deltaScore !== null ? `${signo(deltaScore, ' pts')} vs. día anterior · ponderado por severidad` : 'Ponderado por severidad'"
             :tono="tonoScore(actual.global)"
             :icono="Gauge"
           />
           <Kpi titulo="Reglas en alerta" :valor="String(actual.estados.ALERTA ?? 0)" :detalle="`De ${conDatos} con datos · hasta 2 puntos bajo el umbral`" :tono="actual.estados.ALERTA ? 'aviso' : 'bien'" :icono="TriangleAlert" />
-          <Kpi titulo="Reglas en FAIL" :valor="String(actual.estados.FALLA ?? 0)" detalle="Más de 2 puntos bajo el umbral" :tono="actual.estados.FALLA ? 'critico' : 'bien'" :icono="CircleX" />
+          <Kpi titulo="Reglas que fallan" :valor="String(actual.estados.FALLA ?? 0)" detalle="Más de 2 puntos bajo el umbral" :tono="actual.estados.FALLA ? 'critico' : 'bien'" :icono="CircleX" />
         </section>
 
         <div class="dos-columnas">
@@ -146,8 +147,8 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
             <div class="fila entre">
               <h2>Tendencia diaria</h2>
               <div class="segmentos" role="group" aria-label="Indicador">
-                <button type="button" :class="{ activo: metrica === 'pass' }" @click="metrica = 'pass'">% reglas en PASS</button>
-                <button type="button" :class="{ activo: metrica === 'score' }" @click="metrica = 'score'">Score</button>
+                <button type="button" :class="{ activo: metrica === 'pass' }" :aria-pressed="metrica === 'pass'" @click="metrica = 'pass'">% que cumple</button>
+                <button type="button" :class="{ activo: metrica === 'score' }" :aria-pressed="metrica === 'score'" @click="metrica = 'score'">Puntaje</button>
               </div>
             </div>
             <GraficoTendencia
@@ -155,10 +156,10 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
               :series="series"
               :elegido="actual.fecha_corte"
               :alertas="alertas"
-              :unidad="metrica === 'pass' ? '% de reglas en PASS' : 'score'"
+              :unidad="metrica === 'pass' ? '% de reglas que cumplen' : 'puntaje de calidad'"
               @elegir="(f) => (cortes.elegido = f)"
             />
-            <p class="tenue pequeno">Puntos rojos: días con alguna tabla sin certificar. Franjas grises: fin de semana.</p>
+            <p class="tenue pequeno">Puntos rojos: días con alguna tabla no certificada. Franjas grises: fin de semana.</p>
           </section>
 
           <section v-if="vivo.estado?.activo" class="panel pila actividad">
@@ -181,19 +182,13 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
         </div>
 
         <section class="panel pila">
-          <div class="fila entre">
-            <h2>Mapa de certificación</h2>
-            <span class="leyenda-mapa">
-              <span class="cuadro bien" /> {{ NOMBRE_CERTIFICACION.CERTIFICADO }}
-              <span class="cuadro aviso" /> {{ NOMBRE_CERTIFICACION.CERTIFICADO_CON_OBSERVACIONES }}
-              <span class="cuadro critico" /> {{ NOMBRE_CERTIFICACION.NO_CERTIFICADO }}
-            </span>
-          </div>
+          <h2>Mapa de certificación</h2>
           <MapaDias
             :dias="lista.map((c) => c.fecha_corte)"
             :filas="filasMapa"
             :elegido="actual.fecha_corte"
             :seleccionada="tablaElegida"
+            seleccionable
             @elegir="abrirValidaciones"
             @seleccionar="(t) => (tablaElegida = t)"
           />
@@ -204,7 +199,7 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
           <div class="fila entre">
             <h2>Dimensiones de {{ NOMBRE_TABLA[tablaElegida] }} · {{ corteCorto(actual.fecha_corte) }}</h2>
             <div class="segmentos" role="group" aria-label="Tabla">
-              <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: t === tablaElegida }" @click="tablaElegida = t">
+              <button v-for="t in TABLAS" :key="t" type="button" :class="{ activo: t === tablaElegida }" :aria-pressed="t === tablaElegida" @click="tablaElegida = t">
                 {{ NOMBRE_TABLA[t] }}
               </button>
             </div>
@@ -225,10 +220,14 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
               </template>
             </template>
           </div>
-          <p class="tenue pequeno">Escala de 80 % a 100 %, ponderada por la severidad de cada regla.</p>
+          <p class="tenue pequeno">
+            Escala de 80 % a 100 %, ponderada por la severidad de cada regla. Colores: verde desde 99 %, ámbar desde 97 % y
+            rojo por debajo, igual que el puntaje de calidad. El % de reglas que cumplen usa otros límites: verde desde 85 % y
+            ámbar desde 70 %.
+          </p>
         </section>
       </template>
-      <p v-else class="tenue">Todavía no hay ejecuciones. Corre el flujo para ver resultados.</p>
+      <p v-else class="tenue">Todavía no hay resultados. Aparecerán cuando se evalúe el primer día de datos.</p>
     </BloqueCarga>
   </div>
 </template>
@@ -266,11 +265,6 @@ const actividad = computed(() => vivo.eventos.slice(0, 6))
 .feed .critico .punto-feed { background: var(--critico); }
 @keyframes entra { from { opacity: 0; transform: translateY(-6px); } }
 
-.leyenda-mapa { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tinta-2); flex-wrap: wrap; }
-.cuadro { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-left: 8px; }
-.cuadro.bien { background: var(--bien); }
-.cuadro.aviso { background: color-mix(in srgb, var(--aviso) 70%, var(--superficie)); }
-.cuadro.critico { background: var(--critico); }
 
 .dimensiones { display: grid; grid-template-columns: 130px 1fr 72px; gap: 12px 16px; align-items: center; }
 .nombre-dim { font-weight: 600; }
