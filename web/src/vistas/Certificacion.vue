@@ -59,6 +59,7 @@ const filasHistoria = computed(() =>
   })),
 )
 const niveles = (t: Tabla, n: string) => t.calidad.por_nivel[n] ?? {}
+const ESTADO_CLASE: Record<string, string> = { CERTIFICADO: 'estado-bien', CERTIFICADO_CON_OBSERVACIONES: 'estado-aviso', NO_CERTIFICADO: 'estado-critico' }
 // Conteo del nivel en palabras: el color de la barra no va solo.
 function conteoNivel(t: Tabla, n: string): string {
   const { OK = 0, ALERTA = 0, FALLA = 0, SIN_DATOS = 0 } = niveles(t, n)
@@ -87,7 +88,10 @@ const LECTURA: Clave[] = [
     <BloqueCarga :cargando="cargando" :error="error" :vacio="!datos" forma="tarjetas" @reintentar="recargar">
       <template v-if="datos">
         <section class="panel pila">
-          <h2>Certificación día por día</h2>
+          <div class="pila-chica">
+            <h2>Certificación día por día</h2>
+            <p class="secundario pequeno">El sello de cada tabla en todo el período. Clic en un cuadro para ver ese día.</p>
+          </div>
           <MapaDias
             :dias="Object.keys(datos.historia)"
             :filas="filasHistoria"
@@ -96,7 +100,7 @@ const LECTURA: Clave[] = [
           />
         </section>
 
-        <article v-for="t in datos.tablas" :key="t.tabla" class="panel ficha" :class="t.estado">
+        <article v-for="t in datos.tablas" :key="t.tabla" class="panel ficha con-acento" :class="[t.estado, ESTADO_CLASE[t.estado]]">
           <Sello :estado="t.estado" :tabla="NOMBRE_TABLA[t.tabla]" :detalle="`Dominio ${t.dominio}`" :tamano="150" />
 
           <section class="bloque">
@@ -168,10 +172,17 @@ const LECTURA: Clave[] = [
 
 <style scoped>
 .pequeno { font-size: 12.5px; }
-.ficha { display: grid; grid-template-columns: 180px repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; border-left: 5px solid var(--aviso); }
-.ficha.CERTIFICADO { border-left-color: var(--bien); }
-.ficha.NO_CERTIFICADO { border-left-color: var(--critico); }
+/*
+ * Ficha de cada tabla: franja de estado a la izquierda y, detrás del sello, un tinte de su
+ * color que se desvanece (con-acento + estado-* en estilos.css).
+ */
+.ficha {
+  display: grid; grid-template-columns: 180px repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;
+  padding-left: 26px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--acento-suave) 60%, var(--superficie)) 0, var(--superficie) 230px);
+}
 .bloque { display: grid; gap: 9px; align-content: start; }
+.bloque + .bloque { padding-left: 22px; border-left: 1px solid var(--linea); }
 .bloque h3 { gap: 7px; }
 .bien { color: var(--bien); }
 .critico { color: var(--critico); }
@@ -189,13 +200,17 @@ const LECTURA: Clave[] = [
 .sello-datos { display: grid; grid-template-columns: max-content 1fr; gap: 5px 12px; margin: 0; font-size: 13px; }
 .sello-datos dt { color: var(--tenue); font-weight: 600; }
 .sello-datos dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+/* El objeto de BUSINESS va en su propia fila, a todo el ancho: el nombre no se corta. */
+.sello-datos dd:last-of-type { grid-column: 1 / -1; margin-top: -2px; }
 .enlace { gap: 6px; font-weight: 700; font-size: 13.5px; }
 @media (max-width: 1100px) {
-  .ficha { grid-template-columns: 1fr 1fr; }
+  .ficha { grid-template-columns: 1fr 1fr; background: linear-gradient(180deg, color-mix(in srgb, var(--acento-suave) 60%, var(--superficie)) 0, var(--superficie) 200px); }
   .ficha :deep(.sello) { grid-row: span 2; }
+  .bloque + .bloque { padding-left: 0; border-left: 0; }
 }
 @media (max-width: 680px) {
-  .ficha { grid-template-columns: 1fr; justify-items: stretch; }
+  .ficha { grid-template-columns: 1fr; justify-items: stretch; padding-left: 22px; }
   .ficha :deep(.sello) { justify-self: center; }
+  .bloque + .bloque { padding-top: 16px; border-top: 1px solid var(--linea); }
 }
 </style>

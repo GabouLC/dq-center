@@ -14,12 +14,14 @@ const props = withDefaults(
 
 let contador = 0
 const id = `sello-${++contador}-${Math.random().toString(36).slice(2, 7)}`
-const TONO: Record<string, { color: string; suave: string; texto: string; leyenda: string }> = {
-  CERTIFICADO: { color: 'var(--bien)', suave: 'var(--bien-suave)', texto: 'var(--bien-texto)', leyenda: 'Certificada' },
-  CERTIFICADO_CON_OBSERVACIONES: { color: 'var(--aviso)', suave: 'var(--aviso-suave)', texto: 'var(--aviso-texto)', leyenda: 'Con observaciones' },
-  NO_CERTIFICADO: { color: 'var(--critico)', suave: 'var(--critico-suave)', texto: 'var(--critico-texto)', leyenda: 'No certificada' },
+const TONO: Record<string, { clase: string; color: string; suave: string; texto: string; leyenda: string }> = {
+  CERTIFICADO: { clase: 'bien', color: 'var(--bien)', suave: 'var(--bien-suave)', texto: 'var(--bien-texto)', leyenda: 'Certificada' },
+  CERTIFICADO_CON_OBSERVACIONES: { clase: 'aviso', color: 'var(--aviso)', suave: 'var(--aviso-suave)', texto: 'var(--aviso-texto)', leyenda: 'Con observaciones' },
+  NO_CERTIFICADO: { clase: 'critico', color: 'var(--critico)', suave: 'var(--critico-suave)', texto: 'var(--critico-texto)', leyenda: 'No certificada' },
 }
-const tono = computed(() => TONO[props.estado] ?? { color: 'var(--tenue)', suave: 'var(--neutro-suave)', texto: 'var(--tenue)', leyenda: 'Sin evaluar' })
+const tono = computed(
+  () => TONO[props.estado] ?? { clase: 'neutro', color: 'var(--tenue)', suave: 'var(--neutro-suave)', texto: 'var(--tenue)', leyenda: 'Sin evaluar' },
+)
 const anillo = computed(() => `QUALITY & PRIVACY GATE · ${props.tabla.toUpperCase()} · `)
 
 // Estampado: baja un poco más grande y girado, se aprieta y se asienta (WAAPI: interrumpible).
@@ -75,7 +77,7 @@ onBeforeUnmount(() => animacion?.cancel())
     </svg>
     <figcaption v-if="!decorativo">
       <strong>{{ tabla }}</strong>
-      <span :style="{ color: tono.texto }">{{ tono.leyenda }}</span>
+      <span class="leyenda" :class="tono.clase">{{ tono.leyenda }}</span>
       <span v-if="detalle" class="tenue">{{ detalle }}</span>
     </figcaption>
   </figure>
@@ -92,4 +94,9 @@ a:focus-visible .sello svg { transform: rotate(0deg) scale(1.04); }
 figcaption { display: grid; gap: 1px; line-height: 1.3; }
 figcaption strong { font-size: 15px; }
 figcaption span { font-size: 12.5px; font-weight: 600; }
+/* El estado en palabras, del color de su sello (sobre fondos oscuros lo ajusta quien lo usa). */
+.leyenda.bien { color: var(--bien-texto); }
+.leyenda.aviso { color: var(--aviso-texto); }
+.leyenda.critico { color: var(--critico-texto); }
+.leyenda.neutro { color: var(--tenue); }
 </style>

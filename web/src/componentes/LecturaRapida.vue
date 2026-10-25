@@ -2,13 +2,12 @@
 import { ArrowDownRight, ArrowUpRight, ListChecks, Minus } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
-import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { corteCorto, diaDeSemana, diaEnFrase, NOMBRE_TABLA, TABLAS } from '@/formato'
+import { diaDeSemana, diaEnFrase, NOMBRE_TABLA, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 
 /**
- * Lectura rápida del día: la respuesta, en lenguaje claro, a «¿puedo confiar en los datos de
+ * Lectura rápida del día (va dentro de la banda héroe del Resumen, sobre azul marino): la respuesta, en lenguaje claro, a «¿puedo confiar en los datos de
  * este día?». Qué tablas llegaron a negocio, cuál se retuvo y por qué, y qué cambió frente al
  * día anterior. La primera frase sale del resumen; el motivo y los cambios, de la
  * certificación y la comparación del día (se piden aquí, sin cambiar la API).
@@ -46,16 +45,15 @@ const veredicto = computed(() =>
 const lista = (nombres: string[]) =>
   nombres.length <= 1 ? (nombres[0] ?? '') : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`
 
+// El día va aparte (fecha sobre el titular); el titular es la respuesta.
 const frase = computed(() => {
   const total = TABLAS.length
   const n = publicadas.value.length
-  const que =
-    n === total
-      ? `las ${total} tablas llegaron a negocio${observadas.value.length ? '' : ' sin observaciones'}.`
-      : n === 0
-        ? 'ninguna tabla llegó a negocio.'
-        : `${n} de ${total} tablas llegaron a negocio.`
-  return `${diaEnFrase(props.dia)}: ${que}`
+  return n === total
+    ? `Las ${total} tablas llegaron a negocio${observadas.value.length ? '' : ' sin observaciones'}.`
+    : n === 0
+      ? 'Ninguna tabla llegó a negocio.'
+      : `${n} de ${total} tablas llegaron a negocio.`
 })
 
 // Por qué se retuvo: en palabras de negocio según la dimensión de la regla que bloqueó.
@@ -149,56 +147,61 @@ const accion = computed(() => {
 </script>
 
 <template>
-  <section class="panel lectura" :class="veredicto" aria-labelledby="lectura-titulo" data-recorrido="lectura">
-    <Sello :estado="veredicto" :tabla="corteCorto(dia)" :tamano="88" decorativo class="sello-dia" />
-    <div class="texto">
-      <h2 id="lectura-titulo" class="rotulo">Lectura rápida</h2>
-      <p class="frase">{{ frase }}</p>
-      <p v-if="explicacion" class="explicacion">{{ explicacion }}</p>
-      <span v-else class="esqueleto" style="width: min(460px, 90%); height: 15px; margin: 4px 0" aria-hidden="true" />
-      <p v-if="anterior && cambios" class="cambios">
-        <template v-if="cambios.peor || cambios.mejor">
-          <RouterLink v-if="cambios.peor" :to="{ path: '/validaciones', query: { comparar: anterior } }" class="chip critico">
-            <ArrowDownRight :size="14" :stroke-width="2.6" aria-hidden="true" />{{ plural(cambios.peor, 'regla empeoró', 'reglas empeoraron') }}
-          </RouterLink>
-          <span v-if="cambios.mejor" class="chip bien">
-            <ArrowUpRight :size="14" :stroke-width="2.6" aria-hidden="true" />{{ plural(cambios.mejor, 'regla mejoró', 'reglas mejoraron') }}
-          </span>
-          <span class="tenue">frente al {{ diaDeSemana(anterior) }}</span>
-        </template>
-        <span v-else class="tenue sin-cambio"><Minus :size="14" aria-hidden="true" /> Ninguna regla cambió de estado frente al {{ diaDeSemana(anterior) }}.</span>
-      </p>
-    </div>
+  <section class="lectura" :class="veredicto" aria-labelledby="lectura-titulo" data-recorrido="lectura">
+    <h2 id="lectura-titulo" class="rotulo">Lectura rápida</h2>
+    <p class="dia"><span class="lampara" aria-hidden="true" />{{ diaEnFrase(dia) }}</p>
+    <p class="frase">{{ frase }}</p>
+    <p v-if="explicacion" class="explicacion">{{ explicacion }}</p>
+    <span v-else class="esqueleto" style="width: min(460px, 90%); height: 15px; margin: 4px 0" aria-hidden="true" />
+    <p v-if="anterior && cambios" class="cambios">
+      <template v-if="cambios.peor || cambios.mejor">
+        <RouterLink v-if="cambios.peor" :to="{ path: '/validaciones', query: { comparar: anterior } }" class="chip critico">
+          <ArrowDownRight :size="14" :stroke-width="2.6" aria-hidden="true" />{{ plural(cambios.peor, 'regla empeoró', 'reglas empeoraron') }}
+        </RouterLink>
+        <span v-if="cambios.mejor" class="chip bien">
+          <ArrowUpRight :size="14" :stroke-width="2.6" aria-hidden="true" />{{ plural(cambios.mejor, 'regla mejoró', 'reglas mejoraron') }}
+        </span>
+        <span class="frente">frente al {{ diaDeSemana(anterior) }}</span>
+      </template>
+      <span v-else class="frente sin-cambio"><Minus :size="14" aria-hidden="true" /> Ninguna regla cambió de estado frente al {{ diaDeSemana(anterior) }}.</span>
+    </p>
     <RouterLink :to="accion.a" class="boton accion"><ListChecks :size="16" aria-hidden="true" />{{ accion.texto }}</RouterLink>
   </section>
 </template>
 
 <style scoped>
-.lectura {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px 22px; align-items: center;
-  padding: 18px 22px 18px 18px; border-left: 5px solid var(--bien);
-}
-.lectura.CERTIFICADO_CON_OBSERVACIONES { border-left-color: var(--aviso); }
-.lectura.NO_CERTIFICADO { border-left-color: var(--critico); }
-.sello-dia :deep(svg) { filter: none; }
-.texto { display: grid; gap: 4px; min-width: 0; }
-.rotulo { font-size: 12.5px; font-weight: 700; color: var(--tenue); letter-spacing: 0; }
-.frase { font-size: 22px; font-weight: 800; line-height: 1.25; letter-spacing: -0.02em; text-wrap: balance; }
-.explicacion { font-size: 15px; color: var(--tinta-2); max-width: 78ch; text-wrap: pretty; }
-.cambios { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 6px; font-size: 13px; }
+/* Sobre la banda héroe: texto blanco y secundario azul claro (contraste AA sobre todo el degradado). */
+.lectura { display: grid; justify-items: start; align-content: start; gap: 6px; min-width: 0; color: var(--hero-tinta); }
+.rotulo { font-size: 13px; font-weight: 700; letter-spacing: 0; color: var(--hero-tinta-2); }
+.dia { display: inline-flex; align-items: center; gap: 9px; font-size: 17px; font-weight: 700; color: var(--hero-tinta); letter-spacing: -0.01em; }
+/* Lámpara del día: verde, ámbar o roja según el veredicto (el titular lo dice en palabras). */
+.lampara { --luz: #3fd16a; width: 10px; height: 10px; border-radius: 50%; background: var(--luz); box-shadow: 0 0 0 4px color-mix(in srgb, var(--luz) 26%, transparent), 0 0 12px var(--luz); }
+.CERTIFICADO_CON_OBSERVACIONES .lampara { --luz: #fab219; }
+.NO_CERTIFICADO .lampara { --luz: #ff6b5e; }
+.frase { margin-top: 2px; font-size: 38px; font-weight: 800; line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance; max-width: 22ch; }
+.explicacion { font-size: 15.5px; line-height: 1.5; color: var(--hero-tinta-2); max-width: 62ch; text-wrap: pretty; }
+.esqueleto { background: rgb(255 255 255 / 0.14); }
+.cambios { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 4px; font-size: 13px; }
+/* Pastillas claras sobre el azul: los mismos pares de color que en el resto del portal (tema claro). */
 .cambios .chip { font-size: 12.5px; padding: 3px 10px 3px 7px; }
+.cambios .chip.critico { background: #fde8e8; color: #a32020; }
+.cambios .chip.critico svg { color: #a32020; }
+.cambios .chip.bien { background: #e3f5e3; color: #006300; }
+.cambios .chip.bien svg { color: #006300; }
 a.chip { transition: filter 0.12s ease; }
+.frente { color: var(--hero-tinta-2); }
 .sin-cambio { display: inline-flex; align-items: center; gap: 6px; }
-.accion { align-self: center; white-space: nowrap; color: var(--tinta); text-decoration: none; }
-.accion:hover { border-color: var(--marca); color: var(--marca); text-decoration: none; }
-@media (max-width: 900px) {
-  .lectura { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
-  .accion { grid-column: 2; justify-self: start; }
+.accion {
+  margin-top: 10px; white-space: nowrap; text-decoration: none; padding: 9px 16px;
+  background: #fff; color: #0d1f3c; border-color: transparent; box-shadow: 0 8px 20px -10px rgb(0 0 0 / 0.5);
 }
-@media (max-width: 560px) {
-  .lectura { grid-template-columns: 1fr; gap: 10px; }
-  .sello-dia { display: none; }
-  .accion { grid-column: 1; }
-  .frase { font-size: 19px; }
+.accion svg { color: #1a4a8c; }
+.accion:hover { background: #e6f0fc; color: #0d1f3c; border-color: transparent; text-decoration: none; }
+.lectura :is(a, button):focus-visible { outline-color: var(--hero-foco); }
+@media (max-width: 760px) {
+  .frase { font-size: 27px; }
+  .dia { font-size: 15.5px; }
+  .explicacion { font-size: 14.5px; }
+  .accion { white-space: normal; }
 }
 </style>

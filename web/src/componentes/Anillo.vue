@@ -15,13 +15,13 @@ const parteAnimada = usarConteo(computed(() => props.parte), 1100)
 <template>
   <span class="anillo" :style="{ width: `${tamano}px` }">
     <svg viewBox="0 0 120 120" :width="tamano" :height="tamano" role="img" :aria-label="`${etiqueta}: ${parte} de ${total}`">
-      <circle cx="60" cy="60" :r="R" fill="none" stroke="var(--superficie-3)" stroke-width="11" />
+      <circle cx="60" cy="60" :r="R" fill="none" stroke="var(--anillo-pista, var(--superficie-3))" stroke-width="11" />
       <circle
         cx="60"
         cy="60"
         :r="R"
         fill="none"
-        stroke="var(--marca)"
+        stroke="var(--anillo-arco, var(--marca))"
         stroke-width="11"
         stroke-linecap="round"
         :stroke-dasharray="`${CIRC * (animada ?? 0)} ${CIRC}`"
@@ -35,7 +35,8 @@ const parteAnimada = usarConteo(computed(() => props.parte), 1100)
 
 <style scoped>
 .anillo { display: grid; place-items: center; }
-.valor { font-size: 26px; font-weight: 800; fill: var(--tinta); letter-spacing: -0.02em; }
-.de { font-size: 14px; font-weight: 600; fill: var(--tenue); }
-.pie { font-size: 9.5px; font-weight: 700; fill: var(--tinta-2); }
+/* Sobre fondos oscuros (banda héroe), quien lo usa redefine --anillo-*. */
+.valor { font-size: 26px; font-weight: 800; fill: var(--anillo-tinta, var(--tinta)); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.de { font-size: 14px; font-weight: 600; fill: var(--anillo-tinta-2, var(--tenue)); }
+.pie { font-size: 9.5px; font-weight: 700; fill: var(--anillo-tinta-2, var(--tinta-2)); }
 </style>

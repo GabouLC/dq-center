@@ -99,6 +99,8 @@ const reglas = computed(() =>
   deLaTabla.value.filter((r) => (!filtroNivel.value || r.nivel === filtroNivel.value) && (!filtroEstado.value || r.estado === filtroEstado.value)),
 )
 const cuenta = (campo: 'estado' | 'nivel', valor: string) => deLaTabla.value.filter((r) => r[campo] === valor).length
+// Franja de estado en cada fila: roja si falla, ámbar si está en alerta (el chip lo dice en texto).
+const ACENTO: Record<string, string> = { FALLA: 'estado-critico', ALERTA: 'estado-aviso' }
 const ESTADOS = [['', 'Todos'], ['FALLA', 'Falla'], ['ALERTA', 'Alerta'], ['OK', 'Cumple'], ['SIN_DATOS', 'Sin datos']]
 const NIVELES = [['', 'Todos'], ['N1', 'N1 básico'], ['N2', 'N2 negocio'], ['N3', 'N3 carga']]
 
@@ -238,8 +240,8 @@ const LECTURA: Clave[] = [
               <tr
                 v-for="r in reglas"
                 :key="r.id_regla + r.tabla"
-                class="clicable"
-                :class="{ seleccionada: elegida?.id_regla === r.id_regla && elegida?.tabla === r.tabla }"
+                class="clicable con-acento"
+                :class="[ACENTO[r.estado], { seleccionada: elegida?.id_regla === r.id_regla && elegida?.tabla === r.tabla }]"
                 @click="elegida = r"
               >
                 <td class="id">
@@ -339,6 +341,9 @@ const LECTURA: Clave[] = [
 .comparar { gap: 8px; color: var(--tinta-2); }
 .filtros { display: flex; gap: 10px; flex-wrap: wrap; }
 .lista { padding: 6px 8px; }
+.lista thead th { padding-top: 14px; }
+/* Las filas en falla llevan además un leve tinte rojo. */
+tr.estado-critico { background: color-mix(in srgb, var(--critico-suave) 45%, transparent); }
 .id { font-weight: 800; white-space: nowrap; letter-spacing: -0.01em; }
 /* El id de la regla es el botón que abre el detalle; se ve como el texto de la celda. */
 .abrir-regla { border: 0; background: none; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; font: inherit; font-weight: 800; letter-spacing: inherit; }
@@ -358,7 +363,7 @@ const LECTURA: Clave[] = [
   width: min(520px, 100vw);
   background: var(--superficie);
   border-left: 1px solid var(--linea);
-  box-shadow: var(--sombra-alta);
+  box-shadow: var(--elev-3);
   z-index: 40;
   padding: 22px;
   overflow-y: auto;

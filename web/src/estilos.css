@@ -5,7 +5,8 @@
  */
 :root {
   color-scheme: light;
-  --pagina: #f3f5fa;
+  /* fondo de página apenas teñido de azul: las tarjetas blancas resaltan */
+  --pagina: #edf1f7;
   --superficie: #ffffff;
   --superficie-2: #eef2f8;
   --superficie-3: #e3e9f3;
@@ -54,10 +55,53 @@
   --s5: #e87ba4;
   --s-global: #0f1b2d;
 
-  --sombra: 0 1px 2px rgb(15 27 45 / 0.05), 0 10px 30px -18px rgb(15 27 45 / 0.25);
-  --sombra-alta: 0 2px 4px rgb(15 27 45 / 0.06), 0 18px 40px -16px rgb(15 27 45 / 0.35);
-  --radio: 14px;
-  --radio-chico: 9px;
+  /* relleno bajo la serie Global de la tendencia (área) */
+  --area-global: #1d4f96;
+
+  /* elevación: 1 tarjetas, 2 tarjetas destacadas y barra superior, 3 flotantes (tooltips, cajones) */
+  --elev-1: 0 1px 2px rgb(15 27 45 / 0.06), 0 4px 14px -6px rgb(15 27 45 / 0.10);
+  --elev-2: 0 1px 2px rgb(15 27 45 / 0.06), 0 14px 32px -16px rgb(15 27 45 / 0.30);
+  --elev-3: 0 2px 6px rgb(15 27 45 / 0.08), 0 24px 52px -20px rgb(15 27 45 / 0.45);
+  --sombra: var(--elev-1);
+  --sombra-alta: var(--elev-3);
+
+  /* radios: chico (controles), base (tarjetas), grande (bandas) */
+  --radio-xs: 6px;
+  --radio-chico: 10px;
+  --radio: 16px;
+  --radio-grande: 22px;
+
+  /* cifras grandes (siempre con dígitos tabulares) */
+  --cifra-xl: 76px;
+  --cifra-l: 36px;
+  --cifra-m: 24px;
+
+  /*
+   * Banda héroe: azul marino profundo hacia el azul de marca, sin neón. Es oscura en los
+   * dos temas. Texto blanco ≥ 7:1 y secundario ≥ 4.5:1 incluso sobre el tono más claro.
+   */
+  --hero-1: #0d1f3c;
+  --hero-2: #133466;
+  --hero-3: #1a4a8c;
+  --hero-brillo: rgb(95 168 255 / 0.16);
+  --hero-borde: rgb(255 255 255 / 0.12);
+  /* vidrio oscuro: los paneles dentro de la banda oscurecen (más contraste, no menos) */
+  --hero-vidrio: rgb(6 16 31 / 0.30);
+  --hero-tinta: #ffffff;
+  --hero-tinta-2: #d3e0f2;
+  --hero-bien: #9be9aa;
+  --hero-aviso: #ffd36b;
+  --hero-critico: #ffc6c0;
+  --hero-foco: #ffffff;
+  --degradado-hero:
+    radial-gradient(90% 120% at 100% 0%, var(--hero-brillo) 0%, transparent 60%),
+    linear-gradient(128deg, var(--hero-1) 0%, var(--hero-2) 58%, var(--hero-3) 100%);
+
+  /* acento de cada grupo del menú (mosaico del ícono en el encabezado de cada sección) */
+  --grupo-dia: #2468c4;
+  --grupo-origen: #0e7c86;
+  --grupo-admin: #3f5d94;
+
   --font: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
 
@@ -102,8 +146,17 @@
     --s4: #c98500;
     --s5: #d55181;
     --s-global: #eef2f9;
-    --sombra: none;
-    --sombra-alta: 0 16px 40px -18px rgb(0 0 0 / 0.6);
+    --area-global: #8fb6ec;
+    --elev-1: 0 1px 2px rgb(0 0 0 / 0.35);
+    --elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 32px -16px rgb(0 0 0 / 0.7);
+    --elev-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 52px -20px rgb(0 0 0 / 0.8);
+    --hero-1: #0a1830;
+    --hero-2: #10305c;
+    --hero-3: #17427f;
+    --hero-borde: rgb(255 255 255 / 0.10);
+    --grupo-dia: #2f74d0;
+    --grupo-origen: #128a94;
+    --grupo-admin: #4d6aa3;
   }
 }
 :root[data-theme="dark"] {
@@ -141,8 +194,17 @@
   --s4: #c98500;
   --s5: #d55181;
   --s-global: #eef2f9;
-  --sombra: none;
-  --sombra-alta: 0 16px 40px -18px rgb(0 0 0 / 0.6);
+  --area-global: #8fb6ec;
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --elev-2: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 32px -16px rgb(0 0 0 / 0.7);
+  --elev-3: 0 2px 6px rgb(0 0 0 / 0.4), 0 24px 52px -20px rgb(0 0 0 / 0.8);
+  --hero-1: #0a1830;
+  --hero-2: #10305c;
+  --hero-3: #17427f;
+  --hero-borde: rgb(255 255 255 / 0.10);
+  --grupo-dia: #2f74d0;
+  --grupo-origen: #128a94;
+  --grupo-admin: #4d6aa3;
 }
 
 * { box-sizing: border-box; }
@@ -154,8 +216,8 @@ body {
   font: 14.5px/1.55 var(--font);
   -webkit-font-smoothing: antialiased;
 }
-h1 { font-size: 27px; line-height: 1.2; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
-h2 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+h1 { font-size: 29px; line-height: 1.15; margin: 0; font-weight: 800; letter-spacing: -0.025em; }
+h2 { font-size: 17.5px; margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 h3 { font-size: 14.5px; margin: 0; font-weight: 700; }
 p { margin: 0; }
 a { color: var(--marca); text-decoration: none; }
@@ -170,12 +232,24 @@ code, .mono { font-family: var(--mono); font-size: 12.5px; }
 /* ── superficies ─────────────────────────────────────────────────────── */
 .panel {
   background: var(--superficie);
-  border: 1px solid var(--linea);
+  border: 1px solid color-mix(in srgb, var(--linea) 80%, transparent);
   border-radius: var(--radio);
-  box-shadow: var(--sombra);
-  padding: 20px;
+  box-shadow: var(--elev-1);
+  padding: 22px;
   min-width: 0;
 }
+
+/*
+ * Acento de estado: una franja a la izquierda y un leve tinte en tarjetas y filas que
+ * representan un estado (ficha de certificación, carga, regla). El estado también va en
+ * texto e ícono; la franja solo ayuda a recorrer la lista.
+ */
+.estado-bien { --acento: var(--bien); --acento-suave: var(--bien-suave); }
+.estado-aviso { --acento: var(--aviso); --acento-suave: var(--aviso-suave); }
+.estado-critico { --acento: var(--critico); --acento-suave: var(--critico-suave); }
+/* Sombra interior: sigue el borde redondeado y no recorta el contenido. */
+.panel.con-acento { box-shadow: inset 4px 0 0 var(--acento, var(--linea-fuerte)), var(--elev-1); }
+tr.con-acento > :first-child { box-shadow: inset 3px 0 0 var(--acento, transparent); }
 .pila { display: grid; gap: 18px; min-width: 0; }
 .pila > * { min-width: 0; }
 .pila-chica { display: grid; gap: 8px; }
@@ -216,7 +290,12 @@ button, .boton {
 button:hover { border-color: var(--marca); color: var(--marca); }
 /* Respuesta al presionar: se hunde apenas (no en los botones anchos, que se verían encoger). */
 :is(button, .boton):active { transform: scale(0.97); }
-button.primario { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }
+button.primario {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--marca) 88%, #fff), var(--marca));
+  color: var(--sobre-marca);
+  border-color: var(--marca);
+  box-shadow: 0 1px 2px rgb(15 27 45 / 0.12), 0 8px 18px -10px color-mix(in srgb, var(--marca) 75%, transparent);
+}
 button.primario:hover { background: var(--marca-fuerte); border-color: var(--marca-fuerte); color: var(--sobre-marca); }
 :is(button, .boton).fantasma { border-color: transparent; background: transparent; }
 :is(button, .boton).fantasma:hover { background: var(--superficie-2); color: var(--tinta); text-decoration: none; }
@@ -253,10 +332,10 @@ input[type="checkbox"] { width: 16px; height: 16px; padding: 0; accent-color: va
 @keyframes girar { to { transform: rotate(360deg); } }
 
 /* Grupo de botones-pastilla (filtros de una fila) */
-.segmentos { display: inline-flex; gap: 4px; padding: 4px; background: var(--superficie-2); border-radius: 999px; flex-wrap: wrap; }
+.segmentos { display: inline-flex; gap: 4px; padding: 4px; background: var(--superficie-2); border-radius: 20px; flex-wrap: wrap; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--linea) 85%, transparent); }
 .segmentos button { border: 0; background: transparent; padding: 6px 12px; color: var(--tinta-2); }
 .segmentos button:hover { color: var(--tinta); background: var(--superficie); }
-.segmentos button.activo { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 3px rgb(15 27 45 / 0.15); }
+.segmentos button.activo { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 3px rgb(15 27 45 / 0.15), inset 0 0 0 1px var(--linea); }
 .segmentos .cuenta { font-size: 11.5px; color: var(--tenue); font-weight: 700; }
 
 /* ── chips y estados ─────────────────────────────────────────────────── */
@@ -313,8 +392,8 @@ a.chip:hover { text-decoration: none; filter: brightness(0.97); }
   z-index: 20;
   background: var(--superficie);
   border: 1px solid var(--linea);
-  border-radius: 10px;
-  box-shadow: var(--sombra-alta);
+  border-radius: 12px;
+  box-shadow: var(--elev-3);
   padding: 10px 12px;
   font-size: 12.5px;
   min-width: 170px;

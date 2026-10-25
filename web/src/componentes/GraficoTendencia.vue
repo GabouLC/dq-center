@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Table2, TrendingUp } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { corte, corteCorto, esFinDeSemana, pct } from '@/formato'
 
 /**
- * Tendencia diaria (dataviz): líneas de 2 px en una sola escala, crosshair que se
+ * Tendencia diaria (dataviz): la serie destacada (Global) como área con un degradado suave
+ * bajo su línea y las demás como líneas de 2 px, todo en una sola escala, crosshair que se
  * ajusta al día más cercano con un tooltip de todas las series, leyenda que
  * activa/desactiva series (el color sigue a la serie), etiquetas directas al final,
  * fines de semana sombreados, días con tablas no certificadas marcados y vista de tabla.
@@ -36,7 +37,7 @@ function alternar(clave: string) {
 }
 
 const angosto = computed(() => ancho.value < 560)
-const ALTO = 300
+const ALTO = 320
 const M = computed(() => ({ arriba: 18, derecha: angosto.value ? 76 : 104, abajo: 34, izquierda: 50 }))
 const n = computed(() => props.etiquetas.length)
 const paso = computed(() => (ancho.value - M.value.izquierda - M.value.derecha) / Math.max(1, n.value - 1))
@@ -53,12 +54,22 @@ const escala = computed(() => {
 })
 const x = (i: number) => M.value.izquierda + i * paso.value
 const y = (v: number) => M.value.arriba + ((100 - v) / (100 - escala.value.minimo)) * (ALTO - M.value.arriba - M.value.abajo)
+const idArea = `area-${useId()}`
 const camino = (valores: (number | null)[]) =>
   valores
     .map((v, i) => (v === null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`))
     .filter(Boolean)
     .map((p, i) => `${i ? 'L' : 'M'}${p}`)
     .join(' ')
+/** Área bajo la serie: la misma línea, cerrada contra el piso del gráfico. */
+function area(valores: (number | null)[]): string {
+  const con = valores.flatMap((v, i) => (v === null ? [] : [i]))
+  if (!con.length) return ''
+  const piso = (ALTO - M.value.abajo).toFixed(1)
+  return `${camino(valores)} L${x(con.at(-1)!).toFixed(1)},${piso} L${x(con[0]).toFixed(1)},${piso} Z`
+}
+// La destacada se dibuja al final, encima de las demás.
+const enOrden = computed(() => [...visibles.value].sort((a, b) => Number(!!a.destacada) - Number(!!b.destacada)))
 
 // Marcas del eje: el 1 y el 15 de cada mes (en pantallas angostas, solo el 1).
 const marcas = computed(() =>
@@ -145,6 +156,12 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
         @keydown="teclado"
         @blur="foco = null"
       >
+        <defs>
+          <linearGradient :id="idArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--area-global)" stop-opacity="0.26" />
+            <stop offset="100%" stop-color="var(--area-global)" stop-opacity="0" />
+          </linearGradient>
+        </defs>
         <rect
           v-for="i in findes"
           :key="`f-${i}`"
@@ -172,7 +189,10 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
           <circle v-if="a" :cx="x(i)" :cy="ALTO - M.abajo + 7" r="4" class="alerta" />
         </template>
         <line v-if="foco !== null" :x1="x(foco)" :x2="x(foco)" :y1="M.arriba" :y2="ALTO - M.abajo" class="cruz" />
-        <g v-for="s in visibles" :key="s.clave">
+        <template v-for="s in visibles" :key="`area-${s.clave}`">
+          <path v-if="s.destacada" :d="area(s.valores)" :fill="`url(#${idArea})`" class="area" />
+        </template>
+        <g v-for="s in enOrden" :key="s.clave">
           <path :d="camino(s.valores)" fill="none" :stroke="s.color" :stroke-width="s.destacada ? 3 : 1.8" stroke-linejoin="round" stroke-linecap="round" />
           <template v-for="j in puntos" :key="j">
             <circle
@@ -231,14 +251,16 @@ const puntos = computed(() => [...new Set([foco.value, iElegido.value, n.value -
 <style scoped>
 .grafico { display: grid; gap: 10px; min-width: 0; }
 .leyenda { gap: 6px; }
-.serie { padding: 4px 11px; font-size: 12.5px; gap: 7px; }
+.serie { padding: 4px 11px; font-size: 12.5px; gap: 7px; border-color: var(--linea); background: var(--superficie); }
+.serie:hover { border-color: var(--linea-fuerte); color: var(--tinta); }
 .serie.apagada { opacity: 0.45; text-decoration: line-through; }
 .clave { display: inline-block; width: 16px; border-radius: 2px; vertical-align: middle; height: 3px; }
 .lienzo { position: relative; width: 100%; min-width: 0; overflow: hidden; }
 svg { display: block; max-width: 100%; cursor: crosshair; outline-offset: 4px; border-radius: 8px; }
-.guia { stroke: var(--linea); stroke-width: 1; }
+.guia { stroke: color-mix(in srgb, var(--linea) 75%, transparent); stroke-width: 1; }
+.area { pointer-events: none; }
 .cruz { stroke: var(--tinta-2); stroke-width: 1; }
-.finde { fill: var(--superficie-2); }
+.finde { fill: color-mix(in srgb, var(--superficie-2) 80%, transparent); }
 .elegido { fill: var(--marca-suave); }
 .alerta { fill: var(--critico); }
 .eje { fill: var(--tenue); font-size: 11.5px; font-weight: 600; }

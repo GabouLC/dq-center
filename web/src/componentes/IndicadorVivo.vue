@@ -124,9 +124,16 @@ watch(
 </template>
 
 <style scoped>
-.pastilla { gap: 8px; padding: 6px 12px; white-space: nowrap; flex: none; border-color: color-mix(in srgb, var(--bien) 45%, var(--linea)); background: var(--bien-suave); color: var(--tinta); font-size: 12.5px; max-width: 320px; }
+.pastilla {
+  gap: 8px; padding: 6px 13px 6px 11px; white-space: nowrap; flex: none; font-size: 12.5px; max-width: 320px; color: var(--tinta);
+  border-color: color-mix(in srgb, var(--bien) 50%, var(--linea));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bien-suave) 60%, var(--superficie)), var(--bien-suave));
+  box-shadow: 0 6px 14px -10px color-mix(in srgb, var(--bien) 80%, transparent);
+}
+.pastilla strong { color: var(--bien-texto); }
 .pastilla:hover { color: var(--tinta); border-color: var(--bien); }
-.pastilla.pausado { background: var(--aviso-suave); border-color: var(--aviso); }
+.pastilla.pausado { background: var(--aviso-suave); border-color: var(--aviso); box-shadow: none; }
+.pastilla.pausado strong { color: var(--aviso-texto); }
 .pastilla .texto { color: var(--tinta-2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--bien); flex: none; box-shadow: 0 0 0 0 color-mix(in srgb, var(--bien) 60%, transparent); animation: pulso 1.6s infinite; }
 .pausado .punto, .punto.quieto, .quieto .punto { animation: none; }
@@ -135,8 +142,8 @@ watch(
 
 .panel-vivo {
   position: fixed; top: 64px; right: 16px; bottom: 16px; width: min(400px, calc(100vw - 32px)); z-index: 60;
-  display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px;
-  background: var(--superficie); border: 1px solid var(--linea); box-shadow: var(--sombra-alta);
+  display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: var(--radio-grande);
+  background: var(--superficie); border: 1px solid var(--linea); box-shadow: var(--elev-3);
 }
 .panel-vivo h2 { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; }
 .estado-vivo { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--tinta-2); background: var(--superficie-2); border-radius: 10px; padding: 10px 12px; }
