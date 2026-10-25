@@ -132,9 +132,11 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
 </template>
 
 <style scoped>
-.entrada { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+.entrada { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; background: var(--pagina); }
+/* La misma banda héroe del Resumen: azul marino profundo hacia el azul de marca, con trama de puntos. */
 .presentacion {
-  background: #10213b;
+  isolation: isolate;
+  background: var(--degradado-hero);
   color: #dbe5f3;
   padding: 44px 56px;
   display: flex;
@@ -143,6 +145,12 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
   justify-content: center;
   position: relative;
   overflow: hidden;
+}
+.presentacion::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(rgb(255 255 255 / 0.10) 1px, transparent 1.4px);
+  background-size: 20px 20px;
+  mask-image: linear-gradient(160deg, transparent 30%, #000 100%);
 }
 .marca { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 19px; position: absolute; top: 36px; left: 56px; }
 .sellos { display: flex; align-items: flex-end; gap: 4px; }
@@ -153,13 +161,20 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
 .sellos > :nth-child(2) { animation-delay: 0.12s; }
 .sellos > :nth-child(3) { animation-delay: 0.24s; }
 @keyframes estampar { from { opacity: 0; transform: scale(1.18) rotate(-8deg); } }
-.presentacion h1 { color: #fff; font-size: 34px; max-width: 19ch; letter-spacing: -0.03em; }
-.viaje { max-width: 520px; padding: 16px 8px 4px; border-radius: 16px; background: rgb(255 255 255 / 0.04); border: 1px solid rgb(255 255 255 / 0.08); }
+.presentacion h1 { color: #fff; font-size: 40px; line-height: 1.1; max-width: 18ch; letter-spacing: -0.035em; text-wrap: balance; }
+.viaje { max-width: 520px; padding: 16px 8px 4px; border-radius: var(--radio); background: var(--hero-vidrio); border: 1px solid var(--hero-borde); }
 .puntos { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 48ch; }
 .puntos li { display: flex; align-items: center; gap: 12px; font-size: 15px; line-height: 1.45; color: #dbe5f3; }
-.icono-punto { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: #18304f; color: #6cb2ff; }
-.acceso { display: grid; place-items: center; padding: 32px 20px; }
-.caja { width: min(400px, 100%); display: grid; gap: 18px; }
+.icono-punto { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: rgb(255 255 255 / 0.10); border: 1px solid var(--hero-borde); color: #9cc8ff; }
+/* Lado del formulario: fondo de página teñido y el formulario en una tarjeta elevada. */
+.acceso {
+  display: grid; place-items: center; padding: 32px 20px;
+  background: radial-gradient(80% 60% at 100% 0%, color-mix(in srgb, var(--marca) 10%, transparent), transparent 70%);
+}
+.caja {
+  width: min(440px, 100%); display: grid; gap: 18px; padding: 34px 34px 28px; border-radius: var(--radio-grande);
+  background: var(--superficie); border: 1px solid color-mix(in srgb, var(--linea) 80%, transparent); box-shadow: var(--elev-2);
+}
 .titulo { display: grid; gap: 4px; }
 .caja h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 .ancho { width: 100%; justify-content: center; padding: 12px; font-size: 15px; border-radius: 12px; }
@@ -177,7 +192,9 @@ const entrarGoogle = () => intentar(sesion.entrarGoogle)
   .entrada { grid-template-columns: 1fr; }
   .presentacion { padding: 84px 22px 32px; gap: 18px; }
   .marca { left: 22px; top: 26px; }
-  .presentacion h1 { font-size: 26px; }
+  .presentacion h1 { font-size: 28px; }
+  .acceso { padding: 20px 14px 32px; }
+  .caja { padding: 24px 20px 22px; border-radius: var(--radio); }
   /* En el teléfono, lo justo para que el formulario quede a la vista: la frase y los tres puntos. */
   .sellos, .viaje { display: none; }
   .puntos li { font-size: 14px; }

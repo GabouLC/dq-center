@@ -105,9 +105,9 @@ const LECTURA: Clave[] = [
             <p class="tenue pequeno">Dueño: {{ fuente.dueno }} · dominio {{ fuente.dominio }}</p>
           </div>
           <div class="cifras">
-            <span><FileCheck2 :size="18" class="bien" /><strong>{{ exitosas.length }}</strong> cargas exitosas</span>
-            <span><FileX2 :size="18" :class="rechazos ? 'critico' : 'tenue'" /><strong>{{ rechazos }}</strong> rechazadas</span>
-            <span><Clock :size="18" :class="exitosas.some(tarde) ? 'critico' : 'bien'" /><strong>{{ exitosas.filter(tarde).length }}</strong> tarde</span>
+            <span class="cifra-fuente estado-bien"><i class="icono-cifra" aria-hidden="true"><FileCheck2 :size="17" /></i><strong>{{ exitosas.length }}</strong> cargas exitosas</span>
+            <span class="cifra-fuente" :class="rechazos ? 'estado-critico' : 'neutra'"><i class="icono-cifra" aria-hidden="true"><FileX2 :size="17" /></i><strong>{{ rechazos }}</strong> rechazadas</span>
+            <span class="cifra-fuente" :class="exitosas.some(tarde) ? 'estado-critico' : 'estado-bien'"><i class="icono-cifra" aria-hidden="true"><Clock :size="17" /></i><strong>{{ exitosas.filter(tarde).length }}</strong> tarde</span>
           </div>
         </section>
 
@@ -177,7 +177,14 @@ const LECTURA: Clave[] = [
                 <tr
                   v-for="c in cargasVisibles"
                   :key="c.archivo"
-                  :class="{ rechazada: c.estado === 'RECHAZADA', llegando: c.fecha_corte === vivo.estado?.corte_en_curso }"
+                  class="con-acento"
+                  :class="{
+                    rechazada: c.estado === 'RECHAZADA',
+                    llegando: c.fecha_corte === vivo.estado?.corte_en_curso,
+                    'estado-critico': c.estado === 'RECHAZADA' || (c.estado === 'EXITOSA' && tarde(c)),
+                    'estado-aviso': c.estado === 'EXITOSA' && !tarde(c) && (conRetraso(c) || fueraDeRango(c)),
+                    'estado-bien': c.fecha_corte === vivo.estado?.corte_en_curso && c.estado === 'EXITOSA',
+                  }"
                 >
                   <td><strong>{{ corteCorto(c.fecha_corte) }}</strong></td>
                   <td class="mono">{{ c.archivo }}</td>
@@ -235,9 +242,16 @@ const LECTURA: Clave[] = [
 
 <style scoped>
 .resumen-fuente { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: center; }
-.cifras { display: flex; gap: 18px; flex-wrap: wrap; }
-.cifras span { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 12px; background: var(--superficie-2); }
-.cifras strong { font-size: 20px; font-weight: 800; }
+.cifras { display: flex; gap: 12px; flex-wrap: wrap; }
+/* Cada cifra en su baldosa: mosaico del ícono teñido por su estado y el número grande. */
+.cifra-fuente {
+  display: flex; align-items: center; gap: 9px; padding: 10px 16px 10px 10px; border-radius: 14px;
+  background: var(--superficie-2); border: 1px solid var(--linea); font-size: 13px; color: var(--tinta-2);
+}
+.icono-cifra { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--acento-suave, var(--neutro-suave)); color: var(--acento, var(--tenue)); font-style: normal; }
+.cifra-fuente.estado-bien .icono-cifra { color: var(--bien-texto); }
+.cifra-fuente.estado-critico .icono-cifra { color: var(--critico-texto); }
+.cifra-fuente strong { font-size: 22px; font-weight: 800; color: var(--tinta); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .bien { color: var(--bien); }
 .critico { color: var(--critico); }
 .texto-critico { color: var(--critico-texto); font-weight: 800; }
@@ -265,5 +279,7 @@ const LECTURA: Clave[] = [
 .leyenda-llegada i.tarde { background: var(--critico); }
 .rechazada { background: var(--critico-suave); }
 .llegando { background: var(--bien-suave); }
+.resumen-fuente { background: linear-gradient(100deg, color-mix(in srgb, var(--grupo-origen) 6%, var(--superficie)) 0, var(--superficie) 60%); }
+.mini { border: 1px solid var(--linea); }
 @media (max-width: 1000px) { .dos { grid-template-columns: 1fr; } }
 </style>

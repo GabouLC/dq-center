@@ -113,7 +113,7 @@ function irAlContenido() {
       </div>
       <nav aria-label="Módulos" data-recorrido="menu">
         <div v-for="g in grupos" :key="g.clave" class="grupo-nav" role="group" :aria-labelledby="`grupo-${g.clave}`">
-          <span :id="`grupo-${g.clave}`" class="grupo">{{ g.nombre }}</span>
+          <span :id="`grupo-${g.clave}`" class="grupo" :class="g.clave"><i class="punto-grupo" aria-hidden="true" />{{ g.nombre }}</span>
           <RouterLink
             v-for="m in g.modulos"
             :key="m.clave"
@@ -198,8 +198,12 @@ function irAlContenido() {
 
 <style scoped>
 .marco { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+/* Navegación: azul marino con profundidad (degradado y un brillo arriba). */
 .lateral {
-  background: var(--nav);
+  background:
+    radial-gradient(120% 50% at 0% 0%, rgb(95 168 255 / 0.14) 0%, transparent 60%),
+    linear-gradient(180deg, var(--nav) 0%, color-mix(in srgb, var(--nav) 82%, #000) 100%);
+  border-right: 1px solid rgb(255 255 255 / 0.04);
   color: var(--nav-tinta);
   padding: 20px 14px;
   display: flex;
@@ -216,7 +220,11 @@ function irAlContenido() {
 .marca span { font-size: 12px; color: var(--nav-tinta); }
 nav { display: grid; gap: 14px; }
 .grupo-nav { display: grid; gap: 2px; }
-.grupo { margin: 0 12px 4px; font-size: 11.5px; font-weight: 700; color: #8a9bb5; }
+.grupo { display: flex; align-items: center; gap: 8px; margin: 0 12px 4px; font-size: 11.5px; font-weight: 700; color: #8a9bb5; }
+/* El punto del grupo repite el color del mosaico de sus secciones. */
+.punto-grupo { width: 6px; height: 6px; border-radius: 2px; background: #6cb2ff; }
+.grupo.origen .punto-grupo { background: #4fd1d9; }
+.grupo.admin .punto-grupo { background: #a9b9d8; }
 nav a {
   display: flex;
   align-items: center;
@@ -230,8 +238,16 @@ nav a {
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 nav a svg { flex: none; }
-nav a:hover { background: var(--nav-2); color: #fff; text-decoration: none; }
-nav a.router-link-active { background: var(--nav-2); color: var(--nav-activo); box-shadow: inset 3px 0 0 var(--nav-acento); }
+nav a:hover { background: rgb(255 255 255 / 0.06); color: #fff; text-decoration: none; }
+/* Activo: una pastilla iluminada con su acento a la izquierda. */
+nav a.router-link-active {
+  position: relative; color: var(--nav-activo);
+  background: linear-gradient(90deg, rgb(95 168 255 / 0.24), rgb(95 168 255 / 0.08));
+  box-shadow: inset 0 0 0 1px rgb(95 168 255 / 0.22), 0 6px 16px -10px rgb(0 0 0 / 0.6);
+}
+nav a.router-link-active::before {
+  content: ''; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--nav-acento);
+}
 nav a.router-link-active svg { color: var(--nav-acento); }
 .textos { display: grid; min-width: 0; line-height: 1.3; }
 /* En escritorio la descripción la lee el lector de pantalla y se ve en el globo; en el menú móvil, debajo del nombre. */
@@ -259,9 +275,10 @@ nav a.router-link-active svg { color: var(--nav-acento); }
   align-items: center;
   gap: 14px;
   padding: 10px 28px;
-  background: color-mix(in srgb, var(--superficie) 86%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--linea);
+  background: color-mix(in srgb, var(--superficie) 80%, transparent);
+  backdrop-filter: saturate(1.5) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--linea) 70%, transparent);
+  box-shadow: 0 10px 24px -20px rgb(15 27 45 / 0.45);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -275,15 +292,16 @@ nav a.router-link-active svg { color: var(--nav-acento); }
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--marca);
-  color: var(--sobre-marca);
+  background: linear-gradient(140deg, var(--hero-3), var(--hero-1));
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--superficie), 0 0 0 3px color-mix(in srgb, var(--marca) 40%, transparent);
   font-weight: 800;
   font-size: 12.5px;
 }
 .datos { display: grid; line-height: 1.2; }
 .datos strong { font-size: 13px; }
 .datos span { font-size: 12px; color: var(--tenue); }
-.contenido { padding: 28px; max-width: 1320px; width: 100%; }
+.contenido { padding: 26px 28px 40px; max-width: 1320px; width: 100%; }
 /* El área principal recibe el foco solo como destino del enlace "Saltar al contenido". */
 .contenido:focus, .contenido:focus-visible { outline: none; }
 .saltar {
@@ -306,6 +324,10 @@ nav a.router-link-active svg { color: var(--nav-acento); }
 .vista-enter-from { opacity: 0; transform: translateY(8px); }
 .vista-leave-to { opacity: 0; }
 
+/* En capturas de página completa, la columna del menú sigue hasta abajo. */
+@media (min-width: 961px) {
+  .marco { background: linear-gradient(90deg, color-mix(in srgb, var(--nav) 82%, #000) 0 248px, transparent 248px); }
+}
 @media (max-width: 960px) {
   .marco { grid-template-columns: 1fr; }
   .lateral {

@@ -22,15 +22,12 @@ const ANCHOS = ['92%', '78%', '86%', '64%', '88%', '72%']
   <div v-else-if="cargando && vacio" class="esqueletos" role="status">
     <span class="visualmente-oculto">Cargando…</span>
     <template v-if="forma === 'resumen'">
-      <div class="panel fila-esq" aria-hidden="true">
-        <span class="esqueleto circulo" style="width: 64px; height: 64px" />
-        <span class="pila-chica crece"><span class="esqueleto" style="width: 58%; height: 20px" /><span class="esqueleto" style="width: 82%; height: 13px" /></span>
+      <!-- La forma de la banda héroe del Resumen: azul marino, sin destello blanco al cargar. -->
+      <div class="esq-hero" aria-hidden="true">
+        <span class="pila-chica"><span class="esqueleto" style="width: 22%; height: 13px" /><span class="esqueleto" style="width: 62%; height: 34px" /><span class="esqueleto" style="width: 78%; height: 14px" /></span>
+        <span class="fila-esq alto"><span v-for="i in 5" :key="i" class="esqueleto circulo" style="width: 112px; height: 112px" /></span>
       </div>
-      <div class="panel fila-esq alto" aria-hidden="true">
-        <span class="pila-chica" style="width: 220px"><span class="esqueleto" style="width: 70%; height: 12px" /><span class="esqueleto" style="width: 60%; height: 52px" /></span>
-        <span v-for="i in 5" :key="i" class="esqueleto circulo" style="width: 96px; height: 96px" />
-      </div>
-      <div class="tres" aria-hidden="true"><span v-for="i in 3" :key="i" class="esqueleto" style="height: 86px; border-radius: 12px" /></div>
+      <div class="cuatro" aria-hidden="true"><span v-for="i in 4" :key="i" class="esqueleto" style="height: 112px; border-radius: 16px" /></div>
     </template>
     <template v-else-if="forma === 'tarjetas'">
       <div v-for="i in 3" :key="i" class="panel fila-esq" aria-hidden="true">
@@ -66,10 +63,16 @@ const ANCHOS = ['92%', '78%', '86%', '64%', '88%', '72%']
 .crece { flex: 1; }
 .circulo { border-radius: 50%; flex: none; }
 .tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cuatro { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.esq-hero { display: grid; gap: 30px; padding: 30px 32px; border-radius: var(--radio-grande); background: var(--degradado-hero); }
+.esq-hero .esqueleto { background: rgb(255 255 255 / 0.14); }
+.esq-hero .fila-esq.alto { justify-content: space-around; padding: 0; }
 .fila-tabla { display: grid; grid-template-columns: 90px 1fr 64px; gap: 18px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--linea); }
 .recargando { opacity: 0.55; transition: opacity 0.15s; }
 @media (max-width: 760px) {
   .tres { grid-template-columns: 1fr; }
+  .cuatro { grid-template-columns: 1fr 1fr; }
+  .esq-hero { padding: 22px 18px; }
   .fila-esq.alto .circulo:nth-of-type(n + 4) { display: none; }
 }
 </style>

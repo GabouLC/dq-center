@@ -181,7 +181,7 @@ comentarios, que ya están incorporados:
 | «Tiene que ser un inicio de sesión, no elegir roles» | Inicio de sesión con correo y contraseña, bloqueo por intentos, contraseña temporal y cambio obligatorio (ADR 0011) | `12d0d91` |
 | «Datos de julio a septiembre, con valores y variaciones realistas, y que se sienta vivo» | Cortes diarios con ruido, tendencias e incidentes; simulación en vivo con actividad y avisos; % de reglas en PASS como indicador principal | `a5f625a` |
 | Revisión de accesibilidad y lenguaje claro (24 de octubre) | Teclado, foco y contraste AA; vocabulario único; gráficos legibles con daltonismo | `2e01263` |
-| «Que sea más atractivo y dinámico, y que se entienda rápido para qué sirve cada sección» (24 de octubre) | Cada sección dice qué pregunta responde y cómo se lee; lectura rápida del día en una frase; menú agrupado por objetivo; recorrido de bienvenida con el viaje de los datos; movimiento con propósito y estados de carga y vacíos | PR del 24 de octubre |
+| «Que sea más atractivo y dinámico, y que se entienda rápido para qué sirve cada sección» (24 de octubre) | Cada sección dice qué pregunta responde y cómo se lee; lectura rápida del día en una frase; menú agrupado por objetivo; recorrido de bienvenida con el viaje de los datos; movimiento con propósito y estados de carga y vacíos (PR #19); aspecto de «panel de control vivo»: banda azul con la lectura rápida, el % que cumple y los sellos, tarjetas con acento de estado y tendencia en área (PR #20) | 24 de octubre |
 
 Para verlo:
 

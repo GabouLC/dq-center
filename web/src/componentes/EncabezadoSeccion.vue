@@ -21,10 +21,10 @@ const abierto = computed({
 </script>
 
 <template>
-  <header class="cabeza">
+  <header class="cabeza" :class="`grupo-${info?.grupo ?? 'dia'}`">
     <div class="texto">
       <div class="titulo">
-        <span v-if="info" class="icono-modulo" aria-hidden="true"><component :is="info.icono" :size="18" :stroke-width="2.2" /></span>
+        <span v-if="info" class="icono-modulo" aria-hidden="true"><component :is="info.icono" :size="21" :stroke-width="2.1" /></span>
         <h1>{{ titulo }}</h1>
       </div>
       <p v-if="info" class="pregunta">{{ info.pregunta }}</p>
@@ -57,21 +57,38 @@ const abierto = computed({
 </template>
 
 <style scoped>
-.cabeza { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 20px; align-items: end; }
-.texto { display: grid; gap: 6px; min-width: 0; }
-.titulo { display: flex; align-items: center; gap: 11px; }
-.icono-modulo {
-  display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px;
-  background: var(--marca-suave); color: var(--marca);
+/*
+ * Banda del encabezado: un lavado suave del color del grupo (Calidad del día, Origen y gobierno,
+ * Administración) que se desvanece hacia la superficie, y el ícono en un mosaico de ese color.
+ */
+.cabeza {
+  --acento-grupo: var(--grupo-dia);
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 20px; align-items: end;
+  padding: 22px 26px 20px; border-radius: var(--radio-grande);
+  background:
+    radial-gradient(70% 140% at 0% 0%, color-mix(in srgb, var(--acento-grupo) 16%, transparent) 0%, transparent 70%),
+    linear-gradient(100deg, color-mix(in srgb, var(--acento-grupo) 7%, var(--superficie)) 0%, var(--superficie) 70%);
+  border: 1px solid color-mix(in srgb, var(--acento-grupo) 16%, var(--linea));
+  box-shadow: var(--elev-1);
 }
-.pregunta { font-size: 17.5px; font-weight: 600; line-height: 1.35; letter-spacing: -0.01em; color: var(--tinta); max-width: 60ch; text-wrap: balance; }
+.grupo-origen { --acento-grupo: var(--grupo-origen); }
+.grupo-admin { --acento-grupo: var(--grupo-admin); }
+.texto { display: grid; gap: 6px; min-width: 0; }
+.titulo { display: flex; align-items: center; gap: 13px; }
+.icono-modulo {
+  display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 13px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--acento-grupo) 82%, #fff), var(--acento-grupo) 55%, color-mix(in srgb, var(--acento-grupo) 70%, #0d1f3c));
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(15 27 45 / 0.18), 0 8px 18px -8px color-mix(in srgb, var(--acento-grupo) 80%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+.pregunta { font-size: 18px; font-weight: 600; line-height: 1.35; letter-spacing: -0.012em; color: var(--tinta); max-width: 60ch; text-wrap: balance; margin-top: 4px; }
 .subtitulo { color: var(--tinta-2); max-width: 74ch; }
 .acciones { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
-.lectura { grid-column: 1 / -1; display: grid; justify-items: start; margin-top: 6px; }
+.lectura { grid-column: 1 / -1; display: grid; justify-items: start; margin-top: 8px; }
 .alternar {
   gap: 6px; padding: 4px 10px 4px 9px; font-size: 12.5px; color: var(--tinta-2);
-  border-color: var(--linea-fuerte); background: var(--superficie);
+  border-color: color-mix(in srgb, var(--acento-grupo) 24%, var(--linea-fuerte)); background: var(--superficie);
 }
 .alternar.abierto { background: var(--marca-suave); color: var(--marca); border-color: transparent; }
 .flecha { transition: transform 0.2s var(--ease-out); }
@@ -110,7 +127,8 @@ const abierto = computed({
 .candado { color: var(--sello); }
 
 @media (max-width: 760px) {
-  .cabeza { grid-template-columns: 1fr; }
+  .cabeza { grid-template-columns: 1fr; padding: 18px 18px 16px; border-radius: var(--radio); }
+  .icono-modulo { width: 36px; height: 36px; border-radius: 11px; }
   .acciones { justify-content: flex-start; }
   .pregunta { font-size: 16px; }
   .claves { grid-template-columns: 1fr; padding: 12px 14px; }
