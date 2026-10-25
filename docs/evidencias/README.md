@@ -43,7 +43,8 @@ aceptadas en los Sprints 1 y 2.
 | [hu04-hu12-certificacion-30-septiembre](portal/hu04-hu12-certificacion-30-septiembre.png) | HU-04, HU-12 | Póliza bloqueada por POL-CON-03 y Vehículo certificado sin observaciones |
 | [hu04-ejecuciones](portal/hu04-ejecuciones.png) | HU-04, HU-09 | Corridas del motor y lanzamiento a demanda |
 | [hu09-resumen](portal/hu09-resumen.png) | HU-09 | Dashboard del 30 de septiembre: % de reglas en PASS, sellos, tendencia diaria y mapa de certificación |
-| [hu09-resumen-14-julio](portal/hu09-resumen-14-julio.png) | HU-09 | Dashboard del 14 de julio, con Persona no certificada |
+| [hu09-resumen-14-julio](portal/hu09-resumen-14-julio.png) | HU-09 | Dashboard del 14 de julio: la lectura rápida explica en una frase que Persona quedó retenida por llegar tarde |
+| [hu09-recorrido-viaje-datos](portal/hu09-recorrido-viaje-datos.png) | HU-09 | Último paso del recorrido de bienvenida: cómo viajan los datos de RAW a BUSINESS |
 | [hu09-actividad-en-vivo](portal/hu09-actividad-en-vivo.png) · [panel](portal/hu09-panel-en-vivo.png) | HU-09 | Archivos del 25 de septiembre llegando en vivo; el portal se actualiza solo |
 | [hu11-linaje](portal/hu11-linaje.png) | HU-11 | Recorrido RAW → MASTER → BUSINESS de Persona |
 | [hu10-glosario-busqueda](portal/hu10-glosario-busqueda.png) | HU-10 | Búsqueda «dni» en el glosario |
