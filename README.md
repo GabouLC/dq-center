@@ -192,6 +192,9 @@ El Documento de Arquitectura estimaba USD 30 a 45, sobre todo por Cloud SQL. Los
   pipeline, las consultas en BigQuery y el reporte de las pruebas.
 - [docs/auditoria-reglas.md](docs/auditoria-reglas.md): el catálogo de reglas frente a las seis
   dimensiones de DAMA, con propuestas para decidir.
+- [docs/guia-despliegue-y-trazabilidad.md](docs/guia-despliegue-y-trazabilidad.md): qué hace cada
+  paso al desplegar, en local y en GCP, y dónde y cómo se cumple cada criterio de las HU-01 a
+  HU-15, con su prueba y su evidencia.
 - Cada historia es un issue en el milestone de su sprint; las terminadas están cerradas:
   [Sprint 1](https://github.com/GabouLC/dq-center/milestone/1),
   [Sprint 2](https://github.com/GabouLC/dq-center/milestone/3) y
