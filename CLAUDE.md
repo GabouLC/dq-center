@@ -83,6 +83,10 @@ Cada vez que se resuelva un error raro, agrega una línea: qué pasó y cómo se
 - Las tablas del sandbox de BigQuery vencen a los 60 días: antes de una demo tardía, vuelve a
   cargar con `simular` (unas 9 h). Si la carga se corta, se reanuda con `--desde` (ADR 0014).
 - Las capturas usan sus propios puertos (8001 y 5174) para no chocar con una demo abierta.
+- DuckDB 2.0.0 (salió el 11/11/2026) se coló en el CI porque `duckdb>=1.4` no tenía tope: en una de cada pocas
+  corridas falló la fixture `simulacion` con `ResourceInUseException: connection has an unfinished result`, y pasó
+  al reintentar (en local con 2.0.0, 228 pruebas pasaron). Se fijó `duckdb<2`, que es lo que se midió y se documentó
+  (1.5.6). Subirlo es un PR aparte, con la evidencia regenerada.
 - Con la caché de 10 minutos vencida, cada petición releía las 7 vistas de BUSINESS: en BigQuery, 10
   usuarios a la vez esperaban 8,6 s (más del límite de HU-15). Ahora `FuenteBusiness` responde con lo
   último leído y renueva en segundo plano con una sola lectura; un corte publicado sí espera datos
