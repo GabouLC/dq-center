@@ -19,6 +19,7 @@ reglas:
   - {id: PER-VAL-03, tabla: persona, dim: validez, tipo: regex, campo: celular, patron: '^9[0-9]{8}$', filtro: "celular IS NOT NULL", umbral: 97, sev: MEDIA}
   - {id: PER-VAL-04, tabla: persona, dim: validez, tipo: expresion, cumple: "fecha_nacimiento BETWEEN '1915-01-01' AND fecha_corte", filtro: "tipo_documento != 'RUC'", umbral: 99, sev: MEDIA}
   - {id: PER-VAL-05, tabla: persona, dim: validez, tipo: regex, campo: email, patron: '^[^@\s]+@[^@\s]+\.[a-z]{2,}$', filtro: "email IS NOT NULL", umbral: 97, sev: MEDIA}
+  - {id: PER-VAL-06, tabla: persona, dim: validez, tipo: dominio, campo: tipo_documento, valores: [DNI, CE, RUC], umbral: 100, sev: ALTA}
   - {id: PER-INT-01, tabla: persona, dim: integridad, tipo: referencia, campo: ubigeo, ref: ref_ubigeo.ubigeo, filtro: "ubigeo IS NOT NULL", umbral: 99, sev: MEDIA}
   # poliza
   - {id: POL-COM-01, tabla: poliza, dim: completitud, tipo: no_nulo, campos: [cod_producto, id_contratante, fecha_inicio_vigencia, fecha_fin_vigencia], umbral: 100, sev: CRITICA}
@@ -38,6 +39,7 @@ reglas:
   - {id: VEH-UNI-01, tabla: vehiculo, dim: unicidad, tipo: unico, campos: [nro_serie], umbral: 99.5, sev: ALTA}
   - {id: VEH-INT-01, tabla: vehiculo, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, ref_filtro: "cod_producto IN (SELECT cod_producto FROM ref_producto WHERE ramo IN ('VEHICULAR', 'SOAT'))", umbral: 100, sev: ALTA}
   # siniestro
+  - {id: SIN-UNI-01, tabla: siniestro, dim: unicidad, tipo: unico, campos: [id_siniestro], umbral: 100, sev: CRITICA}
   - {id: SIN-INT-01, tabla: siniestro, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, umbral: 100, sev: CRITICA}
   - {id: SIN-VAL-01, tabla: siniestro, dim: validez, tipo: dominio, campo: estado, valores: [ABIERTO, EN_EVALUACION, PAGADO, RECHAZADO], umbral: 100, sev: ALTA}
   - {id: SIN-CON-01, tabla: siniestro, dim: consistencia, tipo: expresion, join: {tabla: poliza, llave: id_poliza}, filtro: "j.id_poliza IS NOT NULL", cumple: "t.fecha_ocurrencia BETWEEN j.fecha_inicio_vigencia AND j.fecha_fin_vigencia", umbral: 99, sev: CRITICA}
@@ -46,6 +48,7 @@ reglas:
   # pago
   - {id: PAG-INT-01, tabla: pago, dim: integridad, tipo: referencia, campo: id_poliza, ref: poliza.id_poliza, umbral: 100, sev: ALTA}
   - {id: PAG-UNI-01, tabla: pago, dim: unicidad, tipo: unico, campos: [id_poliza, nro_cuota], umbral: 100, sev: ALTA}
+  - {id: PAG-VAL-01, tabla: pago, dim: validez, tipo: dominio, campo: estado, valores: [PENDIENTE, PAGADO, VENCIDO], umbral: 100, sev: ALTA}
   - {id: PAG-CON-01, tabla: pago, dim: consistencia, tipo: expresion, cumple: "(estado = 'PAGADO') = (fecha_pago IS NOT NULL)", umbral: 99.5, sev: ALTA}
   - {id: PAG-CON-02, tabla: pago, dim: consistencia, tipo: expresion, cumple: "estado != 'PENDIENTE' OR fecha_vencimiento >= fecha_corte", umbral: 98, sev: MEDIA}
   # transversales (se expanden a las 5 tablas por corte)

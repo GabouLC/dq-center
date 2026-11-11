@@ -380,18 +380,20 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
     @app.get("/api/v1/certificacion")
     def certificacion(corte: date | None = None, _: Usuario = Depends(lector)):
         e = ejecucion_de(corte)
+        certificaciones = s.fuente.certificaciones()
+        estados: dict[str, dict[str, str]] = {}
+        for x in certificaciones:
+            estados.setdefault(x["id_ejecucion"], {})[x["tabla"]] = x["estado"]
+        historia = {c: estados.get(ej["id_ejecucion"], {}) for c, ej in ultimas().items()}
         tablas = vistas.certificacion(
             e["fecha_corte"],
-            vistas.de_la_ejecucion(s.fuente.certificaciones(), e["id_ejecucion"]),
+            vistas.de_la_ejecucion(certificaciones, e["id_ejecucion"]),
             vistas.de_la_ejecucion(s.fuente.hallazgos(), e["id_ejecucion"]),
             vistas.de_la_ejecucion(s.fuente.resultados(), e["id_ejecucion"]),
             s.config.contratos(),
             esquema_de(e["id_ejecucion"]),
+            historia,
         )
-        historia = {
-            c: {x["tabla"]: x["estado"] for x in vistas.de_la_ejecucion(s.fuente.certificaciones(), ej["id_ejecucion"])}
-            for c, ej in ultimas().items()
-        }
         return {"fecha_corte": e["fecha_corte"], "tablas": tablas, "historia": historia}
 
     # ── fuentes ────────────────────────────────────────────────────────────
@@ -439,7 +441,9 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         tabla_valida(tabla)
         ids = {e["id_ejecucion"] for e in ultimas().values()}
         certs = [c for c in s.fuente.certificaciones() if c["tabla"] == tabla and c["id_ejecucion"] in ids]
-        return vistas.linaje(tabla, s.fuentes_homologacion[tabla], s.config.contratos()[tabla], certs)
+        hallazgos = [h for h in s.fuente.hallazgos() if h["tabla"] == tabla and h["id_ejecucion"] in ids]
+        reglas = {r["id"]: r for r in s.config.reglas()}
+        return vistas.linaje(tabla, s.fuentes_homologacion[tabla], s.config.contratos()[tabla], certs, hallazgos, reglas)
 
     # ── HU-10: glosario ────────────────────────────────────────────────────
 
@@ -484,7 +488,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
         return regla
 
     @app.get("/api/v1/reglas")
-    def reglas(_: Usuario = Depends(lector)):
+    def reglas(_: Usuario = Depends(configurar)):
+        """El catálogo completo es del módulo Reglas (solo admin); las demás pantallas leen sus propias vistas."""
         return sorted(s.config.reglas(), key=lambda r: r["id"])
 
     @app.post("/api/v1/reglas", status_code=201)
@@ -514,7 +519,8 @@ def crear_app(s: Servicios, precargar: bool = True) -> FastAPI:
     # ── ejecuciones ────────────────────────────────────────────────────────
 
     @app.get("/api/v1/ejecuciones")
-    def ejecuciones(_: Usuario = Depends(lector)):
+    def ejecuciones(_: Usuario = Depends(configurar)):
+        """El historial de corridas es del módulo Ejecuciones (solo admin)."""
         return sorted(s.fuente.ejecuciones(), key=lambda e: e["terminada_en"], reverse=True)[:100]
 
     @app.post("/api/v1/ejecuciones", status_code=202)

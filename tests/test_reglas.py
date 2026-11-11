@@ -2,9 +2,12 @@ from datetime import date
 
 import pytest
 
+from dqc.modelo import ESQUEMAS, MASTER
+from dqc.motor.motor import Motor
 from dqc.motor.puntuacion import ResultadoRegla, estado, scores
 from dqc.motor.reglas import desde_dict, validar
 from dqc.motor.sql import limite_frescura_utc
+from dqc.plataforma.local import PlataformaDuckDB
 
 BASE = {"id": "PER-VAL-09", "tabla": "persona", "dim": "validez", "umbral": 99, "sev": "MEDIA"}
 
@@ -74,3 +77,54 @@ def test_scores_ponderados_por_severidad_e_ignoran_sin_datos():
     assert s.por_tabla["persona"] == pytest.approx(85)
     assert s.por_dimension["persona", "volumetria"] is None
     assert s.global_ == pytest.approx((85 + 50) / 2)
+
+
+# ── Reglas del Sprint 3: sí detectan el defecto aunque los datos sintéticos nunca se lo den ──────
+# Cada prueba arma a mano la tabla de MASTER en DuckDB y corre el motor con la regla del catálogo.
+
+CORTE = date(2026, 7, 1)
+
+
+def _evaluar(reglas, id_regla: str, tabla: str, filas: list[dict]) -> ResultadoRegla:
+    plataforma = PlataformaDuckDB()
+    completas = [{**{columna: None for columna, _ in ESQUEMAS[tabla]}, "fecha_corte": CORTE, **fila} for fila in filas]
+    plataforma.agregar(MASTER, tabla, completas, ESQUEMAS[tabla])
+    regla = next(r for r in reglas if r.id == id_regla)
+    return Motor(plataforma, [regla]).ejecutar(CORTE).resultados[0]
+
+
+def test_sin_uni_01_detecta_un_id_de_siniestro_repetido(reglas):
+    limpia = _evaluar(reglas, "SIN-UNI-01", "siniestro", [{"id_siniestro": i} for i in range(1, 11)])
+    assert (limpia.universo, limpia.cumplen, limpia.estado, limpia.fallidos) == (10, 10, "OK", [])
+
+    ids = [1, 2, 3, 3, 4, 5, 6, 7, 8, 9]  # el 3 llega dos veces: las dos filas fallan
+    repetida = _evaluar(reglas, "SIN-UNI-01", "siniestro", [{"id_siniestro": i} for i in ids])
+    assert (repetida.universo, repetida.cumplen, repetida.estado) == (10, 8, "FALLA")
+    assert repetida.fallidos == ["3", "3"]
+    assert repetida.severidad == "CRITICA"
+
+
+def test_pag_val_01_detecta_estados_fuera_del_dominio(reglas):
+    estados = ["PAGADO"] * 3 + ["PENDIENTE"] * 2 + ["VENCIDO"] * 2 + ["Pendiente", "ANULADO", None]
+    resultado = _evaluar(
+        reglas, "PAG-VAL-01", "pago", [{"id_pago": i, "estado": e} for i, e in enumerate(estados, start=1)]
+    )
+    assert (resultado.universo, resultado.cumplen, resultado.estado) == (10, 7, "FALLA")
+    # «Pendiente» (otra escritura), «ANULADO» (valor que no existe) y el nulo no cumplen
+    assert set(resultado.fallidos) == {"8", "9", "10"}
+
+
+def test_pag_val_01_acepta_los_tres_estados(reglas):
+    estados = ["PENDIENTE", "PAGADO", "VENCIDO"]
+    resultado = _evaluar(reglas, "PAG-VAL-01", "pago", [{"id_pago": i, "estado": e} for i, e in enumerate(estados, 1)])
+    assert (resultado.universo, resultado.cumplen, resultado.estado) == (3, 3, "OK")
+
+
+def test_per_val_06_detecta_tipos_de_documento_fuera_del_dominio(reglas):
+    tipos = ["DNI"] * 4 + ["CE"] * 2 + ["RUC"] * 2 + ["dni", "PAS"]
+    resultado = _evaluar(
+        reglas, "PER-VAL-06", "persona", [{"id_persona": i, "tipo_documento": t} for i, t in enumerate(tipos, start=1)]
+    )
+    assert (resultado.universo, resultado.cumplen, resultado.estado) == (10, 8, "FALLA")
+    # «dni» en minúsculas y «PAS» no cumplen: PER-VAL-01, 02 y 04 se los saltarían sin verlos
+    assert set(resultado.fallidos) == {"9", "10"}

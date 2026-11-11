@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 
 from dqc.modelo import BUSINESS, ENGINE, ESQUEMAS, ESQUEMAS_ENGINE, MASTER, RAW
@@ -41,25 +42,33 @@ def preparar_almacen(plataforma) -> None:
         plataforma.crear_vista(BUSINESS, nombre, sql)
 
 
+def _publicar_tabla(plataforma, c, corte: date, primero: bool) -> None:
+    if not primero:
+        plataforma.quitar_corte(BUSINESS, f"p_{c.tabla}", corte)
+    if not c.certificado:
+        return
+    plataforma.materializar(
+        f"SELECT * FROM {MASTER}.{c.tabla} WHERE fecha_corte = {fecha(corte)}",
+        BUSINESS, f"p_{c.tabla}", corte, primero,
+    )
+    plataforma.crear_vista(
+        BUSINESS,
+        f"v_{c.tabla}",
+        f"SELECT * FROM {BUSINESS}.p_{c.tabla} "
+        f"WHERE fecha_corte = (SELECT MAX(fecha_corte) FROM {BUSINESS}.p_{c.tabla})",
+    )
+    c.publicado = True
+
+
 def publicar(plataforma, certificaciones, corte: date, primero: bool) -> None:
     """Copia a BUSINESS cada tabla certificada en el corte; las demás no se exponen.
 
     Si el corte ya estaba publicado (una reevaluación), primero se quita: así una tabla que
     deja de estar certificada sale de BUSINESS, y en el sandbox el corte no se duplica.
+    Cada tabla se publica por separado y en paralelo: en BigQuery cada una son varios trabajos
+    de segundos, y en DuckDB la plataforma serializa las llamadas con su candado.
     """
-    for c in certificaciones:
-        if not primero:
-            plataforma.quitar_corte(BUSINESS, f"p_{c.tabla}", corte)
-        if not c.certificado:
-            continue
-        plataforma.materializar(
-            f"SELECT * FROM {MASTER}.{c.tabla} WHERE fecha_corte = {fecha(corte)}",
-            BUSINESS, f"p_{c.tabla}", corte, primero,
-        )
-        plataforma.crear_vista(
-            BUSINESS,
-            f"v_{c.tabla}",
-            f"SELECT * FROM {BUSINESS}.p_{c.tabla} "
-            f"WHERE fecha_corte = (SELECT MAX(fecha_corte) FROM {BUSINESS}.p_{c.tabla})",
-        )
-        c.publicado = True
+    if not certificaciones:
+        return
+    with ThreadPoolExecutor(max_workers=len(certificaciones)) as pool:
+        list(pool.map(lambda c: _publicar_tabla(plataforma, c, corte, primero), certificaciones))  # relanza errores

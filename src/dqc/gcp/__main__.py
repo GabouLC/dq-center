@@ -10,8 +10,10 @@
       contra el manifiesto. Con --desde reanuda una carga cortada: exige que los cortes anteriores
       estén evaluados, borra todo lo de ese corte en adelante (incluidas las corridas manuales),
       sigue desde ahí y verifica solo los cortes que procesó.
-  python -m dqc.gcp ejecutar [--corte AAAA-MM-DD] [--origen programada]
-      Corre el motor sobre un corte ya cargado (por defecto, el último).
+  python -m dqc.gcp ejecutar [--corte AAAA-MM-DD | --todos] [--origen programada]
+      Corre el motor sobre un corte ya cargado (por defecto, el último). Con --todos reevalúa cada corte
+      ya evaluado, sin volver a cargar los datos: sirve después de cambiar el catálogo de reglas.
+      Cada reevaluación reemplaza la publicación de ese corte en BUSINESS.
 
 --sandbox: proyecto sin facturación (tablas agrupadas por corte en vez de particionadas).
 """
@@ -29,7 +31,7 @@ from google.cloud import bigquery, firestore
 from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import cargar_glosario
 from dqc.gcp.firestore import CONTRATOS, ConfiguracionFirestore, cargar_reglas, sembrar
-from dqc.modelo import CORTES, RAW
+from dqc.modelo import CORTES, ENGINE, RAW
 from dqc.motor.motor import Ejecucion
 from dqc.motor.puntuacion import scores
 from dqc.motor.reglas import cargar_yaml
@@ -66,10 +68,13 @@ def main() -> None:
     p.add_argument("--desde", type=date.fromisoformat, help="reanudar desde este corte (AAAA-MM-DD)")
     p = sub.add_parser("ejecutar")
     p.add_argument("--corte", type=date.fromisoformat)
+    p.add_argument("--todos", action="store_true", help="reevaluar todos los cortes ya evaluados")
     p.add_argument("--origen", default="programada")
     args = parser.parse_args()
     if not args.proyecto:
         parser.error("indica --proyecto o define DQC_PROYECTO")
+    if getattr(args, "todos", False) and args.corte:
+        parser.error("usa --corte o --todos, no los dos")
     if getattr(args, "desde", None) and args.desde not in CORTES:
         parser.error(f"--desde debe ser un corte entre {CORTES[0]} y {CORTES[-1]}")
 
@@ -104,11 +109,15 @@ def main() -> None:
     if args.comando == "ejecutar":
         contratos = {d.id: d.to_dict() for d in db.collection(CONTRATOS).stream()}
         flujo = Flujo(plataforma, {}, contratos, reglas, hilos=8)
-        corte = args.corte or plataforma.consultar(
-            f"SELECT MAX(fecha_corte) AS corte FROM {RAW}.registro_cargas WHERE estado = 'EXITOSA'"
-        )[0]["corte"]
-        e, certificaciones = flujo.evaluar(corte, origen=args.origen)
-        _imprimir(e, "  " + ", ".join(f"{c.tabla} {c.estado}" for c in certificaciones))
+        if args.todos:
+            cortes = sorted(f["corte"] for f in plataforma.consultar(f"SELECT DISTINCT fecha_corte AS corte FROM {ENGINE}.ejecuciones"))
+        else:
+            cortes = [args.corte or plataforma.consultar(
+                f"SELECT MAX(fecha_corte) AS corte FROM {RAW}.registro_cargas WHERE estado = 'EXITOSA'"
+            )[0]["corte"]]
+        for corte in cortes:
+            e, certificaciones = flujo.evaluar(corte, origen=args.origen)
+            _imprimir(e, "  " + ", ".join(f"{c.tabla} {c.estado}" for c in certificaciones))
         return
 
     if args.desde is None:

@@ -25,12 +25,16 @@ terminos:
      definicion: "Evento cubierto por una póliza que el asegurado reporta para recibir una indemnización. Debe ocurrir dentro de la vigencia."}
   - {id: cuota, termino: Cuota, dominio: Póliza, campos: [pago.nro_cuota, pago.fecha_vencimiento],
      definicion: "Cada una de las partes en que se fracciona el pago de la prima. Una cuota impaga pasa a VENCIDO después de su vencimiento."}
+  - {id: estado-cuota, termino: Estado de la cuota, dominio: Póliza, campos: [pago.estado],
+     definicion: "Situación de pago de una cuota. PENDIENTE: aún no se paga y todavía no vence. PAGADO: ya se pagó y tiene fecha de pago. VENCIDO: no se pagó y su fecha de vencimiento ya pasó. Una cuota PENDIENTE con el vencimiento anterior a la fecha de corte es un error: debería figurar como VENCIDO."}
   - {id: persona-natural, termino: Persona natural, dominio: Persona, campos: [persona.tipo_documento],
      definicion: "Cliente individual, identificado con DNI o carné de extranjería."}
   - {id: persona-juridica, termino: Persona jurídica, dominio: Persona, sinonimos: [Empresa], campos: [persona.razon_social],
      definicion: "Empresa cliente, identificada con RUC y razón social."}
   - {id: dni, termino: DNI, dominio: Persona, sinonimos: [Documento Nacional de Identidad], campos: [persona.nro_documento],
      definicion: "Documento de identidad peruano de 8 dígitos. Los ceros iniciales son parte del número. Es un dato Sensible cifrado."}
+  - {id: ce, termino: Carné de extranjería, dominio: Persona, sinonimos: [CE, Carnet de extranjería], campos: [persona.tipo_documento, persona.nro_documento],
+     definicion: "Documento de identidad de las personas extranjeras que residen en el Perú. En los datos es el tipo de documento CE y, igual que el DNI, identifica a una persona natural. Su número es un dato Sensible cifrado."}
   - {id: ruc, termino: RUC, dominio: Persona, sinonimos: [Registro Único de Contribuyentes], campos: [persona.nro_documento],
      definicion: "Número tributario de 11 dígitos; las empresas empiezan con 20."}
   - {id: ubigeo, termino: Ubigeo, dominio: Persona, campos: [persona.ubigeo, ref_ubigeo.ubigeo],
