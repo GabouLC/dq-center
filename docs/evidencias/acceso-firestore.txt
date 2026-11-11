@@ -1,0 +1,20 @@
+Acceso (HU-13) contra Firestore real · proyecto dq-center-gabou · 2026-11-11 19:46 UTC
+Autenticador de la API con PBKDF2 de 600 000 iteraciones y dos instancias con memoria propia.
+Resultado: 14 de 14 comprobaciones correctas.
+
+OK     La contraseña temporal entra y obliga a cambiarla
+OK     Cambiar la contraseña cierra la sesión anterior
+OK     Otra instancia acepta la contraseña nueva al instante
+OK     Otra instancia rechaza la temporal vieja al instante
+OK     Restablecer la contraseña vale al instante en otra instancia
+OK     5 intentos fallidos dan 5 veces 401 · [401, 401, 401, 401, 401]
+OK     El sexto intento, aunque sea con la clave correcta, da 423
+OK     El bloqueo quedó guardado en Firestore y otra instancia lo respeta
+OK     La contraseña temporal desbloquea la cuenta
+OK     20 intentos en paralelo no pasan del límite · 5 con 401 y 15 con 423
+OK     La cuenta queda bloqueada tras los intentos en paralelo
+OK     Un correo que no existe se bloquea igual que uno que existe: el bloqueo no revela cuentas · [401, 401, 401, 401, 401, 423]
+OK     Quitar el acceso cierra la sesión en otra instancia al instante
+OK     Inicios, intentos fallidos, bloqueos y cambios quedan en la auditoría · 25 eventos
+
+Las cuentas de verificación y sus eventos de auditoría se borraron al terminar.
