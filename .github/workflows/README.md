@@ -4,7 +4,7 @@ Tres workflows. Cada uno corre en `ubuntu-latest` y no necesita credenciales de 
 
 | Workflow | Cuándo corre | Qué hace | Si falla |
 |---|---|---|---|
-| `ci.yml` | Push a `main` y todo PR | Dos jobs: instala el paquete y corre `pytest -q` (motor, flujo y API sobre DuckDB), y en `web/` hace `npm ci` y `npm run build` (tipos con `vue-tsc` y build de Vite) | Una prueba o el build se rompió: el cambio no está listo. Se arregla en el PR. |
+| `ci.yml` | Push a `main` y todo PR | Tres jobs: instala el paquete y corre `pytest -q` (motor, flujo y API sobre DuckDB); en `web/` hace `npm ci` y `npm run build` (tipos con `vue-tsc` y build de Vite); y levanta la API y el portal sobre datos reducidos para correr `scripts/verificar_portal.py` con Playwright (roles, teclado, contraste y móvil; unos 8 a 10 minutos) | Una prueba, el build o una comprobación del navegador se rompió: el cambio no está listo. Si falla el e2e, el job sube la carpeta `e2e-portal` con el resultado y las capturas de lo que falló. |
 | `codeql.yml` | PR a `main`, push a `main`, lunes 06:00 UTC y a mano | Análisis estático (SAST) del código propio en Python y en JavaScript/TypeScript. Sube los hallazgos a Security > Code scanning | CodeQL encontró un problema de seguridad nuevo en el código del PR (inyección, uso inseguro de datos, etc.). Revisa la alerta, corrige y no la cierres como falso positivo sin explicarlo. |
 | `secret-scan.yml` | PR, push a `main`, lunes 07:00 UTC y a mano | gitleaks busca claves, tokens, llaves privadas y cadenas de conexión. En PR y push mira los commits nuevos; la corrida semanal y la manual revisan todo el historial. Reglas y excepciones en `.gitleaks.toml` | Hay algo con forma de credencial. Si es real, **rótala** (genera otra y revoca la vieja): borrarla del archivo no basta, queda en el historial. Si es un falso positivo, se explica en `.gitleaks.toml`, no se ignora el archivo entero. |
 
@@ -16,6 +16,7 @@ Son los nombres de los jobs, tal como los muestra GitHub en el PR:
 |---|---|
 | `Motor, flujo y API (pytest)` | `ci.yml` |
 | `Portal (tipos y build)` | `ci.yml` |
+| `Portal e2e (Playwright)` | `ci.yml` |
 | `Analizar (python)` | `codeql.yml` |
 | `Analizar (javascript-typescript)` | `codeql.yml` |
 | `Gitleaks (secretos)` | `secret-scan.yml` |
