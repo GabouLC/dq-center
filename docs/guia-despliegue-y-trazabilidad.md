@@ -6,7 +6,7 @@ Esta guía responde tres preguntas:
 2. ¿Qué hace cada parte del proyecto cuando se despliega?
 3. ¿Dónde y cómo se cumple cada historia de usuario (HU-01 a HU-15)?
 
-**Verificada el 27 de octubre de 2026** sobre `main` (commit `9f90c6a`): 127 pruebas en verde, el
+**Actualizada el 11 de noviembre de 2026**, al cerrar el Sprint 3: {{PRUEBAS}} pruebas en verde, el
 build del portal sin errores, y cada prueba, captura y archivo que se cita aquí existe en el
 repositorio. Las referencias apuntan a archivos y funciones, no a números de línea, que cambian
 con cada pull request.
@@ -23,7 +23,7 @@ Esta guía explica qué pasa por dentro en cada paso.
 5. [API, portal y roles](#5-api-portal-y-roles)
 6. [Dónde y cómo se cumple cada HU](#6-dónde-y-cómo-se-cumple-cada-hu)
 7. [Desviaciones respecto del documento del curso](#7-desviaciones-respecto-del-documento-del-curso)
-8. [Qué falta para cerrar el Sprint 3](#8-qué-falta-para-cerrar-el-sprint-3)
+8. [Estado del Sprint 3 y lo que queda](#8-estado-del-sprint-3-y-lo-que-queda)
 
 ---
 
@@ -47,7 +47,7 @@ flowchart LR
 | 1 | Generación | `dqc.datagen` crea los CSV sintéticos de 7 fuentes para 92 días (1 de julio a 30 de septiembre de 2026), el calendario de entregas y un manifiesto con los errores que siembra a propósito | `data/landing/`, `data/landing/entregas.json`, `data/manifiesto_errores.parquet` | Insumo (ADR 0009, 0012) |
 | 2 | Ingesta | Cada archivo se valida. Si está bien, entra a RAW tal cual llegó; si no, se rechaza con su motivo | `dq_raw.<fuente>`, `dq_raw.registro_cargas` | HU-01 |
 | 3 | Homologación y cifrado | Se renombran columnas y se convierten tipos según `homologacion.yaml`. La PII se cifra según la clasificación DAC del contrato | `dq_master.<tabla>`, `dq_master.incidencias_homologacion` | HU-14, HU-05, HU-06 |
-| 4 | Motor de reglas | Corre 48 reglas como SQL: N1 (completitud, unicidad, validez), N2 (consistencia, integridad) y N3 (oportunidad, volumetría). La PII se descifra solo dentro de la consulta | `dq_engine.resultados`, `fallidos`, `esquemas` | HU-02, HU-03 |
+| 4 | Motor de reglas | Corre 51 evaluaciones (39 reglas, 3 de ellas para todas las tablas) como SQL: N1 (completitud, unicidad, validez), N2 (consistencia, integridad) y N3 (oportunidad, volumetría). La PII se descifra solo dentro de la consulta | `dq_engine.resultados`, `fallidos`, `esquemas` | HU-02, HU-03 |
 | 5 | Revisión de privacidad | Busca campos sin cifrar, PII en claro y columnas sin clasificar | `dq_engine.hallazgos_privacidad` | HU-07 |
 | 6 | Certificación | Da un veredicto por tabla y corte, con un sello de trazabilidad | `dq_engine.certificaciones` | HU-04, HU-07 |
 | 7 | Publicación | Solo lo certificado pasa a negocio | `dq_business.p_<tabla>` y `dq_business.v_<tabla>` | HU-08 |
@@ -141,7 +141,8 @@ py -3.12 -m venv .venv
     glosario y las cuentas demo tomados de `config/*.yaml`, y `data/secreto_sesiones` para
     firmar las sesiones.
   - Lee **solo** las vistas `dq_business.v_calidad_*` (`api/datos.py`, `FuenteBusiness`), con
-    una caché de 10 minutos y precarga al arrancar (HU-08, HU-15).
+    una caché de 10 minutos y precarga al arrancar (HU-08, HU-15). Al vencer la caché se responde con lo último
+    leído y una sola petición renueva en segundo plano; un corte nuevo sí espera datos nuevos.
   - Arranca el simulador en vivo (`api/vivo.py`): llega un archivo cada 20 segundos. Cuando el
     día está completo, se homologa, se evalúa y se publica, y el portal se actualiza solo (HU-09).
     Los 30 archivos tardan unos 10 minutos.
@@ -179,9 +180,10 @@ cd web; npm run build
 - **Qué hace por dentro:** las pruebas generan sus propios datos a escala reducida (22 días) y
   recorren todo el flujo en DuckDB con el mismo SQL que en BigQuery (ADR 0010). El build revisa
   los tipos (`vue-tsc`) y arma el portal.
-- **Resultado al 27/10/2026:** `127 passed` y `✓ built`.
+- **Resultado al 11/11/2026:** `{{PRUEBAS}} passed` y `✓ built`.
 - **CI:** `.github/workflows/ci.yml` corre estas dos verificaciones en cada pull request y en cada
-  push a `main`. No despliega nada ni toca GCP.
+  push a `main`, más las pruebas e2e del portal con Playwright (`scripts/verificar_portal.py`).
+  CodeQL y gitleaks corren aparte (ADR 0017). Nada despliega ni toca GCP.
 
 ---
 
@@ -206,9 +208,11 @@ Hace falta tener `data/` generado con `dqc.datagen` (sección 2, paso 2) y acces
 | 2 | `python -m dqc.gcp sembrar --admin <correo>` | `gcp/firestore.py` (`sembrar`) carga la configuración en Firestore. Sin `--reemplazar` no pisa lo que ya existe | Colecciones `reglas`, `contratos`, `glosario`, `usuarios` y `credenciales`. Imprime la contraseña temporal del admin. `auditoria` aparece con el primer evento | HU-03, HU-05, HU-10, HU-13 |
 | 3 | `python -m dqc.gcp simular` | Borra las tablas de las capas, sin tocar las llaves, y procesa los 92 cortes con el mismo flujo de la sección 2, en 8 hilos, verificando contra el manifiesto. Las reglas salen de Firestore (o del YAML con `--reglas-yaml`) | Las mismas tablas y vistas que en local, ahora en BigQuery. Tarda unas 9 horas | HU-01 a HU-08, HU-14 |
 | 4 | `python -m dqc.gcp simular --desde 2026-09-08` | Si la carga se cortó, quita los cortes desde esa fecha y sigue desde ahí (ADR 0014) | Completa lo que faltaba | — |
-| 5 | `python -m dqc.gcp ejecutar` | Reevalúa el último corte con las reglas y contratos de Firestore | Una corrida nueva en `dq_engine` | HU-04 |
-| 6 | `python scripts/evidencia_bigquery.py` | **Solo lee.** Hace un dry run, se detiene si la consulta pasaría de 1 GB y compara fila por fila con `data/dq_completo.duckdb` | `docs/evidencias/bigquery.txt` (última corrida: 83,4 MB leídos y 0 diferencias) | Evidencia de todas |
+| 5 | `python -m dqc.gcp ejecutar` (o `ejecutar --todos`) | Reevalúa el último corte, o todos los que ya están en `dq_engine.ejecuciones`, con las reglas y contratos de Firestore. Sirve para aplicar un catálogo nuevo sin recargar los datos | Una corrida nueva por corte en `dq_engine` | HU-04 |
+| 6 | `python scripts/evidencia_bigquery.py` | **Solo lee.** Hace un dry run, se detiene si la consulta pasaría de 1 GB y compara fila por fila con `data/dq_completo.duckdb` | `docs/evidencias/bigquery.txt` (última corrida: {{BQMB}} leídos y 0 diferencias) | Evidencia de todas |
 | 7 | `$env:DQC_MODO = "gcp"; $env:DQC_SECRETO = "<secreto>"; python -m dqc.api` | La API lee BigQuery y Firestore. Las cuentas demo quedan apagadas | — | HU-09 a HU-13, HU-15 |
+| 8 | `python scripts/verificar_acceso_firestore.py` | Prueba el inicio de sesión, el bloqueo, la contraseña temporal y el registro de accesos contra Firestore real. Crea cuentas `verificacion-hu13-*` y las borra al terminar | `docs/evidencias/acceso-firestore.txt` (14 de 14 comprobaciones) | HU-13 |
+| 9 | `python scripts/medir_rendimiento.py --modo gcp --caducidad` | Mide las 11 secciones con la API sobre BigQuery, en frío, bajo carga y con la caché vencida. Antes estima lo que va a leer y se detiene si pasa de 1 GB. Crea un administrador temporal en Firestore y lo borra | `docs/evidencias/rendimiento-bigquery.txt` | HU-15 |
 
 **Límites de seguridad:** cada consulta tiene un tope de 2 GB y nadie escribe en `dq_seguridad`
 salvo `preparar`.
@@ -230,8 +234,8 @@ estima USD 0 a 1 al mes con Cloud Run desplegado; es una estimación del plan, n
 |---|---|---|---|---|---|
 | `config/homologacion.yaml` | Mapea las columnas de cada una de las 7 fuentes al modelo estándar | — | RAW → MASTER | HU-14 | 0006 |
 | `config/contratos.yaml` | Declara el tipo, la clasificación DAC y el modo de cifrado de cada campo | — | MASTER | HU-05, HU-06 | 0006 |
-| `config/reglas_iniciales.yaml` | Catálogo de 36 reglas: 3 aplican a todas las tablas y se multiplican por 5, así que se evalúan 48 | — | MASTER | HU-02, HU-03 | 0004 |
-| `config/glosario.yaml` | 40 términos de negocio con su dominio | — | — | HU-10 | — |
+| `config/reglas_iniciales.yaml` | Catálogo de 39 reglas: 3 aplican a todas las tablas y se multiplican por 5, así que se evalúan 51 | — | MASTER | HU-02, HU-03 | 0004 |
+| `config/glosario.yaml` | 42 términos de negocio con su dominio | — | — | HU-10 | — |
 | `src/dqc/modelo.py` | Nombres de capas, esquemas, niveles por dimensión, severidades que bloquean y categorías DAC | — | todas | todas | 0012 |
 | `src/dqc/datagen` | Generador de la aseguradora ficticia y de los errores sembrados | semilla → CSV y manifiesto | aterrizaje | insumo | 0009, 0012 |
 | `src/dqc/pipeline/ingesta.py` | Valida cada CSV (UTF-8, encabezado, número de campos) | CSV → RAW o rechazo | RAW | HU-01 | 0006 |
@@ -246,13 +250,17 @@ estima USD 0 a 1 al mes con Cloud Run desplegado; es una estimación del plan, n
 | `web/` | Portal Vue 3 + TypeScript + Pinia | API → pantallas | — | HU-09 a HU-13, HU-15 | 0005 |
 | `scripts/evidencia_bigquery.py` | Evidencia y paridad entre BigQuery y DuckDB | BigQuery → `bigquery.txt` | — | evidencia | 0010 |
 | `scripts/capturas_portal.py` | Regenera las capturas con su propia API y su propio portal (puertos 8001 y 5174) | → `docs/evidencias/portal/` | — | evidencia | — |
-| `scripts/jira_sync.py` | Sincroniza el Jira del curso; sin `--aplicar` solo muestra lo que haría | — | — | seguimiento | — |
+| `scripts/verificar_acceso_firestore.py` | Prueba el acceso contra Firestore real y deja el resultado | Firestore → `acceso-firestore.txt` | — | HU-13 | 0011, 0016 |
+| `scripts/medir_rendimiento.py` | Mide las 11 secciones: en frío, en caliente, bajo carga y con la caché vencida | API → `rendimiento.txt` o `rendimiento-bigquery.txt` | — | HU-15 | — |
+| `scripts/verificar_portal.py` | Pruebas e2e con Playwright: roles, teclado, accesibilidad y contraste en claro y oscuro | portal → `accesibilidad-y-e2e.txt` y `portal/oscuro/` | — | HU-09, HU-13 | 0017 |
+| `.github/workflows/` | CI (pruebas, build y e2e), CodeQL y gitleaks; Dependabot, plantilla de PR y CODEOWNERS en `.github/` | — | — | — | 0017 |
+| `scripts/jira_sync.py` | Sincroniza el Jira del curso; sin `--aplicar` solo muestra lo que haría. No toca los estados ni los responsables que puso el equipo | — | — | seguimiento | — |
 
 ---
 
 ## 5. API, portal y roles
 
-### Roles (ADR 0011)
+### Roles (ADR 0011 y 0016)
 
 | Rol | Permisos | Qué ve |
 |---|---|---|
@@ -301,20 +309,20 @@ formal la da el Product Owner en la revisión del sprint.
 | HU | Título | Sprint | Issue | Criterios | Prueba principal |
 |---|---|---|---|---|---|
 | HU-01 | Ingestar datos sintéticos en RAW | 1 | cerrado | 4/4 | `tests/test_flujo.py::test_lo_rechazado_no_llega_a_raw_y_queda_registrado` |
-| HU-02 | Validaciones de calidad N1 | 1 | cerrado | 4/4 | `tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel` |
+| HU-02 | Validaciones de calidad N1 | 1 | cerrado | 4/4 | `tests/test_motor.py::test_cada_corte_evalua_las_51_reglas_con_su_nivel` |
 | HU-03 | Reglas de calidad N2 | 2 | cerrado | 4/4 | `tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean` |
 | HU-04 | Certificar la calidad | 2 | cerrado | 4/4 (c con una salvedad) | `tests/test_certificacion.py::test_matriz_de_certificacion` |
 | HU-05 | Clasificar según la taxonomía DAC | 1 | cerrado | 4/4 | `tests/test_flujo.py::test_dni_nombres_y_correo_son_sensibles_cifrados` |
 | HU-06 | Cifrar los datos sensibles | 1 | cerrado | 3/4 y 1 desviación documentada | `tests/test_flujo.py::test_ningun_campo_pii_queda_en_texto_plano_en_master` |
 | HU-07 | Quality & Privacy Gate | 2 | cerrado | 4/4 | `tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien` |
 | HU-08 | Publicar lo certificado en BUSINESS | 2 | cerrado | 4/4 (d con un matiz) | `tests/test_certificacion.py::test_business_solo_tiene_cortes_certificados` |
-| HU-09 | Visualizar el estado de calidad | 3 | abierto | 4/4 | `tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion` |
-| HU-10 | Consultar el glosario | 3 | abierto | 4/4 | `tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio` |
-| HU-11 | Consultar el linaje | 3 | abierto | 4/4 y 1 refinamiento pendiente | `tests/test_api.py::test_linaje_de_persona_de_raw_a_business` |
-| HU-12 | Certificación integral del dato | 3 | abierto | 4/4 y 1 refinamiento pendiente | `tests/test_api.py::test_certificacion_integral_del_dia_de_la_fuga` |
-| HU-13 | Acceso a datos sensibles por roles | 3 | abierto | 3/4 y 1 parcial | `tests/test_api.py::test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno` |
+| HU-09 | Visualizar el estado de calidad | 3 | cerrado | 4/4 | `tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion` |
+| HU-10 | Consultar el glosario | 3 | cerrado | 4/4 | `tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio` |
+| HU-11 | Consultar el linaje | 3 | cerrado | 4/4 y el refinamiento del Sprint 2 | `tests/test_api.py::test_linaje_de_persona_de_raw_a_business` |
+| HU-12 | Certificación integral del dato | 3 | cerrado | 4/4 y el refinamiento del Sprint 2 | `tests/test_api.py::test_certificacion_integral_del_dia_de_la_fuga` |
+| HU-13 | Acceso a datos sensibles por roles | 3 | cerrado | 4/4 (el primero con roles de la aplicación, ADR 0016) | `tests/test_api.py::test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno` |
 | HU-14 | Homologar hacia MASTER | 1 | cerrado | 4/4 | `tests/test_flujo.py::test_los_registros_no_homologables_quedan_fuera_de_master` |
-| HU-15 | Tiempo de carga del portal | 3 | abierto | 1/4 y 3 parciales | `tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos` |
+| HU-15 | Tiempo de carga del portal | 3 | cerrado | 4/4 | `tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos` |
 
 Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipeline-local.txt`, en
 `docs/evidencias/`.
@@ -332,7 +340,7 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) Se ejecutan las pruebas N1 | `motor/motor.py` (`Motor.ejecutar`); `modelo.py` (`NIVEL_POR_DIMENSION`) | Un SQL por regla de completitud, unicidad o validez, sobre cada corte | `tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel` | `bigquery.txt` (19 reglas N1 por corte) | Cumplido. Corre sobre MASTER, no sobre RAW como dice el issue, porque así lo piden HU-14 c) y el ADR 0006 |
+| a) Se ejecutan las pruebas N1 | `motor/motor.py` (`Motor.ejecutar`); `modelo.py` (`NIVEL_POR_DIMENSION`) | Un SQL por regla de completitud, unicidad o validez, sobre cada corte | `tests/test_motor.py::test_cada_corte_evalua_las_51_reglas_con_su_nivel` | `bigquery.txt` (22 reglas N1 por corte; eran 19 hasta el Sprint 2) | Cumplido. Corre sobre MASTER, no sobre RAW como dice el issue, porque así lo piden HU-14 c) y el ADR 0006 |
 | b) Lo que cumple queda en PASS | `motor/puntuacion.py` (`estado`) | La regla queda en OK (PASS) si alcanza su umbral | `tests/test_reglas.py::test_estado_segun_umbral` | `hu02-hu03-validaciones-14-julio.png` | Cumplido. PASS y FAIL son por regla, no por registro |
 | c) Lo que no cumple queda en FAIL con su observación | `motor/motor.py` | Guarda cada llave que falla en `dq_engine.fallidos` y una muestra de hasta 20 filas | `tests/test_motor.py::test_muestras_traen_la_fila_sin_exponer_pii`; `tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado` | `hu13-validaciones-gobierno.png` | Cumplido. ALERTA y FALLA cuentan como FAIL |
 | d) Queda el estado de cada regla | `motor/motor.py` → `dq_engine.resultados` | Una fila por regla y corte, con universo, cumplimiento y estado | `tests/test_motor.py::test_hay_reglas_en_ok_alerta_y_falla` | `pipeline-local.txt` | Cumplido |
@@ -341,7 +349,7 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) El motor evalúa las reglas N2 configuradas | `modelo.py`; `config/reglas_iniciales.yaml`; `motor/reglas.py` (`validar`); pantalla Reglas | 14 reglas de consistencia e integridad. Se crean o editan sin tocar código, y el SQL se prueba (dry run) antes de guardar | `tests/test_motor.py::test_catalogo_tiene_36_reglas_y_48_expandidas`; `tests/test_api.py::test_admin_cambia_un_umbral_y_queda_auditado`; `tests/test_api.py::test_una_regla_invalida_o_con_sql_roto_no_se_guarda` | `hu03-reglas-configurables.png` | Cumplido |
+| a) El motor evalúa las reglas N2 configuradas | `modelo.py`; `config/reglas_iniciales.yaml`; `motor/reglas.py` (`validar`); pantalla Reglas | 14 reglas de consistencia e integridad. Se crean o editan sin tocar código, y el SQL se prueba (dry run) antes de guardar | `tests/test_motor.py::test_catalogo_tiene_39_reglas_y_51_expandidas`; `tests/test_api.py::test_admin_cambia_un_umbral_y_queda_auditado`; `tests/test_api.py::test_una_regla_invalida_o_con_sql_roto_no_se_guarda` | `hu03-reglas-configurables.png` | Cumplido |
 | b) Si cumple, PASS | `motor/puntuacion.py` (`estado`) | Igual que HU-02 b) | `tests/test_reglas.py::test_estado_segun_umbral` | `hu02-hu03-validaciones-14-julio.png` | Cumplido |
 | c) Si no cumple, FAIL con observación | `motor/motor.py` | Igual que HU-02 c) | `tests/test_motor.py::test_hay_reglas_en_ok_alerta_y_falla` | `pipeline-local.txt` | Cumplido |
 | d) Se ven las reglas que impiden certificar | `motor/certificacion.py` (`reglas_bloqueantes`); pantalla Certificación | Una regla CRÍTICA o ALTA en FALLA queda listada como bloqueante | `tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean` | `hu04-hu12-certificacion-30-septiembre.png` | Cumplido |
@@ -378,7 +386,7 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) El Gate valida calidad y privacidad en MASTER | `Flujo.evaluar` (motor, `revisar` y `certificar`); `pipeline/privacidad.py` (`revisar`) | Hay tres hallazgos de privacidad: dos bloquean y uno es observación | `tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien`; `tests/test_certificacion.py::test_columna_nueva_sin_clasificar_es_observacion` | `bigquery.txt` | Cumplido |
+| a) El Gate valida calidad y privacidad en MASTER | `Flujo.evaluar` (motor, `revisar` y `certificar`); `pipeline/privacidad.py` (`revisar`) | Hay tres hallazgos de privacidad: dos bloquean y uno es observación | `tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien`; `tests/test_certificacion.py::test_columna_nueva_sin_clasificar_es_observacion`; `tests/test_certificacion.py::test_un_campo_que_debe_ir_cifrado_y_se_guardo_como_texto_bloquea` (el hallazgo `CAMPO_SIN_CIFRAR`) | `bigquery.txt` | Cumplido |
 | b) Si cumple, queda habilitado para BUSINESS | `motor/certificacion.py`; `pipeline/publicacion.py` | Todo lo que no es NO_CERTIFICADO se publica | `tests/test_certificacion.py::test_cada_certificacion_lleva_su_sello` | `bigquery.txt` | Cumplido |
 | c) Si falla una validación obligatoria, no se certifica | `motor/certificacion.py` | Un hallazgo bloqueante deja NO_CERTIFICADO aunque la calidad esté bien | `tests/test_certificacion.py::test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien` | `hu04-hu07-hu12-certificacion-7-agosto.png` | Cumplido |
 | d) Queda evidencia | `dq_engine.certificaciones` y `hallazgos_privacidad` | — | `tests/test_certificacion.py::test_cada_certificacion_lleva_su_sello`; `tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado` | `bigquery.txt` | Cumplido |
@@ -400,12 +408,13 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 | b) Se identifican las reglas en PASS | `Resumen.vue`; `componentes/EstadoChip.vue` («Cumple»); filtro en Validaciones | — | `tests/test_api.py::test_resumen_muestra_tendencia_pass_y_certificacion` | `hu09-resumen.png` | Cumplido |
 | c) Se identifican las reglas en FAIL | `EstadoChip.vue`; la API ordena primero las fallas | — | `tests/test_api.py::test_validaciones_de_un_corte_empiezan_por_las_fallas`; `tests/test_api.py::test_comparar_cortes_muestra_primero_lo_que_empeoro` | `hu02-hu03-validaciones-14-julio.png` | Cumplido |
 | d) Tras una ejecución nueva, se actualiza | La API invalida su caché; `web/src/stores/vivo.ts` consulta cada 4 s | — | `tests/test_api.py::test_admin_lanza_una_corrida_y_aparece_en_el_portal`; `tests/test_vivo.py::test_el_dia_siguiente_llega_archivo_por_archivo` | `hu09-actividad-en-vivo.png`; `hu09-panel-en-vivo.png` | Cumplido en la API. La recarga en el navegador no tiene prueba automática |
+| Tarea del Sprint 3: teclado, lector de pantalla y tema oscuro | `web/src/estilos.css`; vistas de `web/src/vistas/` | Foco visible, contraste AA en claro y oscuro, mapa de días y diálogos navegables con teclado | `scripts/verificar_portal.py` (Playwright; corre en el CI como «Portal e2e»). No está en `tests/` | `docs/evidencias/accesibilidad-y-e2e.txt`; `portal/oscuro/` | Cumplido |
 
 ### HU-10 · Consultar el glosario de negocio
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) Se ven los términos | `config/glosario.yaml` (40 términos); `GET /api/v1/glosario`; `vistas/Glosario.vue` | — | `tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio` | `hu10-glosario-busqueda.png` | Cumplido |
+| a) Se ven los términos | `config/glosario.yaml` (42 términos); `GET /api/v1/glosario`; `vistas/Glosario.vue` | — | `tests/test_api.py::test_glosario_busca_sin_tildes_y_filtra_por_dominio` | `hu10-glosario-busqueda.png` | Cumplido |
 | b) Al elegir un término se ve su definición | `GET /api/v1/glosario/{id}`; `Glosario.vue` | — | La misma prueba (indirecta) | `hu10-glosario-busqueda.png` | Cumplido |
 | c) La búsqueda muestra coincidencias | `api/vistas.py` | Busca sin distinguir tildes ni mayúsculas, también en sinónimos y definiciones | La misma prueba | `hu10-glosario-busqueda.png` | Cumplido |
 | d) Se ve el dominio de cada término | `api/vistas.py`; `Glosario.vue` (con enlace al linaje de los campos) | — | La misma prueba | — | Cumplido |
@@ -418,7 +427,7 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 | b) Se ve el paso de RAW a MASTER | `api/vistas.py` | Columna de la fuente → campo de MASTER (por ejemplo, `NUM_DOC` → `nro_documento`) | La misma prueba | `hu06-hu11-linaje-campo-cifrado.png` | Cumplido |
 | c) Si está certificado, se ve su exposición en BUSINESS | `api/vistas.py`; `Linaje.vue` | Muestra los cortes publicados y los retenidos | La misma prueba | `hu11-linaje.png` | Cumplido |
 | d) Se ven las transformaciones | `api/vistas.py` | Renombrar, convertir tipo y cifrar | La misma prueba | `hu06-hu11-linaje-campo-cifrado.png` | Cumplido |
-| Refinamiento del Sprint 2: el motivo de cada día no publicado | — | Hoy solo se muestran las fechas retenidas | — | — | **Pendiente** |
+| Refinamiento del Sprint 2: el motivo de cada día no publicado | `api/vistas.py` (`motivos_de_retencion`); `Linaje.vue` | Cada día retenido dice por qué: la regla que lo bloqueó o el hallazgo de privacidad | `tests/test_api.py::test_linaje_de_persona_dice_por_que_se_retuvo_cada_dia`; `tests/test_api.py::test_linaje_de_siniestro_explica_la_fuga_de_datos_personales` | `portal/oscuro/linaje.png` | Cumplido |
 
 ### HU-12 · Consultar la certificación integral del dato
 
@@ -428,17 +437,17 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 | b) Con reglas fallidas, «no certificado» y sus observaciones | `api/vistas.py`; `Certificacion.vue` | — | La misma prueba (caso de fuga de PII); `tests/test_certificacion.py::test_la_certificacion_dice_que_reglas_la_bloquean` | `hu04-hu12-certificacion-30-septiembre.png` | Cumplido |
 | c) Se verifica que la PII está protegida | `api/vistas.py` (`campos_cifrados`) | Un campo cuenta como protegido si está guardado en BYTES | La misma prueba | `hu04-hu07-hu12-certificacion-7-agosto.png` | Cumplido |
 | d) Se llega al linaje y a los resultados de calidad | `Certificacion.vue` (enlace «Ver su linaje» y calidad por nivel en la ficha) | — | La misma prueba | Las mismas capturas | Cumplido |
-| Refinamiento del Sprint 2: el último corte certificado que ve negocio | — | No implementado | — | — | **Pendiente** |
+| Refinamiento del Sprint 2: el último corte certificado que ve negocio | `api/vistas.py` (`ultimo_certificado`); `Certificacion.vue` | La ficha de una tabla retenida dice «Negocio sigue viendo el …» | `tests/test_api.py::test_cada_tabla_retenida_dice_que_dia_sigue_viendo_negocio` | `portal/oscuro/certificacion.png` | Cumplido |
 
 ### HU-13 · Controlar el acceso a datos sensibles mediante roles (IAM)
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) Un campo Sensible se asocia a un rol autorizado | DAC en `config/contratos.yaml`; permiso `ver_sensibles` en `api/app.py`; roles en `api/configuracion.py` y Firestore | La asociación es por categoría DAC, con roles de la aplicación | `tests/test_api.py::test_cada_rol_ve_solo_sus_modulos` | `hu13-usuarios.png` | **Parcial:** son roles de la aplicación, no IAM de GCP (no hay ACL por dataset ni etiquetas de política por columna), y ningún ADR lo registra |
+| a) Un campo Sensible se asocia a un rol autorizado | DAC en `config/contratos.yaml`; permiso `ver_sensibles` en `api/app.py`; roles en `api/configuracion.py` y Firestore | La asociación es por categoría DAC, con roles de la aplicación | `tests/test_api.py::test_cada_rol_ve_solo_sus_modulos` | `hu13-usuarios.png` | Cumplido con un ajuste que registra el [ADR 0016](adr/0016-roles-de-la-aplicacion.md): son roles de la aplicación, no IAM de GCP (no hay ACL por dataset ni etiquetas de política por columna) |
 | b) Con el rol autorizado se ve el campo | `api/vistas.py` (`enmascarar`) | Gobierno y admin ven lo SENSIBLE; lo SENSIBLE_CIFRADO no lo ve nadie | `tests/test_api.py::test_campos_sensibles_ocultos_para_el_lector_y_visibles_para_gobierno` | `hu13-validaciones-gobierno.png` | Cumplido |
-| c) Sin el rol se restringe | Lo mismo, más 403 por sección y la guarda de `web/src/router.ts` | — | La misma prueba; `tests/test_api.py::test_incidencias_ocultan_los_valores_sensibles_al_lector`; `tests/test_api.py::test_un_lector_no_puede_administrar` | `hu13-validaciones-lector.png` | Cumplido |
+| c) Sin el rol se restringe | Lo mismo, más 403 por sección y la guarda de `web/src/router.ts` | — | La misma prueba; `tests/test_api.py::test_incidencias_ocultan_los_valores_sensibles_al_lector`; `tests/test_api.py::test_un_lector_no_puede_administrar`; `tests/test_api.py::test_reglas_y_ejecuciones_solo_se_leen_con_permiso_de_configurar` | `hu13-validaciones-lector.png` | Cumplido |
 | d) El acceso denegado queda auditado | `api/app.py` (`ACCESO_DENEGADO`, `ACCESO_RESTRINGIDO`); pantalla Auditoría | — | `tests/test_api.py::test_un_lector_no_puede_administrar`; `tests/test_api.py::test_cuenta_sin_rol_responde_403_y_queda_auditada` | `hu13-auditoria-acceso-denegado.png` | Cumplido |
-| Refinamiento: inicio de sesión, bloqueo y contraseña temporal (ADR 0011) | `api/autenticacion.py`; `Entrar.vue`, `CambiarClave.vue`, `Usuarios.vue` | — | `tests/test_autenticacion.py`; `tests/test_api.py::test_la_contrasena_temporal_sin_cambiar_queda_auditada` | `hu13-login.png` | Cumplido en local; falta probarlo contra Firestore |
+| Refinamiento: inicio de sesión, bloqueo y contraseña temporal (ADR 0011) | `api/autenticacion.py`; `Entrar.vue`, `CambiarClave.vue`, `Usuarios.vue` | — | `tests/test_autenticacion.py`; `tests/test_api.py::test_la_contrasena_temporal_sin_cambiar_queda_auditada` | `hu13-login.png`; `acceso-firestore.txt` | Cumplido, también contra Firestore real: 14 de 14 comprobaciones (`scripts/verificar_acceso_firestore.py`) |
 
 ### HU-14 · Homologar el modelo de datos hacia la capa MASTER
 
@@ -446,17 +455,17 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 |---|---|---|---|---|---|
 | a) RAW se transforma al modelo de MASTER | `config/homologacion.yaml`; `pipeline/homologacion.py` (`sql_homologacion`); `Flujo.homologar` | Genera el SQL por fuente y corte a partir del YAML, y convierte tipos sin corregir valores | `tests/test_flujo.py::test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos` | `hu14-fuentes-poliza-estructura.png` | Cumplido |
 | b) Se unifican los nombres distintos | `config/homologacion.yaml` | Por ejemplo, `NUM_DOC` → `nro_documento` | `tests/test_flujo.py::test_master_usa_los_nombres_estandar` | `hu11-linaje.png` | Cumplido |
-| c) Lo homologado queda disponible para N1 y N2 | `motor/sql.py` (MASTER es el dataset del motor); `procesar_corte` homologa y después evalúa | — | `tests/test_motor.py::test_cada_corte_evalua_las_48_reglas_con_su_nivel` | `bigquery.txt` | Cumplido |
+| c) Lo homologado queda disponible para N1 y N2 | `motor/sql.py` (MASTER es el dataset del motor); `procesar_corte` homologa y después evalúa | — | `tests/test_motor.py::test_cada_corte_evalua_las_51_reglas_con_su_nivel` | `bigquery.txt` | Cumplido |
 | d) Lo no homologable va a incidencias y queda fuera de MASTER | `pipeline/homologacion.py`; `dq_master.incidencias_homologacion` | — | `tests/test_flujo.py::test_los_registros_no_homologables_quedan_fuera_de_master`; `tests/test_flujo.py::test_cada_etapa_detecta_exactamente_lo_sembrado` | `bigquery.txt` | Cumplido |
 
 ### HU-15 · Garantizar el tiempo de carga del portal
 
 | Criterio | Dónde | Cómo | Prueba | Evidencia | Estado |
 |---|---|---|---|---|---|
-| a) Cada sección responde en 8 s o menos | `api/app.py` (middleware con `Server-Timing`); `api/datos.py` (caché y lectura en paralelo) | Mide el tiempo del servidor, no la carga completa en el navegador | `tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos` (8 rutas) | `docs/evidencias/pruebas.txt` | **Parcial:** solo se mide en DuckDB con 22 días; faltan algunas rutas (reglas, ejecuciones, usuarios, auditoría, comparar y fallidos) y la medición en el navegador |
-| b) El dashboard carga dentro del límite | `/api/v1/resumen` | — | La misma prueba | — | **Parcial:** falta medirlo sobre BigQuery |
+| a) Cada sección responde en 8 s o menos | `api/app.py` (middleware con `Server-Timing`); `api/datos.py` (caché y lectura en paralelo) | Mide el tiempo del servidor, no la carga completa en el navegador | `tests/test_api.py::test_cada_seccion_responde_en_menos_de_8_segundos` (12 rutas: las 11 secciones); `tests/test_api.py::test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas`; `tests/test_api.py::test_al_vencer_la_cache_nadie_espera_y_la_renovacion_corre_aparte` | `docs/evidencias/rendimiento.txt` | Cumplido en la API, en frío y bajo carga. No mide la descarga del JavaScript ni el dibujo en el navegador |
+| b) El dashboard carga dentro del límite | `/api/v1/resumen` | — | La misma prueba | `docs/evidencias/rendimiento-bigquery.txt` | Cumplido sobre BigQuery (sandbox, 92 cortes) |
 | c) Una carga lenta queda registrada | `api/app.py` (`RENDIMIENTO_LENTO` en la auditoría) | — | `tests/test_api.py::test_una_solicitud_lenta_queda_registrada_en_la_auditoria` | `hu13-hu15-auditoria.png` | Cumplido (del lado del servidor) |
-| d) Las pruebas de rendimiento verifican el indicador | La misma prueba | — | La misma prueba | — | **Parcial:** faltan los tiempos medidos sobre BigQuery en la evidencia |
+| d) Las pruebas de rendimiento verifican el indicador | `scripts/medir_rendimiento.py` | — | `tests/test_rendimiento.py` (veredicto, percentiles y plan de peticiones) | `rendimiento.txt`; `rendimiento-bigquery.txt` | Cumplido: cada informe termina con «N de 11 secciones por debajo de 8 s» |
 
 ---
 
@@ -476,31 +485,21 @@ Las capturas citadas están en `docs/evidencias/portal/`; `bigquery.txt` y `pipe
 | Pruebas | — | DuckDB con el mismo SQL y un manifiesto de errores sembrados | 0010 |
 | Autenticación | Firebase con Google | Correo y contraseña propios; Google queda como opción | 0011 |
 | Indicador | Puntaje ponderado | El % de reglas en PASS es el indicador principal | 0015 |
-| Roles e IAM (HU-13) | Roles o grupos de IAM | Roles de la aplicación (admin, gobierno, lector) | **Falta un ADR** |
+| Roles e IAM (HU-13) | Roles o grupos de IAM | Roles de la aplicación (admin, gobierno, lector) | 0016 |
+| Controles del repositorio | — | CodeQL, gitleaks, Dependabot, protección de `main` y pruebas e2e | 0017 |
 
 ---
 
-## 8. Qué falta para cerrar el Sprint 3
+## 8. Estado del Sprint 3 y lo que queda
 
-Revisión del sprint: 2 de noviembre de 2026. El detalle de tareas está en
-[sprints/sprint-3.md](sprints/sprint-3.md).
+El Sprint 3 se cerró el 11 de noviembre de 2026, nueve días después de la fecha prevista (2 de
+noviembre). Las seis historias cumplen sus criterios; la revisión y la retrospectiva están
+reconstruidas y así lo dicen. El detalle está en [sprints/sprint-3.md](sprints/sprint-3.md).
 
-| HU | Qué falta |
-|---|---|
-| HU-09 | Recorrer Resumen y Validaciones con teclado y lector de pantalla, y revisar el tema oscuro |
-| HU-10 | Agregar los términos «Carné de extranjería» y «Estado de la cuota» al glosario |
-| HU-11 | Mostrar el motivo de cada día no publicado |
-| HU-12 | Mostrar el último corte certificado cuando una tabla no se publica |
-| HU-13 | Probar el inicio de sesión, el bloqueo y el cambio de contraseña contra Firestore; registrar en un ADR que se usan roles de la aplicación en lugar de IAM de GCP |
-| HU-15 | Medir cada sección con la API sobre BigQuery, dejar los tiempos en la evidencia y sumar a la prueba las rutas que faltan |
-| Todas | Aceptación del Product Owner en la revisión |
-
-**Puntos de atención técnicos:**
-
-- **Reglas pendientes:** SIN-UNI-01, PAG-VAL-01 y PER-VAL-06 están propuestas en
-  [auditoria-reglas.md](auditoria-reglas.md), pero no en `config/reglas_iniciales.yaml`. Al
-  agregarlas hay que actualizar las pruebas que esperan 36 y 48 reglas, y la versión del catálogo
-  en los sellos va a cambiar.
-- **Banda de ALERTA (HU-04 c):** una regla CRÍTICA con umbral 100 puede quedar en ALERTA hasta el
-  98 % sin bloquear la certificación. Decisión pendiente del PO.
-- **Prueba faltante (HU-07):** ninguna prueba hace saltar el hallazgo `CAMPO_SIN_CIFRAR`.
+| Qué queda | Quién decide | Por qué |
+|---|---|---|
+| Publicar API y portal en Cloud Run | Gabriel León (PO) | Depende de la facturación de GCP, que no se pudo activar (ADR 0008) |
+| Banda de ALERTA de las reglas CRÍTICAS | Gabriel León (PO) | Una regla CRÍTICA con umbral 100 puede quedar en ALERTA hasta el 98 % sin bloquear la certificación. Cambiarla cambiaría sellos ya aceptados ([auditoria-reglas.md](auditoria-reglas.md)) |
+| Una segunda persona que revise cada pull request | El equipo | Hoy la protección de `main` exige el CI en verde pero 0 aprobaciones (ADR 0017) |
+| Volver a cargar los 92 cortes antes de una demostración posterior a mediados de diciembre | Gabriel León (PO) | Las tablas del sandbox de BigQuery vencen a los 60 días |
+| HU-10 en el Jira del equipo | Franco Delgado | Sigue «En revisión» allí aunque cumple sus criterios en el repositorio |

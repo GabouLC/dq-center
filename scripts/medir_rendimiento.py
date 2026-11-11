@@ -394,8 +394,8 @@ def informe(m: Medicion, meta: Meta) -> tuple[str, int]:
         "- Una sola máquina: el cliente de medición y la API comparten CPU, y cualquier otro proceso en marcha suma ruido.",
         "- «Justo» se parece a «frío» cuando el precargado de las vistas ya terminó al llegar la primera petición, como pasa con",
         "  DuckDB (el inicio de sesión tarda más que el precargado). Con la caché vacía de verdad (un arranque lento sobre BigQuery",
-        "  o la caché vencida a los 10 minutos) cada petición que lee las vistas las relee completas, una tras otra: FuenteBusiness no",
-        "  comparte una sola relectura entre peticiones.",
+        "  o la caché vencida a los 10 minutos), FuenteBusiness lee las vistas una sola vez: al vencer los 10 minutos las peticiones",
+        "  reciben lo último leído y una renueva en segundo plano; con datos nuevos (un corte publicado) esperan esa lectura.",
         "- La caché vencida " + (
             "se midió con --caducidad: es la fila «Caché vencida» de arriba."
             if m.caducidad else "no se midió en esta corrida (opción --caducidad, espera 10 minutos)."

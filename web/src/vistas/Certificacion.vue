@@ -194,8 +194,9 @@ const LECTURA: Clave[] = [
 .bloque { display: grid; gap: 9px; align-content: start; }
 .bloque + .bloque { padding-left: 22px; border-left: 1px solid var(--linea); }
 .bloque h3 { gap: 7px; }
-.bien { color: var(--bien); }
-.critico { color: var(--critico); }
+/* Solo los íconos: un chip ya trae su propio color de texto (con el contraste de --bien-texto y --critico-texto). */
+.bien:not(.chip) { color: var(--bien); }
+.critico:not(.chip) { color: var(--critico); }
 .sello-c { color: var(--sello); }
 .marca-c { color: var(--marca); }
 .nivel { display: grid; grid-template-columns: 28px 1fr; gap: 2px 8px; align-items: center; font-size: 13px; }

@@ -219,6 +219,48 @@ def test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas():
     assert len(consultas) == 14
 
 
+def test_al_vencer_la_cache_nadie_espera_y_la_renovacion_corre_aparte():
+    """HU-15 sobre BigQuery: al vencer los 10 minutos, 10 usuarios a la vez esperaban 8,6 s."""
+    version = {"n": 0}
+
+    class Cambia:
+        def consultar(self, sql):
+            time.sleep(0.3)  # lo que tarda BigQuery
+            return [{"v": version["n"]}]
+
+    fuente = FuenteBusiness(Cambia(), vigencia=0.05)
+    fuente.precargar()
+    version["n"] = 1
+    time.sleep(0.1)  # la caché venció
+
+    inicio = time.perf_counter()
+    assert fuente.ejecuciones() == [{"v": 0}]  # responde con lo último leído
+    assert time.perf_counter() - inicio < 0.15  # sin esperar la lectura de 0,3 s
+
+    limite = time.monotonic() + 5
+    while fuente.ejecuciones() != [{"v": 1}] and time.monotonic() < limite:
+        time.sleep(0.05)
+    assert fuente.ejecuciones() == [{"v": 1}]  # la renovación terminó y dejó los datos nuevos
+
+
+def test_un_corte_nuevo_si_obliga_a_esperar_datos_nuevos():
+    """Invalidar (se publicó un corte) no puede servir el corte anterior como si fuera el último."""
+    version = {"n": 0}
+
+    class Cambia:
+        def consultar(self, sql):
+            time.sleep(0.3)
+            return [{"v": version["n"]}]
+
+    fuente = FuenteBusiness(Cambia())
+    fuente.precargar()
+    version["n"] = 1
+    fuente.invalidar()
+    inicio = time.perf_counter()
+    assert fuente.ejecuciones() == [{"v": 1}]
+    assert time.perf_counter() - inicio >= 0.25  # esperó la lectura nueva
+
+
 def test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente():
     """Si el corte se publica mientras se lee, la caché no se da por buena durante 10 minutos."""
     consultas = []

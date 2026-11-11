@@ -1,0 +1,198 @@
+Smart-DQ · Verificación del portal: accesibilidad, teclado, tema oscuro, móvil y pruebas e2e de humo
+Fecha: 2026-11-11 16:07
+Navegador: Chromium 156.0.8078.4 (Playwright 1.64.0) · sin ventana
+Base: copia de data\dq_completo.duckdb · día de datos: 2026-08-07 · API 8002, portal 5182
+Modo: completo (con capturas oscuras a 1440 px)
+Duración: 288 s
+
+TABLA DE COMPROBACIONES
+-----------------------
+  Comprobación                      Resultado Detalle
+a Inicio de sesión                  PASS      carga, error genérico único (2 casos) y entrada correcta
+b Roles y permisos                  PASS      lector 7, gobierno 7, admin 11; /usuarios cerrado al lector; API 403 a lector
+c Resumen                           PASS      h1, lectura rápida, 5 sellos y deslizador con flechas
+d Teclado y foco                    PASS      13 pantallas × 20 Tab, saltar al contenido, Esc en recorrido y detalle, mapa de días
+e Nombres accesibles                PASS      13 pantallas: nombres, alt, ids, h1/main
+f Contraste WCAG                    PASS      5424 textos en 13 pantallas × 2 temas: 4466 cumplen, 0 fallan, 958 indeterminados
+g Móvil 390 px sin desborde         PASS      13 pantallas × 2 temas a 390 px
+h Movimiento reducido               PASS      13 pantallas + recorrido + detalle con prefers-reduced-motion
+i Consola, excepciones y 4xx/5xx    PASS      0 inesperados; 4 descartados a propósito (401 de (a))
+
+DETALLE
+-------
+(a) Inicio de sesión: PASS
+    [PASS] la página de inicio de sesión carga -> título de pestaña: 'Iniciar sesión · Smart-DQ'
+    [PASS] tiene los campos de correo y contraseña
+    [PASS] con clave equivocada sale UN solo mensaje -> mensajes: ['Correo o contraseña incorrectos']
+    [PASS] el mensaje es genérico (no dice cuál de los dos falló)
+    [PASS] una cuenta que no existe recibe exactamente el mismo mensaje -> ['Correo o contraseña incorrectos']
+    [PASS] tras el error se queda en /entrar -> http://127.0.0.1:5182/entrar
+    [PASS] con la clave correcta entra al Resumen -> http://127.0.0.1:5182/resumen
+    [PASS] al entrar ya no queda ningún mensaje de error
+
+(b) Roles y permisos: PASS
+    [PASS] lector: el menú tiene 7 secciones -> 7: Resumen, Validaciones, Certificación, Fuentes, Contrato de datos, Linaje, Glosario
+    [PASS] lector: no ve el grupo «Administración» -> grupos: ['Calidad del día', 'Origen y gobierno']
+    [PASS] gobierno: el menú tiene 7 secciones -> 7: Resumen, Validaciones, Certificación, Fuentes, Contrato de datos, Linaje, Glosario
+    [PASS] gobierno: no ve el grupo «Administración» -> grupos: ['Calidad del día', 'Origen y gobierno']
+    [PASS] admin: el menú tiene 11 secciones -> 11: Resumen, Validaciones, Certificación, Fuentes, Contrato de datos, Linaje, Glosario, Reglas, Ejecuciones, Usuarios y roles, Auditoría
+    [PASS] admin: ve el grupo «Administración» -> grupos: ['Calidad del día', 'Origen y gobierno', 'Administración']
+    [PASS] un lector que abre /usuarios es llevado a otra sección -> /resumen
+    [PASS] no aparece el título «Usuarios»
+    [PASS] no aparece nada de administración (ni «Dar acceso» ni el grupo del menú)
+    [PASS] la API responde 403 a un lector en /api/v1/reglas -> respondió 403
+    [PASS] y 200 al administrador en /api/v1/reglas (control) -> respondió 200
+    [PASS] sin sesión tampoco entra a /api/v1/reglas -> respondió 401
+    [PASS] la API responde 403 a un lector en /api/v1/admin/usuarios -> respondió 403
+    [PASS] y 200 al administrador en /api/v1/admin/usuarios (control) -> respondió 200
+    [PASS] sin sesión tampoco entra a /api/v1/admin/usuarios -> respondió 401
+    nota: los 403 de la API se piden con urllib (fuera del navegador): no entran en la comprobación (i)
+
+(c) Resumen: PASS
+    [PASS] el único h1 es «Resumen» -> ['Resumen']
+    [PASS] se ve la «Lectura rápida»
+    [PASS] hay 5 sellos (uno por tabla) -> 5: ['Persona: Con observaciones', 'Póliza: Con observaciones', 'Vehículo: Con observaciones', 'Siniestro: No certificada', 'Pago: Con observaciones']
+    [PASS] hay un deslizador «Día de datos»
+    [PASS] ArrowLeft retrocede un día -> 37 -> 36; «vie, 7 ago. 2026 · puntaje 99.5 % · 1 no certificada» -> «jue, 6 ago. 2026 · puntaje 99.5 %»
+    [PASS] ArrowRight vuelve al día de partida -> 36 -> 37
+
+(d) Teclado y foco: PASS
+    [PASS] el recorrido guiado no se abre solo en un navegador automatizado (navigator.webdriver)
+    [PASS] al abrir el recorrido el foco entra en el diálogo
+    [PASS] el foco no se escapa del recorrido con Tab (diálogo modal)
+    [PASS] Esc cierra el recorrido guiado
+    [PASS] y el foco vuelve al botón que lo abrió -> foco en: 'boton-recorrido'
+    [PASS] mapa de días: una sola parada de Tab por fila -> paradas por fila: [1, 1, 1, 1, 1]
+    [PASS] mapa de días: las flechas mueven el foco entre días -> 'Persona, vie, 7 ago. 2026: Con observaciones, puntaje de calidad 98.7 %' -> 'Persona, jue, 6 ago. 2026: Con observaciones, puntaje de calidad 98.7 %' -> 'Persona, vie, 7 ago. 2026: Con observaciones, puntaje de calidad 98.7 %'
+    [PASS] Validaciones tiene reglas con botón de detalle
+    [PASS] al abrir el detalle el foco entra en el diálogo
+    [PASS] el foco no se escapa del detalle con Tab (diálogo modal)
+    [PASS] Esc cierra el detalle de la regla
+    [PASS] y el foco vuelve a la regla que lo abrió
+    [PASS] «Saltar al contenido» es el primer Tab (12/12: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave)
+    [PASS] foco visible (outline, box-shadow o borde, propio o del contenedor) en los primeros 20 Tab (13/13: resumen (20 paradas), validaciones (20 paradas), certificacion (20 paradas), fuentes (20 paradas), contratos (20 paradas), linaje (20 paradas), glosario (20 paradas), reglas (20 paradas), ejecuciones (19 paradas), usuarios (20 paradas), auditoria (20 paradas), clave (20 paradas), entrar (17 paradas))
+    [PASS] sin trampas de foco: cada Tab avanza y no se cierra en un ciclo corto (13/13: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar)
+    [PASS] Mayús+Tab vuelve por el mismo camino (11/11: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, usuarios, auditoria, clave)
+    [PASS] «Saltar al contenido» (Enter) lleva el foco a <main> (12/12: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave)
+    [PASS] el siguiente Tab cae dentro del contenido, no vuelve al menú (12/12: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave)
+
+(e) Nombres accesibles: PASS
+    [PASS] todo botón, enlace, campo, control e imagen expuesto tiene nombre accesible (13/13: resumen (509 controles), validaciones (87 controles), certificacion (485 controles), fuentes (24 controles), contratos (41 controles), linaje (42 controles), glosario (102 controles), reglas (143 controles), ejecuciones (19 controles), usuarios (27 controles), auditoria (22 controles), clave (24 controles), entrar (6 controles))
+    [PASS] toda img tiene alt (13/13: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar)
+    [PASS] sin ids duplicados (13/13: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar)
+    [PASS] un h1 y un main (13/13: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar)
+    [PASS] idioma (es), título de pestaña y viewport (13/13: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar)
+
+(f) Contraste WCAG: PASS
+    [PASS] contraste de todo el texto medido ≥ mínimo (4,5:1; 3:1 desde 24 px o 19 px en negrita) (26/26: resumen/claro (116 textos +55 indeterminados), validaciones/claro (446 textos +26 indeterminados), certificacion/claro (64 textos +155 indeterminados), fuentes/claro (198 textos +27 indeterminados), contratos/claro (175 textos +24 indeterminados), linaje/claro (196 textos +24 indeterminados), glosario/claro (60 textos +25 indeterminados), reglas/claro (294 textos +25 indeterminados), ejecuciones/claro (564 textos +25 indeterminados), usuarios/claro (41 textos +25 indeterminados), auditoria/claro (58 textos +24 indeterminados), clave/claro (10 textos +23 indeterminados), entrar/claro (11 textos +21 indeterminados), resumen/oscuro (116 textos +55 indeterminados), validaciones/oscuro (446 textos +26 indeterminados), certificacion/oscuro (64 textos +155 indeterminados), fuentes/oscuro (198 textos +27 indeterminados), contratos/oscuro (175 textos +24 indeterminados), linaje/oscuro (196 textos +24 indeterminados), glosario/oscuro (60 textos +25 indeterminados), reglas/oscuro (294 textos +25 indeterminados), ejecuciones/oscuro (564 textos +25 indeterminados), usuarios/oscuro (41 textos +25 indeterminados), auditoria/oscuro (58 textos +24 indeterminados), clave/oscuro (10 textos +23 indeterminados), entrar/oscuro (11 textos +21 indeterminados))
+
+(g) Móvil 390 px sin desborde: PASS
+    [PASS] sin desborde horizontal a 390 px (scrollWidth ≤ clientWidth) (26/26: resumen/claro, validaciones/claro, certificacion/claro, fuentes/claro, contratos/claro, linaje/claro, glosario/claro, reglas/claro, ejecuciones/claro, usuarios/claro, auditoria/claro, clave/claro, entrar/claro, resumen/oscuro, validaciones/oscuro, certificacion/oscuro, fuentes/oscuro, contratos/oscuro, linaje/oscuro, glosario/oscuro, reglas/oscuro, ejecuciones/oscuro, usuarios/oscuro, auditoria/oscuro, clave/oscuro, entrar/oscuro)
+
+(h) Movimiento reducido: PASS
+    [PASS] control: sin la preferencia, el Resumen sí tiene animaciones al entrar -> 13 animaciones vistas
+    [PASS] sin animaciones en curso (salvo «En vivo») con prefers-reduced-motion: reduce (15/15: resumen, validaciones, certificacion, fuentes, contratos, linaje, glosario, reglas, ejecuciones, usuarios, auditoria, clave, entrar, resumen con el recorrido en su último paso, validaciones con el detalle abierto)
+
+(i) Consola, excepciones y 4xx/5xx: PASS
+    [PASS] sin errores de consola
+    [PASS] sin excepciones de página
+    [PASS] sin respuestas 4xx/5xx ni peticiones fallidas inesperadas
+    nota: descartado a propósito: POST /api/v1/auth/sesion 401 ((a) clave equivocada a propósito) ×2
+    nota: descartado a propósito: consola /api/v1/auth/sesion ((a) clave equivocada a propósito) ×2
+
+CONTRASTE INDETERMINADO (fondo con degradado o imagen; no cuenta como fallo)
+----------------------------------------------------------------------
+- [claro] fondo con degradado o imagen en aside.lateral > nav > div.grupo-nav > a.router-link-active: 1 textos en linaje (1). Muestreo de píxeles: peor razón 11,17:1 (mín. 4,50:1) en linaje: div.grupo-nav > a.router-link-active > span.textos > span «Linaje» (14px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en aside.lateral > nav > div.grupo-nav > a.router-link-active: 1 textos en linaje (1). Muestreo de píxeles: peor razón 13,34:1 (mín. 4,50:1) en linaje: div.grupo-nav > a.router-link-active > span.textos > span «Linaje» (14px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en aside.lateral > nav > div.grupo-nav > a.router-link-active.router-link-exact-active: 10 textos en resumen (1), validaciones (1), certificacion (1), fuentes (1), contratos (1), glosario (1), reglas (1), ejecuciones (1), usuarios (1), auditoria (1). Muestreo de píxeles: peor razón 9,62:1 (mín. 4,50:1) en resumen: div.grupo-nav > a.router-link-active.router-link-exact-active > span.textos > span «Resumen» (14px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en aside.lateral > nav > div.grupo-nav > a.router-link-active.router-link-exact-active: 10 textos en resumen (1), validaciones (1), certificacion (1), fuentes (1), contratos (1), glosario (1), reglas (1), ejecuciones (1), usuarios (1), auditoria (1). Muestreo de píxeles: peor razón 11,60:1 (mín. 4,50:1) en resumen: div.grupo-nav > a.router-link-active.router-link-exact-active > span.textos > span «Resumen» (14px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div#app > div.marco: 32 textos en resumen (4), validaciones (4), certificacion (4), fuentes (2), contratos (2), linaje (2), glosario (2), reglas (2), ejecuciones (2), usuarios (2), auditoria (2), clave (4). Muestreo de píxeles: peor razón 5,24:1 (mín. 4,50:1) en resumen: header.barra-superior > div.linea > div.elegido > span.detalle «puntaje 99.5 %» (12px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div#app > div.marco: 32 textos en resumen (4), validaciones (4), certificacion (4), fuentes (2), contratos (2), linaje (2), glosario (2), reglas (2), ejecuciones (2), usuarios (2), auditoria (2), clave (4). Muestreo de píxeles: peor razón 5,74:1 (mín. 4,50:1) en resumen: header.barra-superior > div.linea > div.elegido > span.detalle «puntaje 99.5 %» (12px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div#app > div.marco > aside.lateral: 205 textos en resumen (17), validaciones (17), certificacion (17), fuentes (17), contratos (17), linaje (17), glosario (17), reglas (17), ejecuciones (17), usuarios (17), auditoria (17), clave (18). Muestreo de píxeles: peor razón 4,91:1 (mín. 4,50:1) en resumen: span#grupo-dia «Calidad del día» (11.5px/700). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div#app > div.marco > aside.lateral: 205 textos en resumen (17), validaciones (17), certificacion (17), fuentes (17), contratos (17), linaje (17), glosario (17), reglas (17), ejecuciones (17), usuarios (17), auditoria (17), clave (18). Muestreo de píxeles: peor razón 5,88:1 (mín. 4,50:1) en resumen: span#grupo-dia «Calidad del día» (11.5px/700). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div#app > main.entrada > section.presentacion: 20 textos en entrar (20). Muestreo de píxeles: peor razón 7,28:1 (mín. 4,50:1) en entrar: div.escena > ol.estaciones > li.business > span.que «Solo lo certificado llega a negocio» (11.5px/400). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div#app > main.entrada > section.presentacion: 20 textos en entrar (20). Muestreo de píxeles: peor razón 7,66:1 (mín. 4,50:1) en entrar: div.escena > ol.estaciones > li.business > span.que «Solo lo certificado llega a negocio» (11.5px/400). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div.pila > header.cabeza.grupo-admin > div.acciones > button.primario: 1 textos en reglas (1). Muestreo de píxeles: peor razón 4,55:1 (mín. 4,50:1) en reglas: div.pila > header.cabeza.grupo-admin > div.acciones > button.primario «Nueva regla» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div.pila > header.cabeza.grupo-admin > div.acciones > button.primario: 1 textos en reglas (1). Muestreo de píxeles: peor razón 6,69:1 (mín. 4,50:1) en reglas: div.pila > header.cabeza.grupo-admin > div.acciones > button.primario «Nueva regla» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div.pila > header.cabeza.grupo-origen > div.acciones > button.primario: 1 textos en glosario (1). Muestreo de píxeles: peor razón 4,55:1 (mín. 4,50:1) en glosario: div.pila > header.cabeza.grupo-origen > div.acciones > button.primario «Nuevo término» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div.pila > header.cabeza.grupo-origen > div.acciones > button.primario: 1 textos en glosario (1). Muestreo de píxeles: peor razón 6,70:1 (mín. 4,50:1) en glosario: div.pila > header.cabeza.grupo-origen > div.acciones > button.primario «Nuevo término» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en div.pila > section.panel > form.fila.alta > button.primario: 1 textos en usuarios (1). Muestreo de píxeles: peor razón 4,55:1 (mín. 4,50:1) en usuarios: div.pila > section.panel > form.fila.alta > button.primario «Dar acceso» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en div.pila > section.panel > form.fila.alta > button.primario: 1 textos en usuarios (1). Muestreo de píxeles: peor razón 6,70:1 (mín. 4,50:1) en usuarios: div.pila > section.panel > form.fila.alta > button.primario «Dar acceso» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en header.barra-superior > div.fila.acciones > div.usuario > span.avatar: 12 textos en resumen (1), validaciones (1), certificacion (1), fuentes (1), contratos (1), linaje (1), glosario (1), reglas (1), ejecuciones (1), usuarios (1), auditoria (1), clave (1). Muestreo de píxeles: peor razón 10,26:1 (mín. 4,50:1) en resumen: header.barra-superior > div.fila.acciones > div.usuario > span.avatar «AD» (12.5px/800). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en header.barra-superior > div.fila.acciones > div.usuario > span.avatar: 12 textos en resumen (1), validaciones (1), certificacion (1), fuentes (1), contratos (1), linaje (1), glosario (1), reglas (1), ejecuciones (1), usuarios (1), auditoria (1), clave (1). Muestreo de píxeles: peor razón 11,59:1 (mín. 4,50:1) en resumen: header.barra-superior > div.fila.acciones > div.usuario > span.avatar «AD» (12.5px/800). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > article.panel.ficha: 129 textos en certificacion (129). Muestreo de píxeles: peor razón 4,99:1 (mín. 4,50:1) en certificacion: article.panel.ficha > figure.sello > figcaption > span.tenue «Dominio Póliza» (12.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > article.panel.ficha: 129 textos en certificacion (129). Muestreo de píxeles: peor razón 5,13:1 (mín. 4,50:1) en certificacion: article.panel.ficha > figure.sello > figcaption > span.tenue «Dominio Persona» (12.5px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > section.hero: 29 textos en resumen (29). Muestreo de píxeles: peor razón 5,35:1 (mín. 4,50:1) en resumen: a.sin-subrayado.aviso > figure.sello > figcaption > span.leyenda.aviso «Con observaciones» (12.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > section.hero: 29 textos en resumen (29). Muestreo de píxeles: peor razón 5,89:1 (mín. 4,50:1) en resumen: a.sin-subrayado.aviso > figure.sello > figcaption > span.leyenda.aviso «Con observaciones» (12.5px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > section.panel.resumen-fuente: 3 textos en fuentes (3). Muestreo de píxeles: peor razón 4,97:1 (mín. 4,50:1) en fuentes: div.pila.escalonado > section.panel.resumen-fuente > div > p.tenue.pequeno «Dueño: Lucía Paredes (Gestión de Cliente» (12.5px/400). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > div.pila.escalonado > section.panel.resumen-fuente: 3 textos en fuentes (3). Muestreo de píxeles: peor razón 5,26:1 (mín. 4,50:1) en fuentes: div.pila.escalonado > section.panel.resumen-fuente > div > p.tenue.pequeno «Dueño: Lucía Paredes (Gestión de Cliente» (12.5px/400). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-admin: 12 textos en reglas (3), ejecuciones (3), usuarios (3), auditoria (3). Muestreo de píxeles: peor razón 6,01:1 (mín. 4,50:1) en auditoria: div.pila > header.cabeza.grupo-admin > div.texto > p.subtitulo «Quién cambió qué y cuándo, accesos deneg» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-admin: 12 textos en reglas (3), ejecuciones (3), usuarios (3), auditoria (3). Muestreo de píxeles: peor razón 8,02:1 (mín. 4,50:1) en reglas: div.pila > header.cabeza.grupo-admin > div.texto > p.subtitulo «El catálogo de calidad, editable sin toc» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-dia: 9 textos en resumen (3), validaciones (3), certificacion (3). Muestreo de píxeles: peor razón 6,03:1 (mín. 4,50:1) en certificacion: div.pila > header.cabeza.grupo-dia > div.texto > p.subtitulo «Cada día, el control de calidad y privac» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-dia: 9 textos en resumen (3), validaciones (3), certificacion (3). Muestreo de píxeles: peor razón 7,82:1 (mín. 4,50:1) en certificacion: div.pila > header.cabeza.grupo-dia > div.texto > p.subtitulo «Cada día, el control de calidad y privac» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-origen: 12 textos en fuentes (3), contratos (3), linaje (3), glosario (3). Muestreo de píxeles: peor razón 6,06:1 (mín. 4,50:1) en linaje: div.pila > header.cabeza.grupo-origen > div.texto > p.subtitulo «De dónde viene cada dato, qué le pasa en» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main#contenido > div.pila > header.cabeza.grupo-origen: 12 textos en fuentes (3), contratos (3), linaje (3), glosario (3). Muestreo de píxeles: peor razón 7,70:1 (mín. 4,50:1) en linaje: div.pila > header.cabeza.grupo-origen > div.texto > p.subtitulo «De dónde viene cada dato, qué le pasa en» (14.5px/400). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en main.entrada > section.acceso > form.caja > button.primario.ancho: 1 textos en entrar (1). Muestreo de píxeles: peor razón 4,62:1 (mín. 4,50:1) en entrar: main.entrada > section.acceso > form.caja > button.primario.ancho «Entrar» (15px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en main.entrada > section.acceso > form.caja > button.primario.ancho: 1 textos en entrar (1). Muestreo de píxeles: peor razón 6,70:1 (mín. 4,50:1) en entrar: main.entrada > section.acceso > form.caja > button.primario.ancho «Entrar» (15px/600). Ninguno baja del mínimo por muestreo.
+- [claro] fondo con degradado o imagen en section.panel.lanzar > div.pila-chica > div.fila > button.primario: 1 textos en ejecuciones (1). Muestreo de píxeles: peor razón 4,50:1 (mín. 4,50:1) en ejecuciones: section.panel.lanzar > div.pila-chica > div.fila > button.primario «Evaluar corte» (13.5px/600). Ninguno baja del mínimo por muestreo.
+- [oscuro] fondo con degradado o imagen en section.panel.lanzar > div.pila-chica > div.fila > button.primario: 1 textos en ejecuciones (1). Muestreo de píxeles: peor razón 6,70:1 (mín. 4,50:1) en ejecuciones: section.panel.lanzar > div.pila-chica > div.fila > button.primario «Evaluar corte» (13.5px/600). Ninguno baja del mínimo por muestreo.
+
+EXCEPCIONES DOCUMENTADAS DE LAS COMPROBACIONES
+----------------------------------------------
+- (d) Foco visible: vale un outline, un box-shadow o un cambio de borde que aparezca al enfocar, en el propio elemento o en uno de sus 3 contenedores más cercanos. Motivo: los campos de búsqueda (Glosario, Linaje, Reglas) quitan el outline del input y dibujan el foco en su contenedor (.buscar:focus-within: borde de marca y anillo); la primera versión de la comprobación los daba por invisibles (falso positivo). Se lee el estilo cuando terminan las transiciones de 0,12 s del foco.
+- (f) Contraste: el rótulo curvo de los sellos (text.anillo > textPath, 8,6 px) se mide contra el disco del propio sello (--*-suave), no contra lo que haya detrás: la caja de un texto en curva cubre todo el sello y el muestreo de píxeles daba 3,4:1 por mezclar el fondo de la página.
+- (f) Contraste: no se miden los controles desactivados (:disabled, aria-disabled), el texto solo para lector de pantalla (.visualmente-oculto), lo que está fuera de la pantalla (el enlace «Saltar al contenido» hasta recibir el foco) ni lo recortado por un ancestro con overflow hidden. «¿Cómo se lee?» se abre antes de medir para que su texto también cuente.
+- (i) Consola y red: no cuentan los fallos de recursos externos (las fuentes de Google) ni el websocket de recarga en caliente de Vite (ws://…/?token=…, que solo existe en el servidor de desarrollo y en Windows puede fallar con ERR_NO_BUFFER_SPACE al abrir cientos de páginas seguidas); ambos se cuentan en las notas de (i).
+
+
+CAPTURAS EN TEMA OSCURO (1440 px, página completa salvo diálogos)
+----------------------------------------------------------
+docs/evidencias/portal/oscuro/: auditoria.png, certificacion.png, clave.png, contratos.png, ejecuciones.png, entrar.png, fuentes.png, glosario.png, linaje.png, recorrido-guiado.png, reglas.png, resumen.png, usuarios.png, validaciones-detalle.png, validaciones.png
+
+=== NOTAS (manuales) ===
+(Esta parte la escribe una persona. El script la conserva cuando vuelve a generar el archivo: todo lo que sigue a la línea de arriba.)
+
+CÓMO REPETIRLO
+  .venv/Scripts/python scripts/verificar_portal.py --arrancar                               completo: capturas oscuras y este archivo (unos 4,5 min)
+  .venv/Scripts/python scripts/verificar_portal.py --arrancar --rapido --db data/ci.duckdb    lo que corre el CI (sin capturas ni evidencia)
+  Levanta su propia API (8002) y su propio portal (5182) sobre una copia de la base; no toca data/dq*.duckdb ni data/config_local.json.
+  Pruebas de la parte pura (colores y contraste): .venv/Scripts/python -m pytest -q tests/test_verificar_portal.py
+
+DEFECTOS REALES ENCONTRADOS Y ARREGLADOS EN web/src (11-nov-2026; sin rediseño: mismos tokens, etiquetas y selectores)
+  1. web/src/vistas/Certificacion.vue y web/src/vistas/Fuentes.vue  [comprobación f, contraste]
+     Qué: `.bien { color: var(--bien) }` y `.critico { color: var(--critico) }` pasaron a `.bien:not(.chip)` y `.critico:not(.chip)`.
+     Por qué: esas reglas, pensadas para íconos, ganaban a `.chip.bien` y `.chip.critico` (mismo peso, cargadas después) y dejaban el texto de los
+     chips en el verde y el rojo vivos: «a tiempo» (Fuentes), el objeto de BUSINESS (dq_business.p_persona), «No publicada: no se certificó» y el chip
+     de un campo sin cifrar (Certificación). Medido: verde 2,95:1 en claro y 4,28:1 en oscuro; rojo 4,09:1 en claro y 3,16:1 en oscuro.
+     Ahora usan --bien-texto y --critico-texto, como el resto de los chips: 6,6:1 (claro y oscuro) en el verde y 6,4:1 y 6,7:1 en el rojo.
+  2. web/src/vistas/Glosario.vue  [f]
+     Qué: `.dominio.activo .cuenta` pasó de opacity 0.8 a 0.9.
+     Por qué: el contador del filtro activo (11,5 px, negrita) quedaba en 4,11:1 en claro (blanco al 80 % sobre --marca). Ahora 4,75:1 (oscuro: 5,6:1).
+  3. web/src/estilos.css (placeholder)  [f]
+     Qué: se agregó `::placeholder { color: var(--tenue); opacity: 1; }`.
+     Por qué: el gris por defecto del navegador (#757575) no cambia con el tema: en oscuro daba 3,71:1 sobre --superficie en Entrar, Glosario, Linaje,
+     Reglas y Usuarios. Con --tenue: 5,6:1 en oscuro y 5,4:1 en claro.
+  4. web/src/estilos.css (.tabla-envoltura)  [g, móvil]
+     Qué: se agregó `position: relative` a `.tabla-envoltura`.
+     Por qué: en Usuarios, el texto «Acciones» de la cabecera (.visualmente-oculto, position: absolute) quedaba fuera del recorte de la tabla, que no era su
+     bloque contenedor, y llegaba a 659 px: la página completa se desplazaba en horizontal a 390 px (scrollWidth 659 > 390), en claro y en oscuro.
+
+FALSOS POSITIVOS DE LAS PROPIAS COMPROBACIONES (corregidos en el script; el detalle está en «Excepciones documentadas» arriba)
+  - Foco de los campos de búsqueda: dibujan el foco en su contenedor (:focus-within), no en el input; ahora se mira también el contenedor.
+  - Rótulo curvo de los sellos (textPath): se mide contra el disco del sello; el muestreo de píxeles daba 3,4:1 por mezclar el fondo de la página.
+  - Control positivo de movimiento reducido: sin la preferencia, el Resumen sí anima al entrar (15 animaciones vistas), así que la comprobación no es vacía.
+
+LO QUE QUEDA COMO HALLAZGO (sin arreglar: haría falta rediseñar o decidirlo el equipo)
+  - Botones primarios en tema claro: en el tono más claro de su degradado el texto blanco da 4,50:1 a 4,62:1 («Evaluar corte», «Nueva regla», «Dar acceso»,
+    «Entrar»). Cumple, pero sin margen: cualquier aclarado del degradado lo haría fallar.
+  - Foco de los campos de búsqueda y del inicio de sesión: borde de marca más un anillo con --marca-suave. Es visible por el borde, pero el anillo casi no
+    se distingue (sobre todo en oscuro); un contorno de 2 px de --marca sería más claro. No se cambió para no tocar la identidad.
+  - Los 958 textos con fondo degradado se midieron por muestreo de píxeles: el peor caso es 4,50:1 (el botón de arriba) y ninguno baja del mínimo.
+
+LO QUE ESTA VERIFICACIÓN NO CUBRE (queda pendiente)
+  - Lector de pantalla real (NVDA, Narrador de Windows o VoiceOver): aquí solo se comprobó el árbol de accesibilidad de Chromium (nombre y rol de cada
+    control, imágenes, ids, un h1 y un main por pantalla). Recorrer Entrar, Cambiar contraseña, Usuarios, Resumen y Validaciones escuchando el lector es una
+    prueba manual que sigue pendiente (es la mitad «lector de pantalla» del pendiente de HU-13 y HU-09; la mitad «teclado» sí quedó probada).
+  - Contraste de íconos y bordes de controles (WCAG 1.4.11), zoom al 200 % y reflow a 320 px (solo se probó 390 px), Firefox y Safari (solo Chromium),
+    estados de error del formulario de Cambiar contraseña, hover y tooltips, y las vistas de lector y de gobierno en contraste (solo el administrador).
+  - Las capturas oscuras usan el día 2026-08-07 de la corrida completa; el CI usa una cartera al 25 % y llega hasta el 14 de julio.

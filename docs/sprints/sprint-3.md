@@ -115,8 +115,8 @@ cerraron el 11 de noviembre.
 - [x] Auditoría de accesos denegados y de campos ocultos
 - [x] Inicio de sesión con correo y contraseña, bloqueo por intentos y contraseña temporal (`src/dqc/api/autenticacion.py`, ADR 0011)
 - [x] Administración de usuarios: alta, cambio de rol, restablecer contraseña y quitar acceso
-- [x] Probar el inicio de sesión, el bloqueo y el cambio de contraseña contra Firestore (modo GCP): 14 de 14 comprobaciones, 11 de noviembre ([acceso-firestore.txt](../evidencias/acceso-firestore.txt))
-- [x] Recorrer Entrar, Cambiar contraseña y Usuarios solo con teclado y con lector de pantalla: `scripts/verificar_portal.py` con Playwright ([accesibilidad-y-e2e.txt](../evidencias/accesibilidad-y-e2e.txt))
+- [x] Probar el inicio de sesión, el bloqueo y el cambio de contraseña contra Firestore (modo GCP)
+- [x] Recorrer Entrar, Cambiar contraseña y Usuarios solo con teclado y con lector de pantalla
 
 **HU-09 · Dashboard**
 - [x] Simulación en vivo: los archivos del día llegan uno por uno, el corte se publica al completarse y el portal se actualiza solo (`src/dqc/api/vivo.py`)
@@ -125,8 +125,8 @@ cerraron el 11 de noviembre.
 - [x] Validaciones: reglas del día con las fallas primero, filtros y detalle con los registros fallidos
 - [x] Comparación entre dos días, con lo que empeoró primero
 - [x] Ejecuciones: volver a evaluar un corte desde el portal y ver su resultado
-- [x] Recorrer Resumen y Validaciones con teclado y lector de pantalla: mapa de días y diálogo de detalle ([accesibilidad-y-e2e.txt](../evidencias/accesibilidad-y-e2e.txt))
-- [x] Revisar el tema oscuro de todas las pantallas con capturas ([`docs/evidencias/portal/oscuro/`](../evidencias/portal/oscuro))
+- [x] Recorrer Resumen y Validaciones con teclado y lector de pantalla: mapa de días y diálogo de detalle
+- [x] Revisar el tema oscuro de todas las pantallas con capturas
 
 **HU-12 · Certificación integral**
 - [x] Sello por tabla con calidad por nivel, privacidad (campos cifrados y hallazgos) y trazabilidad (ejecución, versiones, objeto en BUSINESS)
@@ -139,19 +139,32 @@ cerraron el 11 de noviembre.
 - [x] En el paso a BUSINESS, el motivo de cada día que no se publicó (comentario de la revisión del Sprint 2)
 
 **HU-10 · Glosario**
-- [x] 42 términos con definición, dominio, sinónimos y campos donde aparecen (`config/glosario.yaml`)
+- [x] 40 términos con definición, dominio, sinónimos y campos donde aparecen (`config/glosario.yaml`)
 - [x] Búsqueda sin tildes ni mayúsculas, filtro por dominio y edición solo para gobierno y admin
 - [x] Términos «Carné de extranjería» y «Estado de la cuota», que usan las reglas nuevas PER-VAL-06 y PAG-VAL-01
 
 **HU-15 · Rendimiento**
 - [x] Las vistas de BUSINESS se leen en paralelo y quedan 10 minutos en memoria; se precargan al arrancar
 - [x] Cabecera `Server-Timing` en cada respuesta y auditoría de las que pasan de 8 s
-- [x] Prueba automatizada por sección del portal: las 11 (antes cubría 7)
-- [x] Medir cada sección con la API sobre BigQuery (sandbox, 92 cortes) y dejar el resultado en la evidencia ([rendimiento.txt](../evidencias/rendimiento.txt), [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt))
+- [x] Prueba automatizada por sección del portal
+- [x] Medir cada sección con la API sobre BigQuery (sandbox, 92 cortes) y dejar el resultado en la evidencia
 
 **Reglas de la auditoría DAMA**
 - [x] SIN-UNI-01 (unicidad de `id_siniestro`), PAG-VAL-01 (dominio de `estado` de la cuota) y PER-VAL-06 (dominio de `tipo_documento`) en el catálogo, con su prueba
-- [x] Actualizar el conteo de 48 a 51 evaluaciones por corte en la documentación y regenerar la evidencia (los 92 cortes, también en BigQuery)
+- [x] Actualizar el conteo de 48 a 51 evaluaciones por corte en la documentación y regenerar la evidencia
+
+Las tareas se dejan con el texto con que se crearon en Jira, para que la sincronización no las duplique.
+Lo que cerró el 11 de noviembre, con su evidencia:
+
+- Firestore: 14 de 14 comprobaciones ([acceso-firestore.txt](../evidencias/acceso-firestore.txt)).
+- Teclado, lector de pantalla (árbol de accesibilidad de Chromium) y tema oscuro: `scripts/verificar_portal.py`
+  ([accesibilidad-y-e2e.txt](../evidencias/accesibilidad-y-e2e.txt) y [`portal/oscuro/`](../evidencias/portal/oscuro)).
+- Glosario: 42 términos al sumar «Carné de extranjería» y «Estado de la cuota» a los 40 del prototipo.
+- Prueba por sección: ahora cubre las 11 (antes cubría 7), con 12 rutas.
+- Medición de HU-15: [rendimiento.txt](../evidencias/rendimiento.txt) (API local) y
+  [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt) (BigQuery).
+- Reglas: catálogo de 39 reglas y 51 evaluaciones por corte; los 92 cortes, también en BigQuery
+  ([pipeline-local.txt](../evidencias/pipeline-local.txt) y [bigquery.txt](../evidencias/bigquery.txt)).
 
 ## 3. Seguimiento · Daily Scrum
 
@@ -316,7 +329,7 @@ Las pruebas leen el glosario del modo local. En el modo GCP se siembra en Firest
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
 | Cualquier sección responde en menos de 8 segundos | `test_cada_seccion_responde_en_menos_de_8_segundos` ([test_api.py](../../tests/test_api.py)): 12 rutas que cubren las 11 secciones (las de consulta con el rol lector y las 4 de administración con el rol admin), sobre la simulación en DuckDB; `test_el_plan_tiene_las_11_secciones_en_el_orden_del_menu`, `test_cada_ruta_del_plan_existe_en_la_api` ([test_rendimiento.py](../../tests/test_rendimiento.py)) | Las 11 secciones, en frío y bajo carga: [rendimiento.txt](../evidencias/rendimiento.txt) (API local) y [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt) (BigQuery). Mide la API hasta el último byte; no incluye bajar el JavaScript ni dibujar la pantalla |
-| El dashboard muestra la información dentro del límite | `test_cada_seccion_responde_en_menos_de_8_segundos` (`/resumen` y `/validaciones`); `test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas`, `test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente` (la caché de 10 minutos) | Filas Resumen y Validaciones de [rendimiento.txt](../evidencias/rendimiento.txt) y [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt) |
+| El dashboard muestra la información dentro del límite | `test_cada_seccion_responde_en_menos_de_8_segundos` (`/resumen` y `/validaciones`); `test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas`, `test_al_vencer_la_cache_nadie_espera_y_la_renovacion_corre_aparte`, `test_un_corte_nuevo_si_obliga_a_esperar_datos_nuevos`, `test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente` (la caché de 10 minutos) | Filas Resumen y Validaciones de [rendimiento.txt](../evidencias/rendimiento.txt) y [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt) |
 | Si se supera el límite, queda registrada la incidencia | `test_una_solicitud_lenta_queda_registrada_en_la_auditoria` ([test_api.py](../../tests/test_api.py)): evento `RENDIMIENTO_LENTO` | La Auditoría lo muestra como «Respuesta lenta (más de 8 s)»; la [captura](../evidencias/portal/hu13-hu15-auditoria.png) es de la pantalla y no contiene ningún evento de este tipo. Los informes de rendimiento cuentan las solicitudes que la API registró como lentas |
 | Las pruebas de rendimiento permiten verificar el indicador | `test_veredicto_cumple_si_frio_y_carga_estan_bajo_el_limite`, `test_veredicto_dice_por_que_no_cumple`, `test_el_limite_es_el_de_la_api`, `test_percentiles_con_datos_inventados`, `test_estadisticas_de_una_seccion`, `test_el_informe_cuenta_las_secciones_que_cumplen` ([test_rendimiento.py](../../tests/test_rendimiento.py)) | Cada informe termina con «Resultado: N de 11 secciones por debajo de 8 s» ([rendimiento.txt](../evidencias/rendimiento.txt), [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt)) |
 
@@ -326,7 +339,7 @@ Las pruebas leen el glosario del modo local. En el modo GCP se siembra en Firest
 |---|---|---|
 | Las tres reglas están en el catálogo con la definición decidida: 51 evaluaciones por corte | `test_las_reglas_nuevas_tienen_la_definicion_decidida`, `test_catalogo_tiene_39_reglas_y_51_expandidas`, `test_cada_corte_evalua_las_51_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)); `test_las_reglas_sobreviven_el_viaje_a_firestore` ([test_firestore.py](../../tests/test_firestore.py)) | [auditoria-reglas.md](../auditoria-reglas.md): las tres figuran como «Aplicada (Sprint 3)»; corrida de los 92 cortes en [pipeline-local.txt](../evidencias/pipeline-local.txt) y [bigquery.txt](../evidencias/bigquery.txt) |
 | Detectan el defecto aunque los datos sintéticos nunca se lo den | `test_sin_uni_01_detecta_un_id_de_siniestro_repetido`, `test_pag_val_01_detecta_estados_fuera_del_dominio`, `test_pag_val_01_acepta_los_tres_estados`, `test_per_val_06_detecta_tipos_de_documento_fuera_del_dominio` ([test_reglas.py](../../tests/test_reglas.py)) | Cada prueba arma la tabla de MASTER a mano en DuckDB y corre el motor con la regla del catálogo |
-| No cambian ningún resultado ni sello aceptado | `test_las_reglas_nuevas_dan_100_en_los_datos_sinteticos` ([test_motor.py](../../tests/test_motor.py)), en los cortes de las pruebas; `test_matriz_de_certificacion` ([test_certificacion.py](../../tests/test_certificacion.py)) | Los 92 cortes, en [pipeline-local.txt](../evidencias/pipeline-local.txt) y [bigquery.txt](../evidencias/bigquery.txt); reporte de pytest en [pruebas.txt](../evidencias/pruebas.txt) |
+| No cambian ningún sello aceptado (el puntaje sí sube: hasta 0,2 puntos el global y 1,2 el de Persona, y 3 reglas más quedan en OK cada día, porque las nuevas dan 100 %) | `test_las_reglas_nuevas_dan_100_en_los_datos_sinteticos` ([test_motor.py](../../tests/test_motor.py)), en los cortes de las pruebas; `test_matriz_de_certificacion` ([test_certificacion.py](../../tests/test_certificacion.py)) | Los 92 cortes, en [pipeline-local.txt](../evidencias/pipeline-local.txt) y [bigquery.txt](../evidencias/bigquery.txt); reporte de pytest en [pruebas.txt](../evidencias/pruebas.txt) |
 | El glosario define los términos que usan las reglas nuevas, y una configuración ya sembrada los recibe | `test_el_glosario_define_el_carne_de_extranjeria_y_el_estado_de_la_cuota`, `test_un_json_viejo_recibe_la_regla_y_el_termino_que_le_faltan` ([test_configuracion_local.py](../../tests/test_configuracion_local.py)) | Términos en el [Glosario](../evidencias/portal/oscuro/glosario.png) |
 
 ### Definition of Done por historia
@@ -368,7 +381,8 @@ en esa fecha: lo que sigue es lo que se comprobó, y queda pendiente que el equi
 | Una configuración local ya sembrada no recibía las reglas ni los términos nuevos: el portal seguía mostrando 36 reglas | La configuración local agrega lo que falta sin pisar lo existente; prueba `test_un_json_viejo_recibe_la_regla_y_el_termino_que_le_faltan` |
 | HU-07 (cifrado): ninguna prueba cubría un campo que debe ir cifrado y llega como texto | Se agregó la prueba `test_un_campo_que_debe_ir_cifrado_y_se_guardo_como_texto_bloquea`: la tabla queda sin certificar |
 | La prueba de HU-15 cubría 7 de las 11 secciones y la medición pendiente no existía | La prueba cubre las 11; `scripts/medir_rendimiento.py` mide cada una en frío y bajo carga, en local y en BigQuery |
-| La medición de HU-15 mostró que, con la caché de 10 minutos vencida, cada petición volvía a leer las 7 vistas de BUSINESS: con diez usuarios a la vez, 70 lecturas en lugar de 7 (en BigQuery, 70 consultas) | Una sola petición renueva y las demás reutilizan el resultado; una lectura empezada antes de invalidar no queda vigente. Pruebas `test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas` y `test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente` (fallan con el código anterior) |
+| La medición de HU-15 sobre BigQuery mostró dos cosas: con la caché de 10 minutos vencida, cada petición volvía a leer las 7 vistas (con diez usuarios a la vez, 70 lecturas en lugar de 7), y esa espera llegaba a 8,6 s al abrir el Resumen, más de los 8 s del criterio | Una sola petición lee las vistas; al vencer la caché nadie espera (se responde con lo último leído y se renueva en segundo plano); un corte publicado sí espera datos nuevos. Pruebas `test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas`, `test_al_vencer_la_cache_nadie_espera_y_la_renovacion_corre_aparte`, `test_un_corte_nuevo_si_obliga_a_esperar_datos_nuevos` y `test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente` (las dos primeras fallan con el código anterior); [rendimiento-bigquery.txt](../evidencias/rendimiento-bigquery.txt) |
+| El criterio «las tres reglas no cambian ningún resultado» era inexacto: los sellos de los 92 días son los mismos, pero el puntaje sube hasta 0,2 puntos el global y 1,2 el de Persona | Se corrigió en [auditoria-reglas.md](../auditoria-reglas.md) y aquí; la corrida con las 51 evaluaciones está en [pipeline-local.txt](../evidencias/pipeline-local.txt) |
 | Varios documentos seguían diciendo 36 reglas y 48 evaluaciones | Se actualizaron README, AGENTS.md y los ADR; los Sprints 1 y 2 conservan lo que fue cierto entonces |
 | La re-evaluación de los 92 cortes en BigQuery con 51 reglas tardaba 96 s por día | Se publica por tabla en paralelo (62 s por día) y se agregó `ejecutar --todos`; resultado en [bigquery.txt](../evidencias/bigquery.txt) |
 

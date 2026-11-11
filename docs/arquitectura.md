@@ -107,7 +107,7 @@ sequenceDiagram
 |---|---|---|
 | Correctitud | Los errores se siembran a propósito y el flujo tiene que encontrar exactamente esos | La verificación contra el manifiesto da 0 y 0 en cuatro etapas ([pipeline-local.txt](evidencias/pipeline-local.txt)) |
 | Portabilidad | El mismo SQL en DuckDB y en BigQuery | Paridad fila por fila entre las dos ([bigquery.txt](evidencias/bigquery.txt)) |
-| Rendimiento (HU-15) | Lecturas en paralelo, caché de 10 minutos y precarga al arrancar; cabecera `Server-Timing` | Mediciones por sección, en frío y bajo carga ([rendimiento.txt](evidencias/rendimiento.txt)) |
+| Rendimiento (HU-15) | Lecturas en paralelo, caché de 10 minutos que se renueva en segundo plano sin que nadie espere, y precarga al arrancar; cabecera `Server-Timing` | Mediciones por sección, en frío y bajo carga ([rendimiento.txt](evidencias/rendimiento.txt)) |
 | Accesibilidad | Teclado, foco visible, contraste AA, tema oscuro, movimiento reducido | Pruebas e2e en el CI ([accesibilidad-y-e2e.txt](evidencias/accesibilidad-y-e2e.txt)) |
 | Trazabilidad | Cada sello lleva la ejecución, la versión del motor y la del catálogo de reglas | Tabla `dq_engine.certificaciones` y la sección Certificación |
 

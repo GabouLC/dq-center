@@ -1,0 +1,104 @@
+Rendimiento del portal (HU-15: cada sección carga en menos de 8 s) · modo local · 2026-11-11 21:18 UTC
+Python 3.12.10 · duckdb 1.5.6 · FastAPI 0.143.2 · uvicorn 0.54.0
+Máquina: Windows-11-10.0.26300-SP0 · 12 CPU lógicas · API y cliente en la misma máquina (127.0.0.1:8003), un solo proceso de uvicorn
+Datos: 92 cortes evaluados · 1373904 filas cargadas a RAW en las 5 tablas por corte (cargas EXITOSAS) · sintéticos
+Base: copia temporal de data\dq_completo.duckdb (185 MB), configuración nueva, DQC_EN_VIVO=0, cuentas de demostración
+Arranque de la API: responde /health/liveness a los 4.7 s y /health/readiness a los 4.7 s
+
+Cómo se midió
+- Abrir una sección es lo que hace el portal al recargar la página con la sesión guardada: primero /auth/me; después, en
+  paralelo, lo propio de la sección más /vivo; y, donde una petición depende de otra, una etapa más. El tiempo es el de
+  pared: la suma de las etapas, y en cada etapa vale la petición más lenta (no la suma de todas).
+- Justo: primer recorrido de las 11 secciones apenas la API responde /health/liveness, sin esperar el precargado de las vistas.
+- Frío: primer recorrido tras /health/readiness (precargado terminado), una apertura por sección.
+- Caliente: 20 aperturas seguidas por sección (p50, p95 y máximo).
+- Concurrencia: 10 usuarios, cada uno con su propio inicio de sesión (administrador, la única cuenta que ve las 11
+  secciones); luego recorren las 11 secciones a la vez, 5 rondas: 50 aperturas por sección.
+- Veredicto: CUMPLE si la peor apertura en frío (la de «justo» o la de «frío») y la peor bajo concurrencia son menores de
+  8000 ms y no hubo errores. Los tiempos van en milisegundos.
+- Alcance: mide la API hasta el último byte; no incluye bajar el JavaScript ni dibujar la pantalla en el navegador.
+
+Peticiones que el portal hace al abrir cada sección (E = etapa; las de una misma etapa van en paralelo)
+({ultimo} y {penultimo} son las dos últimas fechas de /cortes: 2026-09-30 y 2026-09-29)
+resumen
+  E1  /api/v1/auth/me
+  E2  /api/v1/cortes, /api/v1/resumen, /api/v1/vivo?desde=0
+  E3  /api/v1/certificacion?corte={ultimo}, /api/v1/validaciones/comparar?a={penultimo}&b={ultimo}
+validaciones
+  E1  /api/v1/auth/me
+  E2  /api/v1/cortes, /api/v1/validaciones, /api/v1/vivo?desde=0
+  E3  /api/v1/validaciones?corte={ultimo}
+certificacion
+  E1  /api/v1/auth/me
+  E2  /api/v1/cortes, /api/v1/certificacion, /api/v1/vivo?desde=0
+  E3  /api/v1/certificacion?corte={ultimo}
+fuentes
+  E1  /api/v1/auth/me
+  E2  /api/v1/fuentes, /api/v1/fuentes/persona/estructura, /api/v1/vivo?desde=0
+contratos
+  E1  /api/v1/auth/me
+  E2  /api/v1/contratos, /api/v1/vivo?desde=0
+linaje
+  E1  /api/v1/auth/me
+  E2  /api/v1/linaje/persona, /api/v1/glosario, /api/v1/vivo?desde=0
+glosario
+  E1  /api/v1/auth/me
+  E2  /api/v1/glosario, /api/v1/vivo?desde=0
+reglas
+  E1  /api/v1/auth/me
+  E2  /api/v1/reglas, /api/v1/vivo?desde=0
+ejecuciones
+  E1  /api/v1/auth/me
+  E2  /api/v1/ejecuciones, /api/v1/vivo?desde=0
+usuarios
+  E1  /api/v1/auth/me
+  E2  /api/v1/admin/usuarios, /api/v1/vivo?desde=0
+auditoria
+  E1  /api/v1/auth/me
+  E2  /api/v1/admin/auditoria?limite=500, /api/v1/vivo?desde=0
+
+Tiempos de apertura por sección (ms)
+sección        pet.  et.  justo  frío  cal. p50  cal. p95  cal. máx  conc. p95  conc. máx  err.  veredicto
+-------------  ----  ---  -----  ----  --------  --------  --------  ---------  ---------  ----  ---------
+resumen           6    3    125   100      96.2       114       126       1156       1178     0  CUMPLE
+validaciones      5    3   48.7  48.9      58.9      77.5      94.6        637        646     0  CUMPLE
+certificacion     5    3   49.0  47.9      50.8      54.1      72.2        588        590     0  CUMPLE
+fuentes           4    2   37.2  36.9      38.6      44.3      63.6        458        565     0  CUMPLE
+contratos         3    2   53.4  54.1      54.3      59.8      62.8        646        666     0  CUMPLE
+linaje            4    2   11.5  11.6      12.6      15.8      32.6        466        480     0  CUMPLE
+glosario          3    2    7.7   7.8       8.5      24.5      28.2        114        127     0  CUMPLE
+reglas            3    2    8.4   8.4       8.8      10.5      28.3        114        115     0  CUMPLE
+ejecuciones       3    2   10.7  10.0      10.0      10.7      10.7        109        110     0  CUMPLE
+usuarios          3    2    7.2   6.9       7.4       8.0       8.2        103        105     0  CUMPLE
+auditoria         3    2    7.3   7.1       7.6      11.0      28.1       83.6       86.7     0  CUMPLE
+
+Servidor y red (ms): «servidor» es el Server-Timing de la API; «red y cola» es el resto (conexión, cola del cliente, lectura)
+sección        cal. p50  servidor  red y cola  conc. p95  servidor  red y cola    KB
+-------------  --------  --------  ----------  ---------  --------  ----------  ----
+resumen            96.2      89.0         7.3       1156       660         560   183
+validaciones       58.9      49.5         7.5        637       422         279  51.8
+certificacion      50.8      44.0         6.4        588       413         274  62.3
+fuentes            38.6      34.0         4.9        458       302         201   160
+contratos          54.3      50.0         4.0        646       501         259  13.9
+linaje             12.6       8.0         4.9        466       273         225  13.7
+glosario            8.5       5.0         4.2        114      69.8        50.2   9.5
+reglas              8.8       5.0         3.8        114      74.5        40.6   8.6
+ejecuciones        10.0       6.0         4.0        109      73.5        37.6  19.7
+usuarios            7.4       4.0         3.8        103      66.5        39.6   1.1
+auditoria           7.6       4.0         3.7       83.6      55.0        29.8   0.8
+
+Inicio de sesión (PBKDF2, 10 seguidos): p50 462 ms · p95 515 ms · máx 537 ms
+Caché vencida (10 usuarios abren el Resumen a la vez tras esperar a que venza): mejor 932 ms · p50 971 ms · peor 995 ms (API del peor: 702 ms) · 0 errores · CUMPLE el límite de 8 s
+Apertura más lenta de todo el recorrido: 1178 ms (resumen, concurrencia)
+Solicitudes que la propia API midió por encima de 8 s (auditoría RENDIMIENTO_LENTO): 0
+
+Límites de la medición
+- Una sola máquina: el cliente de medición y la API comparten CPU, y cualquier otro proceso en marcha suma ruido.
+- «Justo» se parece a «frío» cuando el precargado de las vistas ya terminó al llegar la primera petición, como pasa con
+  DuckDB (el inicio de sesión tarda más que el precargado). Con la caché vacía de verdad (un arranque lento sobre BigQuery
+  o la caché vencida a los 10 minutos), FuenteBusiness renueva las vistas con una sola petición y las demás esperan y
+  reutilizan el resultado; antes de ese arreglo cada petición las releía completas.
+- La caché vencida se midió con --caducidad: es la fila «Caché vencida» de arriba.
+- Los usuarios son sesiones distintas de una misma cuenta de administrador (con otros roles se ven menos secciones). Sus inicios
+  de sesión van de uno en uno: la API cuenta como intento cada inicio en curso (HU-13) y rechaza con 423 el sexto simultáneo.
+Resultado: 11 de 11 secciones por debajo de 8 s en frío y bajo carga
