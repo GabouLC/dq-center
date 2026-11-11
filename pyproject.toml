@@ -15,7 +15,7 @@ datagen = ["faker==40.43.0", "python-dateutil>=2.9"]
 # pytz: DuckDB lo necesita para devolver TIMESTAMPTZ a Python.
 local = ["duckdb>=1.4", "cryptography>=42", "pytz"]
 gcp = ["google-cloud-bigquery>=3.25", "google-cloud-firestore>=2.19", "google-cloud-run>=0.10", "firebase-admin>=6.5"]
-api = ["fastapi>=0.115", "uvicorn[standard]>=0.30"]
+api = ["fastapi>=0.162.2", "uvicorn[standard]>=0.30"]
 dev = ["pytest>=8", "httpx>=0.27"]
 
 [tool.setuptools.packages.find]
