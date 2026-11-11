@@ -261,6 +261,52 @@ def test_un_corte_nuevo_si_obliga_a_esperar_datos_nuevos():
     assert time.perf_counter() - inicio >= 0.25  # esperó la lectura nueva
 
 
+def test_el_arranque_y_las_primeras_peticiones_leen_las_vistas_una_sola_vez():
+    """El hilo de precarga del arranque y una petición que llega antes de que termine no duplican las consultas."""
+    consultas = []
+
+    class Lenta:
+        def consultar(self, sql):
+            consultas.append(sql)
+            time.sleep(0.3)
+            return []
+
+    fuente = FuenteBusiness(Lenta())
+    hilos = [threading.Thread(target=fuente.precargar)] + [threading.Thread(target=fuente.ejecuciones) for _ in range(5)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+    assert len(consultas) == 7
+
+
+def test_si_la_renovacion_falla_no_se_reintenta_en_cada_peticion():
+    """BigQuery no responde justo al vencer la caché: no se lanza una renovación nueva por cada petición."""
+    consultas, falla = [], {"si": False}
+
+    class Inestable:
+        def consultar(self, sql):
+            consultas.append(sql)
+            if falla["si"]:
+                raise RuntimeError("BigQuery no responde")
+            return [{"v": 0}]
+
+    fuente = FuenteBusiness(Inestable(), vigencia=0.05)
+    fuente.precargar()
+    falla["si"] = True
+    time.sleep(0.1)  # la caché venció
+    assert fuente.ejecuciones() == [{"v": 0}]  # responde con lo último y lanza una renovación, que falla
+    limite = time.monotonic() + 3
+    while fuente._renovando.locked() and time.monotonic() < limite:
+        time.sleep(0.02)
+    lanzadas = len(consultas)
+    assert lanzadas > 7
+    for _ in range(20):
+        assert fuente.ejecuciones() == [{"v": 0}]  # sigue sirviendo lo último
+    time.sleep(0.2)
+    assert len(consultas) == lanzadas  # ninguna renovación nueva dentro del plazo de reintento
+
+
 def test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente():
     """Si el corte se publica mientras se lee, la caché no se da por buena durante 10 minutos."""
     consultas = []

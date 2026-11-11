@@ -25,6 +25,8 @@ from dqc.sql_util import fecha, literal
 
 log = logging.getLogger(__name__)
 
+REINTENTO_S = 30  # si una renovación en segundo plano falla, se vuelve a intentar pasado este plazo
+
 CONSULTAS = {
     "ejecuciones": f"SELECT * FROM {BUSINESS}.v_calidad_ejecuciones",
     "resultados": f"SELECT * FROM {BUSINESS}.v_calidad_resultados",
@@ -52,7 +54,16 @@ class FuenteBusiness:
         self._renovando = threading.Lock()  # una sola petición renueva; las demás esperan o reutilizan
 
     def precargar(self) -> None:
-        """Lee todas las vistas a la vez: el tiempo total es el de la consulta más lenta."""
+        """Lee todas las vistas a la vez: el tiempo total es el de la consulta más lenta.
+
+        Una lectura a la vez: si otra está en curso (el arranque o una renovación), espera y no repite las consultas;
+        si al terminar ya hay datos vigentes, no lee de nuevo.
+        """
+        with self._renovando:
+            if not self._vigente():
+                self._leer()
+
+    def _leer(self) -> None:
         with self._lock:
             generacion = self._generacion
         with self.candado, ThreadPoolExecutor(len(CONSULTAS)) as pool:
@@ -79,9 +90,13 @@ class FuenteBusiness:
 
         def trabajo() -> None:
             try:
-                self.precargar()
+                self._leer()
             except Exception:
                 log.warning("no se pudieron renovar las vistas de contrato; se sigue con las últimas leídas", exc_info=True)
+                # Sin esto, cada petición lanzaría otra renovación fallida: se reintenta recién pasado este plazo.
+                with self._lock:
+                    if self._generacion_leida == self._generacion:
+                        self._vence = time.monotonic() + REINTENTO_S
             finally:
                 self._renovando.release()
 
@@ -101,7 +116,7 @@ class FuenteBusiness:
                 # petición los lee (antes, N peticiones leían las 7 vistas N veces: en BigQuery, N × 7 consultas).
                 with self._renovando:
                     if not self._vigente():
-                        self.precargar()
+                        self._leer()
         return self._datos[nombre]
 
     def ejecuciones(self) -> list[dict]:

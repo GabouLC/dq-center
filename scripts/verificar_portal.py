@@ -358,6 +358,23 @@ def esperar(url: str, segundos: float = 120) -> None:
     raise SystemExit(f"{url} no respondió en {segundos:.0f} s")
 
 
+MARCA_DE_SALIDA = ".verificar_portal"
+
+
+def borrar_carpeta_de_salida(ruta: Path) -> None:
+    """Borra la carpeta de salida de una corrida anterior, y solo si lo es: dentro de data/ (nunca data/ misma) o con la
+    marca que deja este script. Así `--artefactos .` o `--artefactos data` no borran nada que no sea suyo."""
+    ruta = ruta.resolve()
+    datos = (RAIZ / "data").resolve()
+    suya = ruta != datos and ruta.is_relative_to(datos) or (ruta / MARCA_DE_SALIDA).exists()
+    if not suya:
+        raise SystemExit(
+            f"No borro {ruta}: no es una carpeta de salida de este script (ni está dentro de data/, ni tiene {MARCA_DE_SALIDA}). "
+            "Usa otra carpeta en --artefactos o bórrala tú."
+        )
+    shutil.rmtree(ruta)
+
+
 class Servidores:
     """Su propia API y su propio portal; se apagan siempre, también si algo falla."""
 
@@ -384,6 +401,9 @@ class Servidores:
         if not self.base.exists():
             raise SystemExit(f"No existe la base {self.base}. Genérala con python -m dqc.pipeline --db {self.base}")
         shutil.copy(self.base, self.carpeta / "dq.duckdb")
+        wal = Path(str(self.base) + ".wal")  # lo que DuckDB aún no consolidó en el archivo
+        if wal.exists():
+            shutil.copy(wal, self.carpeta / "dq.duckdb.wal")
         entorno = {k: v for k, v in os.environ.items() if not k.startswith("DQC_")}  # nada de GCP ni de otras demos
         entorno.update(
             DQC_MODO="local", DQC_DB=str(self.carpeta / "dq.duckdb"), DQC_CONFIG_LOCAL=str(self.carpeta / "config_local.json"),
@@ -788,7 +808,10 @@ class Laboratorio:
             try:
                 espera(PACIENCIA[nombre])
             except Exception:  # noqa: BLE001 - si algo sigue cargando o animado, se mide igual
-                PACIENCIA[nombre] = 1_500  # y las páginas que siguen no esperan lo mismo otra vez (p. ej., sin internet)
+                if nombre in ("red", "fuentes"):
+                    # Solo lo que depende de internet: las páginas que siguen no esperan lo mismo otra vez. Los esqueletos
+                    # y las animaciones se esperan completos en cada pantalla, para no medir a medias por una lentitud pasajera.
+                    PACIENCIA[nombre] = 1_500
         pagina.wait_for_timeout(extra_ms)
 
     def elegir_dia(self, pagina, dia: str) -> None:
@@ -1340,8 +1363,9 @@ def main() -> None:
     totales = {"textos": 0, "ok": 0, "fallos": 0, "indeterminados": 0}
     inicio = time.monotonic()
     if args.artefactos.exists():
-        shutil.rmtree(args.artefactos)
+        borrar_carpeta_de_salida(args.artefactos)
     args.artefactos.mkdir(parents=True)
+    (args.artefactos / MARCA_DE_SALIDA).write_text("carpeta de salida de scripts/verificar_portal.py\n", encoding="utf-8")
     servidores = Servidores(args.db, args.artefactos / "servidores") if args.arrancar else None
     version_chromium = "?"
     dia = args.dia
@@ -1382,7 +1406,8 @@ def main() -> None:
                     cs["f"].ejecutada = True
                 print("  f      escritorio en tema oscuro" + (" y capturas ..." if capturas else " ..."), flush=True)
                 if capturas is not None and capturas.exists():
-                    shutil.rmtree(capturas)
+                    for vieja in capturas.glob("*.png"):  # solo las capturas de una corrida anterior, nada más
+                        vieja.unlink()
                 pase_escritorio(lab, cs, "oscuro", capturas, totales, indeterminados, activas)
                 if capturas is not None:
                     capturas_extra(lab, capturas)

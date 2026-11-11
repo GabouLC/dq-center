@@ -166,7 +166,7 @@ def test_el_informe_cuenta_las_secciones_que_cumplen(mr):
 
 def test_lecturas_previstas_crecen_con_la_caducidad(mr):
     assert mr.lecturas_previstas(usuarios=10, caducidad=False) == 6
-    assert mr.lecturas_previstas(usuarios=10, caducidad=True) == 26  # 2 peticiones del Resumen leen las vistas, por usuario
+    assert mr.lecturas_previstas(usuarios=10, caducidad=True) == 8  # una renovación aparte, no una por usuario
 
 
 def test_el_informe_incluye_la_cache_vencida_cuando_se_midio(mr):
@@ -179,3 +179,13 @@ def test_el_informe_incluye_la_cache_vencida_cuando_se_midio(mr):
 
     medicion.caducidad[-1] = mr.Carga(ms=8100.0, servidor_ms=8000.0, peticiones=6)
     assert next(x for x in mr.informe(medicion, _meta(mr))[0].splitlines() if x.startswith("Caché vencida")).endswith("NO CUMPLE el límite de 8 s")
+
+
+def test_la_cache_vencida_que_no_cumple_hace_fallar_la_corrida(mr):
+    ok = [mr.Carga(ms=1400, servidor_ms=1300, peticiones=6) for _ in range(3)]
+    lenta = [mr.Carga(ms=8600, servidor_ms=8500, peticiones=6) for _ in range(3)]
+    con_error = [mr.Carga(ms=900, servidor_ms=800, peticiones=6, errores=1)]
+    assert mr.caducidad_cumple([]) is None  # no se midió: no cuenta
+    assert mr.caducidad_cumple(ok) is True
+    assert mr.caducidad_cumple(lenta) is False  # pasa de los 8 s
+    assert mr.caducidad_cumple(con_error) is False  # un error cuenta aunque sea rápida

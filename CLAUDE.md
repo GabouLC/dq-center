@@ -67,7 +67,7 @@ Qué hace cada paso al desplegar y dónde se cumple cada HU:
 
 ## Cómo saber que algo funciona
 
-- Siempre: `.venv/Scripts/python -m pytest -q` ({{PRUEBAS}} passed al 11/11/2026) y `cd web && npm run build`
+- Siempre: `.venv/Scripts/python -m pytest -q` (227 passed al 11/11/2026) y `cd web && npm run build`
   (`✓ built`). Es lo mismo que corre el CI en cada pull request, más las pruebas e2e del portal.
 - Si tocaste el pipeline o el motor: corre `dqc.pipeline` sobre un `data/` limpio y compara con
   `docs/evidencias/pipeline-local.txt`.

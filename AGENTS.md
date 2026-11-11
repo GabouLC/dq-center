@@ -124,7 +124,7 @@ segundos. El portal muestra «En vivo» y se actualiza sin recargar.
 cd web; npm run build
 ```
 
-**Comprobación:** `127 passed` (o más, si agregaste pruebas) y `✓ built in …` sin errores de
+**Comprobación:** `227 passed` (o más, si agregaste pruebas) y `✓ built in …` sin errores de
 tipos. Es lo mismo que corre el CI de GitHub Actions en cada pull request.
 
 ## Detener y volver a empezar

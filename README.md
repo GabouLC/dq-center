@@ -1,10 +1,17 @@
 # Smart-DQ · dq-center
 
+[![CI](https://github.com/GabouLC/dq-center/actions/workflows/ci.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml)
+[![Secretos](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml)
+
 Portal de calidad y privacidad de datos para una **aseguradora ficticia**, con datos
 100 % sintéticos. Es la implementación del proyecto del curso *Diseño e Implementación
 de Sistemas* (USMP, 2026-II, Grupo 6): las historias HU-01 a HU-15 del Product Backlog
 están en los [issues](https://github.com/GabouLC/dq-center/issues), y las decisiones
-técnicas frente al Documento de Arquitectura, en [docs/adr](docs/adr/README.md).
+técnicas frente al Documento de Arquitectura, en [docs/adr](docs/adr/README.md). La arquitectura, con
+diagramas, está en [docs/arquitectura.md](docs/arquitectura.md).
+
+![Resumen del portal: lectura rápida del día, % de reglas que cumplen y sello de cada tabla](docs/evidencias/portal/hu09-resumen-14-julio.png)
 
 ## Qué hace
 
@@ -125,7 +132,7 @@ La configuración local vive en `data/config_local.json` y el secreto que firma 
 sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
 detenla antes de volver a correr `dqc.pipeline`.
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (127 pruebas) y `npm run build` en `web/`.
+Pruebas: `.venv/Scripts/python -m pytest -q` (227 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -212,7 +219,7 @@ src/dqc/
   api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           127 pruebas, incluida la de aceptación contra el manifiesto
+tests/           227 pruebas, incluida la de aceptación contra el manifiesto
 docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 ```
 

@@ -216,3 +216,31 @@ def test_importar_el_script_no_exige_playwright(vp):
     assert not hasattr(vp, "sync_playwright")  # Playwright solo se importa dentro de main()
     assert vp.PUERTO_API == 8002 and vp.PUERTO_WEB == 5182  # los puertos propios (8003 es del otro script)
     assert len(vp.SECCIONES) == 11 and {p.clave for p in vp.PANTALLAS} >= {"clave", "entrar", "resumen"}
+
+
+# ── borrar solo lo que es del script ────────────────────────────────────────
+
+
+def test_no_borra_una_carpeta_que_no_es_de_salida(vp, tmp_path):
+    ajena = tmp_path / "mis_cosas"
+    ajena.mkdir()
+    (ajena / "importante.txt").write_text("no se toca", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        vp.borrar_carpeta_de_salida(ajena)
+    assert (ajena / "importante.txt").exists()
+
+
+def test_no_borra_data_ni_la_raiz_del_repo(vp):
+    with pytest.raises(SystemExit):
+        vp.borrar_carpeta_de_salida(RAIZ / "data")
+    with pytest.raises(SystemExit):
+        vp.borrar_carpeta_de_salida(RAIZ)
+
+
+def test_borra_una_carpeta_con_la_marca_del_script(vp, tmp_path):
+    suya = tmp_path / "salida"
+    suya.mkdir()
+    (suya / vp.MARCA_DE_SALIDA).write_text("marca", encoding="utf-8")
+    (suya / "resultado.txt").write_text("viejo", encoding="utf-8")
+    vp.borrar_carpeta_de_salida(suya)
+    assert not suya.exists()

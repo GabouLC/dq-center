@@ -6,7 +6,7 @@ Esta guía responde tres preguntas:
 2. ¿Qué hace cada parte del proyecto cuando se despliega?
 3. ¿Dónde y cómo se cumple cada historia de usuario (HU-01 a HU-15)?
 
-**Actualizada el 11 de noviembre de 2026**, al cerrar el Sprint 3: {{PRUEBAS}} pruebas en verde, el
+**Actualizada el 11 de noviembre de 2026**, al cerrar el Sprint 3: 227 pruebas en verde, el
 build del portal sin errores, y cada prueba, captura y archivo que se cita aquí existe en el
 repositorio. Las referencias apuntan a archivos y funciones, no a números de línea, que cambian
 con cada pull request.
@@ -180,7 +180,7 @@ cd web; npm run build
 - **Qué hace por dentro:** las pruebas generan sus propios datos a escala reducida (22 días) y
   recorren todo el flujo en DuckDB con el mismo SQL que en BigQuery (ADR 0010). El build revisa
   los tipos (`vue-tsc`) y arma el portal.
-- **Resultado al 11/11/2026:** `{{PRUEBAS}} passed` y `✓ built`.
+- **Resultado al 11/11/2026:** `227 passed` y `✓ built`.
 - **CI:** `.github/workflows/ci.yml` corre estas dos verificaciones en cada pull request y en cada
   push a `main`, más las pruebas e2e del portal con Playwright (`scripts/verificar_portal.py`).
   CodeQL y gitleaks corren aparte (ADR 0017). Nada despliega ni toca GCP.
@@ -209,7 +209,7 @@ Hace falta tener `data/` generado con `dqc.datagen` (sección 2, paso 2) y acces
 | 3 | `python -m dqc.gcp simular` | Borra las tablas de las capas, sin tocar las llaves, y procesa los 92 cortes con el mismo flujo de la sección 2, en 8 hilos, verificando contra el manifiesto. Las reglas salen de Firestore (o del YAML con `--reglas-yaml`) | Las mismas tablas y vistas que en local, ahora en BigQuery. Tarda unas 9 horas | HU-01 a HU-08, HU-14 |
 | 4 | `python -m dqc.gcp simular --desde 2026-09-08` | Si la carga se cortó, quita los cortes desde esa fecha y sigue desde ahí (ADR 0014) | Completa lo que faltaba | — |
 | 5 | `python -m dqc.gcp ejecutar` (o `ejecutar --todos`) | Reevalúa el último corte, o todos los que ya están en `dq_engine.ejecuciones`, con las reglas y contratos de Firestore. Sirve para aplicar un catálogo nuevo sin recargar los datos | Una corrida nueva por corte en `dq_engine` | HU-04 |
-| 6 | `python scripts/evidencia_bigquery.py` | **Solo lee.** Hace un dry run, se detiene si la consulta pasaría de 1 GB y compara fila por fila con `data/dq_completo.duckdb` | `docs/evidencias/bigquery.txt` (última corrida: {{BQMB}} leídos y 0 diferencias) | Evidencia de todas |
+| 6 | `python scripts/evidencia_bigquery.py` | **Solo lee.** Hace un dry run, se detiene si la consulta pasaría de 1 GB y compara fila por fila con `data/dq_completo.duckdb` | `docs/evidencias/bigquery.txt` (última corrida: 91,3 MB leídos y 0 diferencias) | Evidencia de todas |
 | 7 | `$env:DQC_MODO = "gcp"; $env:DQC_SECRETO = "<secreto>"; python -m dqc.api` | La API lee BigQuery y Firestore. Las cuentas demo quedan apagadas | — | HU-09 a HU-13, HU-15 |
 | 8 | `python scripts/verificar_acceso_firestore.py` | Prueba el inicio de sesión, el bloqueo, la contraseña temporal y el registro de accesos contra Firestore real. Crea cuentas `verificacion-hu13-*` y las borra al terminar | `docs/evidencias/acceso-firestore.txt` (14 de 14 comprobaciones) | HU-13 |
 | 9 | `python scripts/medir_rendimiento.py --modo gcp --caducidad` | Mide las 11 secciones con la API sobre BigQuery, en frío, bajo carga y con la caché vencida. Antes estima lo que va a leer y se detiene si pasa de 1 GB. Crea un administrador temporal en Firestore y lo borra | `docs/evidencias/rendimiento-bigquery.txt` | HU-15 |

@@ -200,11 +200,19 @@ def estimar_lectura(tamanos: dict[str, int], leidas: Sequence[str], lecturas: in
 def lecturas_previstas(usuarios: int, caducidad: bool) -> int:
     """Cuántas veces se prevé que la API relea las vistas completas durante la corrida.
 
-    6 de base: 2 arranques x 2 (el hilo de precarga y la primera petición que ve la caché vacía) + 2 por si la
-    corrida pasa de los 10 minutos y la caché vence. Con --caducidad, además, cada petición del Resumen que lee
-    las vistas (/cortes y /resumen) de cada usuario relee por su cuenta: FuenteBusiness no comparte una lectura.
+    6 de base, con holgura: 2 arranques (el hilo de precarga y la primera petición comparten una sola lectura) + 4
+    renovaciones por si la corrida pasa de los 10 minutos y la caché vence. Con --caducidad, 2 más: al vencer, una
+    petición renueva en segundo plano y las demás no leen (FuenteBusiness lee las vistas una sola vez); el parámetro
+    de usuarios queda por si eso cambia.
     """
-    return 6 + (2 * usuarios if caducidad else 0)
+    return 6 + (2 if caducidad else 0)
+
+
+def caducidad_cumple(cargas: Sequence["Carga"]) -> bool | None:
+    """None si no se midió la caché vencida; si no, True cuando ninguna apertura falló ni llegó al límite."""
+    if not cargas:
+        return None
+    return sum(c.errores for c in cargas) == 0 and max(c.ms for c in cargas) < LIMITE_MS
 
 
 @dataclass
@@ -373,10 +381,10 @@ def informe(m: Medicion, meta: Meta) -> tuple[str, int]:
         ms = [c.ms for c in m.caducidad]
         e = estadisticas(ms)
         errores = sum(c.errores for c in m.caducidad)
-        cumple = errores == 0 and e["max"] < LIMITE_MS
+        cumple = caducidad_cumple(m.caducidad)
         errores_vistos += [d for c in m.caducidad for d in c.detalle]
         lineas.append(
-            f"Caché vencida ({len(ms)} usuarios abren el Resumen a la vez tras esperar a que venza): mejor {formato_ms(min(ms))} ms · "
+            f"Caché vencida ({len(ms)} usuarios abren el Resumen a la vez tras esperar a que venza; se les responde con lo último leído): mejor {formato_ms(min(ms))} ms · "
             f"p50 {formato_ms(e['p50'])} ms · peor {formato_ms(e['max'])} ms (API del peor: {formato_ms(max(c.servidor_ms for c in m.caducidad))} ms)"
             f" · {errores} errores · {'CUMPLE' if cumple else 'NO CUMPLE'} el límite de 8 s"
         )
@@ -466,7 +474,14 @@ def abrir_seccion(puerto: int, token: str, etapas: list[list[str]], ejecutor: Th
     servidor, peticiones, total_bytes, cuerpos = 0.0, 0, 0, {}
     guardar = {CORTES, *conservar}
     for etapa in etapas:
-        rutas = [r for r in (resolver(p, cortes) for p in etapa) if r]
+        rutas = []
+        for plantilla in etapa:
+            ruta = resolver(plantilla, cortes)
+            if ruta:
+                rutas.append(ruta)
+            elif "{" in plantilla:
+                # Sin fechas de /cortes no se puede armar: no se descarta en silencio, la apertura cuenta como fallida.
+                errores.append(f"{plantilla}: no se pudo armar, /cortes no dio las fechas")
         if len(rutas) == 1:
             respuestas = [pedir(puerto, rutas[0], token, guardar=rutas[0].split("?")[0] in guardar)]
         else:
@@ -540,6 +555,8 @@ def fase_concurrencia(puerto: int, usuarios: int, rondas: int, email: str, clave
 
 def fase_caducidad(puerto: int, usuarios: int, email: str, clave: str, espera_s: float) -> list[Carga]:
     """Espera a que venza la caché de las vistas y abre el Resumen con todos los usuarios a la vez.
+
+    Mide lo que ve el usuario justo al vencer: se responde con lo último leído y una petición renueva aparte.
 
     Los inicios de sesión se hacen antes de esperar (su PBKDF2 no cuenta). La espera cuenta desde la última
     petición, y la caché se renovó como tarde en ella: pasados 10 minutos está vencida.
@@ -866,7 +883,8 @@ def main() -> int:
     args.salida.parent.mkdir(parents=True, exist_ok=True)
     args.salida.write_text(texto, encoding="utf-8", newline="\n")
     print(f"\nEvidencia en {args.salida}\n{texto.splitlines()[-1]}")
-    return 0 if cumplen == len(SECCIONES) else 1
+    # La caché vencida cuenta: HU-15 pide menos de 8 s en cualquier momento, también justo al vencer.
+    return 0 if cumplen == len(SECCIONES) and caducidad_cumple(medicion.caducidad) is not False else 1
 
 
 if __name__ == "__main__":
