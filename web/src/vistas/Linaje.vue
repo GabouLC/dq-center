@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, BadgeCheck, ChevronDown, Database, Eye, FileInput, Lock, Search, SearchX } from 'lucide-vue-next'
+import { ArrowRight, BadgeCheck, ChevronDown, Database, Eye, FileInput, Lock, Search, SearchX, ShieldAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
@@ -10,10 +10,14 @@ import { usarCarga } from '@/composables/usarCarga'
 import { corte as nombreCorte, NOMBRE_TABLA, TABLAS } from '@/formato'
 import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
+import { useCortes } from '@/stores/cortes'
 
 type Nodo = { id: string; capa: string; objeto: string; detalle: string }
 type Arista = { desde: string; hacia: string; proceso: string }
 type Campo = { raw: string; master: string; business: string; transformacion: string; dac: string; en_contrato: boolean }
+/** Por qué un día no se publicó: una regla bloqueante (id + qué significa) o un hallazgo de privacidad (texto completo). */
+type Motivo = { tipo: 'regla' | 'privacidad'; id: string; texto: string }
+type Retenido = { fecha_corte: string; motivos: Motivo[] }
 type Linaje = {
   tabla: string
   dominio: string
@@ -21,12 +25,13 @@ type Linaje = {
   aristas: Arista[]
   campos: Campo[]
   cortes_publicados: string[]
-  cortes_retenidos: string[]
+  retenidos: Retenido[]
 }
 type Termino = { id: string; termino: string; campos?: string[] }
 
 const ruta = useRoute()
 const router = useRouter()
+const cortes = useCortes()
 const tabla = computed(() => (TABLAS.includes(String(ruta.params.tabla)) ? String(ruta.params.tabla) : 'persona'))
 const { datos, cargando, error, recargar } = usarCarga(() => api<Linaje>(`/api/v1/linaje/${tabla.value}`), [tabla])
 const glosario = usarCarga(() => api<Termino[]>('/api/v1/glosario'))
@@ -34,8 +39,13 @@ const foco = ref<string | null>(null)
 const abierto = ref<string | null>(null)
 const filtro = ref('')
 const filtroDac = ref('')
-// La vista se reutiliza al cambiar de tabla: el campo abierto era de la tabla anterior.
-watch(tabla, () => (abierto.value = null))
+// Con muchos días retenidos se muestran los más recientes y el resto queda tras «Ver todos».
+const VISIBLES = 8
+const verTodos = ref(false)
+// La vista se reutiliza al cambiar de tabla: el campo abierto y la lista expandida eran de la tabla anterior.
+watch(tabla, () => ((abierto.value = null), (verTodos.value = false)))
+const retenidos = computed(() => datos.value?.retenidos ?? [])
+const retenidosVisibles = computed(() => (verTodos.value ? retenidos.value : retenidos.value.slice(-VISIBLES)))
 
 const ICONO_NODO: Record<string, unknown> = { raw: FileInput, master: Database, p: BadgeCheck, v: Eye }
 const COLOR_DAC: Record<string, string> = {
@@ -59,6 +69,7 @@ const pasos = (c: Campo) => c.transformacion.split(' · ').filter((p) => p !== '
 
 const LECTURA: Clave[] = [
   { texto: 'Arriba, las capas por las que pasa la tabla: RAW (tal como llega), MASTER (homologada y con los datos personales cifrados) y BUSINESS (solo los días certificados).' },
+  { muestras: ['critico'], texto: 'Cada día que no llegó a BUSINESS lleva al lado lo que lo retuvo: la regla que bloqueó (con su id) o los datos personales sin cifrar. Clic en el día para ver su certificación.' },
   { muestras: ['publico', 'sensible', 'cifrado'], texto: 'Cada fila es un campo; el color del borde y de las flechas es su sensibilidad: Público, Sensible o Sensible cifrado.' },
   { muestras: ['candado'], texto: 'El candado indica que el campo viaja cifrado desde MASTER: nadie lo ve en claro en el portal ni en BUSINESS.' },
   { texto: 'Pasa el puntero por un campo para resaltarlo; haz clic para ver su recorrido paso a paso y en qué términos del glosario aparece.' },
@@ -97,13 +108,33 @@ const LECTURA: Clave[] = [
               </li>
             </template>
           </ol>
+          <div v-if="retenidos.length" class="retenidos">
+            <h3 class="fila"><ShieldAlert :size="17" class="icono-critico" aria-hidden="true" />No publicado en BUSINESS</h3>
+            <p class="tenue pequeno">Negocio no vio estos días. Esto es lo que retuvo a cada uno.</p>
+            <ul class="lista-retenidos">
+              <li v-for="r in retenidosVisibles" :key="r.fecha_corte" class="retenido">
+                <RouterLink to="/certificacion" class="chip critico" @click="cortes.elegido = r.fecha_corte">
+                  {{ nombreCorte(r.fecha_corte) }}<span class="visualmente-oculto">: ver su certificación</span>
+                </RouterLink>
+                <ul class="motivos">
+                  <li v-for="m in r.motivos" :key="m.tipo + m.id + m.texto">
+                    <template v-if="m.tipo === 'regla'"><span class="id-regla mono">{{ m.id }}</span> · {{ m.texto }}</template>
+                    <template v-else>{{ m.texto }}</template>
+                  </li>
+                  <li v-if="!r.motivos.length" class="tenue">No pasó el control de calidad y privacidad.</li>
+                </ul>
+              </li>
+            </ul>
+            <div v-if="retenidos.length > VISIBLES" class="fila">
+              <button type="button" :aria-expanded="verTodos" @click="verTodos = !verTodos">
+                {{ verTodos ? 'Ver solo los más recientes' : `Ver todos (${retenidos.length})` }}
+              </button>
+              <span v-if="!verTodos" class="tenue pequeno">Se muestran los {{ VISIBLES }} días más recientes.</span>
+            </div>
+          </div>
           <div class="fila publicacion">
             <span class="secundario">Publicado en BUSINESS:</span>
             <span v-for="c in datos.cortes_publicados" :key="c" class="chip bien"><BadgeCheck :size="12" />{{ nombreCorte(c) }}</span>
-            <template v-if="datos.cortes_retenidos.length">
-              <span class="secundario">No publicado en BUSINESS:</span>
-              <RouterLink v-for="c in datos.cortes_retenidos" :key="c" to="/certificacion" class="chip critico">{{ nombreCorte(c) }}</RouterLink>
-            </template>
           </div>
         </section>
 
@@ -195,6 +226,16 @@ const LECTURA: Clave[] = [
 .paso { display: grid; place-items: center; align-content: center; gap: 4px; max-width: 140px; text-align: center; color: var(--marca); font-size: 12px; font-weight: 600; }
 .paso span { color: var(--tinta-2); }
 .publicacion { gap: 6px; }
+.icono-critico { color: var(--critico); }
+/* Días retenidos: la fecha (enlace a su certificación) y, al lado, lo que los retuvo. */
+.retenidos { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--linea); }
+.retenidos h3 { gap: 7px; }
+.lista-retenidos, .motivos { list-style: none; margin: 0; padding: 0; }
+.lista-retenidos { display: grid; gap: 8px; }
+.retenido { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 14px; align-items: start; }
+.retenido .chip { justify-self: start; }
+.motivos { display: grid; gap: 3px; padding-top: 2px; font-size: 13.5px; overflow-wrap: anywhere; }
+.id-regla { font-weight: 700; color: var(--critico-texto); }
 .pequeno { font-size: 12.5px; }
 .buscar { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--borde-control); border-radius: 999px; padding: 0 12px; background: var(--superficie); color: var(--tenue); }
 .buscar:focus-within { border-color: var(--marca); box-shadow: 0 0 0 2px var(--marca-suave); }
@@ -215,7 +256,7 @@ const LECTURA: Clave[] = [
 .linea-campo:hover { color: var(--tinta); }
 /* Fila ancha: se hunde apenas al presionar. */
 .linea-campo:active { transform: scale(0.995); }
-.pastilla { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--color-dac); background: var(--superficie); font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+.pastilla { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--color-dac); background: var(--superficie); font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
 .pastilla.origen { font-size: 12px; }
 .candado { color: var(--sello); flex: none; }
 .mini { font-size: 10.5px; padding: 0 6px; }
@@ -244,6 +285,10 @@ const LECTURA: Clave[] = [
   font-weight: 800;
 }
 .pasos li span { grid-column: 2; font-size: 12.5px; }
+@media (max-width: 640px) {
+  .lista-retenidos { gap: 12px; }
+  .retenido { grid-template-columns: 1fr; }
+}
 @media (max-width: 1000px) {
   .flujo { grid-template-columns: 1fr; }
   .paso { max-width: none; grid-auto-flow: column; justify-content: start; }

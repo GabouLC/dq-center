@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Fingerprint, Lock, LockOpen, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
+import { Eye, Fingerprint, Lock, LockOpen, ShieldAlert, ShieldCheck, Stamp, TriangleAlert, Workflow } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import BloqueCarga from '@/componentes/BloqueCarga.vue'
@@ -8,7 +8,7 @@ import EstadoVacio from '@/componentes/EstadoVacio.vue'
 import MapaDias from '@/componentes/MapaDias.vue'
 import Sello from '@/componentes/Sello.vue'
 import { usarCarga } from '@/composables/usarCarga'
-import { hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
+import { diaEnFraseMin, hora, NOMBRE_TABLA, num, pct, TABLAS } from '@/formato'
 import type { Clave } from '@/navegacion'
 import { api } from '@/servicios/api'
 import { useCortes } from '@/stores/cortes'
@@ -37,6 +37,8 @@ type Tabla = {
     certificado_en: string
     publicado: boolean
     objeto_business: string | null
+    /** Último día certificado hasta el día elegido: el que negocio veía (el mismo día si se publicó). */
+    ultimo_certificado: string | null
   }
 }
 type Respuesta = { fecha_corte: string; tablas: Tabla[]; historia: Record<string, Record<string, string>> }
@@ -73,6 +75,7 @@ const LECTURA: Clave[] = [
   { muestras: ['bien', 'aviso', 'critico', 'neutro'], texto: 'Las barras N1, N2 y N3 reparten las reglas de cada nivel por estado: cumplen, en alerta, fallan o sin datos. El texto debajo da los números.' },
   { muestras: ['candado'], texto: 'Privacidad: un candado morado es un dato personal guardado cifrado; uno rojo abierto, un dato personal sin cifrar, que retiene la tabla.' },
   { muestras: ['critico'], texto: 'Arriba, el mapa muestra el sello de cada tabla en todos los días; clic en un cuadro para ver ese día.' },
+  { texto: 'Si una tabla no se publica ese día, su ficha dice qué día sigue viendo negocio: el último día certificado.' },
 ]
 </script>
 
@@ -155,6 +158,13 @@ const LECTURA: Clave[] = [
                 <span v-else class="chip critico">No publicada: no se certificó</span>
               </dd>
             </dl>
+            <p v-if="!t.trazabilidad.publicado" class="aviso-caja info negocio-ve">
+              <Eye :size="17" aria-hidden="true" />
+              <span v-if="t.trazabilidad.ultimo_certificado">
+                Negocio sigue viendo el <strong>{{ diaEnFraseMin(t.trazabilidad.ultimo_certificado) }}</strong> (último día certificado)
+              </span>
+              <span v-else>Todavía no hay ningún día certificado de esta tabla</span>
+            </p>
             <RouterLink :to="`/linaje/${t.tabla}`" class="fila enlace"><Workflow :size="16" /> Ver su linaje</RouterLink>
           </section>
         </article>
@@ -202,6 +212,7 @@ const LECTURA: Clave[] = [
 .sello-datos dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 /* El objeto de BUSINESS va en su propia fila, a todo el ancho: el nombre no se corta. */
 .sello-datos dd:last-of-type { grid-column: 1 / -1; margin-top: -2px; }
+.negocio-ve { font-size: 13px; line-height: 1.45; padding: 10px 12px; }
 .enlace { gap: 6px; font-weight: 700; font-size: 13.5px; }
 @media (max-width: 1100px) {
   .ficha { grid-template-columns: 1fr 1fr; background: linear-gradient(180deg, color-mix(in srgb, var(--acento-suave) 60%, var(--superficie)) 0, var(--superficie) 200px); }

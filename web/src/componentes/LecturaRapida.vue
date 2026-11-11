@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ArrowDownRight, ArrowUpRight, ListChecks, Minus } from 'lucide-vue-next'
+import { ArrowDownRight, ArrowUpRight, Eye, ListChecks, Minus } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usarCarga } from '@/composables/usarCarga'
-import { diaDeSemana, diaEnFrase, NOMBRE_TABLA, TABLAS } from '@/formato'
+import { diaDeSemana, diaEnFrase, diaYMes, NOMBRE_TABLA, TABLAS } from '@/formato'
 import { api } from '@/servicios/api'
 
 /**
@@ -18,6 +18,7 @@ type FichaTabla = {
   tabla: string
   calidad: { reglas_bloqueantes: string[] }
   privacidad: { hallazgos: { tipo: string; columna: string; bloqueante: boolean }[] }
+  trazabilidad: { ultimo_certificado: string | null }
 }
 type Regla = { id_regla: string; dimension: string; estado_a?: string; estado_b?: string }
 
@@ -113,6 +114,28 @@ const explicacion = computed(() => {
     : `${lista(nombres)} tienen observaciones que no impiden publicarlas.`
 })
 
+// Qué día sigue viendo negocio de las tablas retenidas (el último día certificado de cada una).
+// Si todas comparten día, una sola frase corta; si no, cada día con sus tablas entre paréntesis.
+const negocioVe = computed(() => {
+  if (!delDia.value || !retenidas.value.length) return null
+  const porDia = new Map<string | null, string[]>()
+  for (const tabla of retenidas.value) {
+    const dia = delDia.value.cert.tablas.find((f) => f.tabla === tabla)?.trazabilidad.ultimo_certificado ?? null
+    porDia.set(dia, [...(porDia.get(dia) ?? []), NOMBRE_TABLA[tabla]])
+  }
+  const conDia = [...porDia].filter((p): p is [string, string[]] => p[0] !== null)
+  const sinDia = porDia.get(null) ?? []
+  const frases: string[] = []
+  if (conDia.length) {
+    const etiqueta = (tablas: string[]) => (porDia.size > 1 ? ` (${lista(tablas)})` : '')
+    frases.push(`Negocio sigue viendo ${lista(conDia.map(([dia, tablas]) => `el ${diaYMes(dia)}${etiqueta(tablas)}`))}.`)
+  }
+  if (sinDia.length) {
+    frases.push(conDia.length ? `De ${lista(sinDia)} todavía no hay ningún día certificado.` : `Negocio todavía no tiene ningún día certificado de ${lista(sinDia)}.`)
+  }
+  return frases.join(' ')
+})
+
 // Qué cambió frente al día anterior: reglas que subieron o bajaron de estado (Cumple < Alerta < Falla).
 const RANGO: Record<string, number> = { OK: 0, ALERTA: 1, FALLA: 2 }
 const cambios = computed(() => {
@@ -153,6 +176,7 @@ const accion = computed(() => {
     <p class="frase">{{ frase }}</p>
     <p v-if="explicacion" class="explicacion">{{ explicacion }}</p>
     <span v-else class="esqueleto" style="width: min(460px, 90%); height: 15px; margin: 4px 0" aria-hidden="true" />
+    <p v-if="negocioVe" class="negocio"><Eye :size="16" aria-hidden="true" />{{ negocioVe }}</p>
     <p v-if="anterior && cambios" class="cambios">
       <template v-if="cambios.peor || cambios.mejor">
         <RouterLink v-if="cambios.peor" :to="{ path: '/validaciones', query: { comparar: anterior } }" class="chip critico">
@@ -181,6 +205,9 @@ const accion = computed(() => {
 .frase { margin-top: 2px; font-size: 38px; font-weight: 800; line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance; max-width: 22ch; }
 .explicacion { font-size: 15.5px; line-height: 1.5; color: var(--hero-tinta-2); max-width: 62ch; text-wrap: pretty; }
 .esqueleto { background: rgb(255 255 255 / 0.14); }
+/* Qué sigue viendo negocio: una línea corta bajo el motivo, con el ojo de «lo que ve negocio». */
+.negocio { display: flex; align-items: flex-start; gap: 8px; font-size: 14.5px; font-weight: 600; line-height: 1.45; color: var(--hero-tinta); max-width: 62ch; }
+.negocio svg { flex: none; margin-top: 2px; color: var(--hero-tinta-2); }
 .cambios { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 4px; font-size: 13px; }
 /* Pastillas claras sobre el azul: los mismos pares de color que en el resto del portal (tema claro). */
 .cambios .chip { font-size: 12.5px; padding: 3px 10px 3px 7px; }
