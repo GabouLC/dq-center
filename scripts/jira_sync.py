@@ -366,14 +366,16 @@ def comentario_de_revision(numero: int, hu: str, filas: list[list[str]]) -> dict
         *({"type": "tableRow", "content": [celda(texto_plano(c)) for c in fila]} for fila in filas),
     ]}
     return {"type": "doc", "version": 1, "content": [
-        {"type": "paragraph", "content": [{"type": "text", "text": f"Revisión del Sprint {numero} · {hu} aceptada", "marks": [{"type": "strong"}]}]},
+        {"type": "paragraph", "content": [{"type": "text", "text": f"Revisión del Sprint {numero} · {hu}: criterios verificados", "marks": [{"type": "strong"}]}]},
         {"type": "paragraph", "content": [{"type": "text", "text": (
-            "Cada criterio de aceptación con su prueba automatizada y su evidencia. Las capturas van adjuntas a esta "
-            "historia; el detalle está en docs/sprints/sprint-%d.md del repositorio." % numero)}]},
+            "Cada criterio de aceptación con su prueba automatizada y su evidencia, comprobados contra el repositorio. "
+            "Donde un criterio no tiene prueba automatizada, la tabla lo dice. Las capturas van adjuntas a esta historia; "
+            "el detalle está en docs/sprints/sprint-%d.md del repositorio. La aceptación formal la da el Product Owner "
+            "en la revisión del sprint." % numero)}]},
         tabla,
         {"type": "paragraph", "content": [{"type": "text", "text": (
-            "Definition of Done: código en main con el CI en verde, cada criterio con prueba automatizada, "
-            "0 diferencias contra el manifiesto de errores sembrados y evidencia adjunta.")}]},
+            "Definition of Done: código en main con el CI en verde, cada criterio con su prueba o con la salvedad escrita "
+            "en la tabla, y evidencia adjunta. Cuando la historia toca el flujo, 0 diferencias contra el manifiesto de errores sembrados.")}]},
     ]}
 
 
