@@ -1,0 +1,56 @@
+# Actualizaciones de dependencias de dq-center (Dependabot, version updates).
+#
+# Cada semana abre pull requests: uno agrupado con las actualizaciones menores y de parche, y uno
+# aparte por cada mayor. Ninguno se fusiona solo: los revisa una persona y el CI (pytest y build)
+# tiene que pasar.
+#
+# Ojo con estos tres, que pueden romper cosas aunque sean una versión menor; por eso quedan fuera
+# del grupo y llegan en su propio PR:
+#   - duckdb: el flujo y las pruebas corren sobre DuckDB; un cambio de versión puede alterar el SQL.
+#   - faker: está fijado a propósito en pyproject.toml (datagen). Con otra versión la misma
+#     semilla puede generar otros datos y el manifiesto de errores sembrados deja de coincidir.
+#   - firebase (npm) y firebase-admin (pip): el inicio de sesión con Google y Firestore dependen de ellos.
+# No activar automerge en ninguno.
+
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/" # pyproject.toml (dependencias y extras)
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/Lima"
+    open-pull-requests-limit: 5
+    groups:
+      python-menores-y-parches:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["duckdb", "faker", "firebase*"]
+
+  - package-ecosystem: "npm"
+    directory: "/web" # package.json y package-lock.json del portal
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/Lima"
+    open-pull-requests-limit: 5
+    groups:
+      web-menores-y-parches:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["firebase*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/" # .github/workflows
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/Lima"
+    open-pull-requests-limit: 3
+    groups:
+      acciones-menores-y-parches:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

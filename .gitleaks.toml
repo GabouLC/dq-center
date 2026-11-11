@@ -1,0 +1,35 @@
+# Configuración de gitleaks para dq-center (workflow .github/workflows/secret-scan.yml).
+#
+# Parte de las reglas por defecto de gitleaks (cientos de formatos de claves, tokens y llaves
+# privadas) y solo agrega excepciones puntuales y explicadas. Antes de sumar una nueva, confirma
+# que no es una credencial real: si lo fuera, se rota, no se ignora.
+#
+# Requiere gitleaks 8.25 o superior (usa [[allowlists]]); el workflow fija la versión 8.30.1.
+# Prueba local, sin imprimir valores:  gitleaks git . --redact   y   gitleaks dir . --redact
+
+title = "dq-center"
+
+[extend]
+useDefault = true
+
+# 1) Contraseña de demostración, pública a propósito.
+#    «SmartDQ-2026» es la clave de las cuentas *@demo.local del modo local (ADR 0011). Está escrita
+#    en README, AGENTS.md, CLAUDE.md, docs/, scripts/capturas_portal.py y src/dqc/api/main.py
+#    para que cualquier integrante pueda levantar el portal. No protege ningún dato real
+#    (los datos son sintéticos) y la API no arranca con ella en Cloud Run.
+#    Se exceptúa solo ese valor, en cualquier archivo; no se ignora ningún archivo por esto.
+#    Las contraseñas y secretos de verdad (DQC_SECRETO, JIRA_API_TOKEN, llaves de GCP o Firebase)
+#    siguen detectándose.
+[[allowlists]]
+description = "Contraseña de demostración pública SmartDQ-2026 (ADR 0011)"
+regexTarget = "secret"
+regexes = ['''SmartDQ-2026''']
+
+# 2) Archivos que no son texto: capturas del portal (docs/evidencias) y bases DuckDB locales.
+#    gitleaks ya los trata como binarios; se listan para no gastar tiempo leyéndolos.
+[[allowlists]]
+description = "Capturas .png y bases .duckdb (binarios, no son texto)"
+paths = [
+  '''\.png$''',
+  '''\.duckdb$''',
+]
