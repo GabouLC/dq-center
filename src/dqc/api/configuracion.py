@@ -32,22 +32,58 @@ def _ahora() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _reglas_del_yaml(config: Path) -> dict[str, dict]:
+    return {r.id: {**a_documento(r), "actualizado_por": "semilla"} for r in cargar_yaml(config / "reglas_iniciales.yaml")}
+
+
+def _glosario_del_yaml(config: Path) -> dict[str, dict]:
+    return {t["id"]: t for t in cargar_glosario(config / "glosario.yaml")}
+
+
+def _contratos_del_yaml(config: Path) -> dict[str, dict]:
+    # Pasa por JSON para quedar igual que al leerse del archivo y poder comparar sin falsos cambios.
+    contratos = cargar_contratos(config / "contratos.yaml")
+    return json.loads(json.dumps(contratos, ensure_ascii=False, default=str))
+
+
 class ConfiguracionLocal:
     def __init__(self, ruta: Path, config: Path, admins: list[str] | None = None):
         self.ruta = ruta
         self._lock = threading.Lock()
         if ruta.exists():
             self._datos = json.loads(ruta.read_text(encoding="utf-8"))
+            if self._completar_desde_yaml(config):
+                self._guardar()
             return
         self._datos = {
-            "reglas": {r.id: {**a_documento(r), "actualizado_por": "semilla"} for r in cargar_yaml(config / "reglas_iniciales.yaml")},
-            "contratos": cargar_contratos(config / "contratos.yaml"),
-            "glosario": {t["id"]: t for t in cargar_glosario(config / "glosario.yaml")},
+            "reglas": _reglas_del_yaml(config),
+            "contratos": _contratos_del_yaml(config),
+            "glosario": _glosario_del_yaml(config),
             "usuarios": {**USUARIOS_DEMO, **{a.lower(): "admin" for a in admins or []}},
             "credenciales": {},
             "auditoria": [],
         }
         self._guardar()
+
+    def _completar_desde_yaml(self, config: Path) -> bool:
+        """Pone al día un JSON que ya existía con lo que cambió en config/*.yaml; True si algo cambió.
+
+        Agrega las reglas y los términos del glosario cuyo id falte: lo que ya existe no se toca,
+        porque las ediciones hechas desde el portal ganan. Los contratos no se editan en el portal,
+        así que siempre se refrescan desde el YAML.
+        """
+        cambio = False
+        for clave, del_yaml in (("reglas", _reglas_del_yaml(config)), ("glosario", _glosario_del_yaml(config))):
+            existentes = self._datos.setdefault(clave, {})
+            for id_, doc in del_yaml.items():
+                if id_ not in existentes:
+                    existentes[id_] = doc
+                    cambio = True
+        contratos = _contratos_del_yaml(config)
+        if self._datos.get("contratos") != contratos:
+            self._datos["contratos"] = contratos
+            cambio = True
+        return cambio
 
     def _guardar(self) -> None:
         self.ruta.parent.mkdir(parents=True, exist_ok=True)

@@ -6,16 +6,17 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from dqc.api import app
+from dqc.api import app, vistas
 from dqc.api.app import LIMITE_SEGUNDOS, Servicios, crear_app
 from dqc.api.autenticacion import Autenticador, Sesiones
 from dqc.api.configuracion import USUARIOS_DEMO, ConfiguracionLocal
 from dqc.api.datos import FuenteBusiness
 from dqc.api.servicios import lanzador_en_proceso, verificador
-from datetime import timedelta
+from datetime import date, timedelta
 
 from dqc.datagen import generador as g
 from dqc.modelo import BUSINESS
+from dqc.motor.reglas import expandir
 
 from conftest import CONFIG, CORTES_PRUEBA
 
@@ -206,9 +207,9 @@ def test_resumen_muestra_tendencia_pass_y_certificacion(cliente):
     assert cortes[str(g.REPROCESO)]["certificacion"]["poliza"] == "NO_CERTIFICADO"
 
 
-def test_validaciones_de_un_corte_empiezan_por_las_fallas(cliente):
+def test_validaciones_de_un_corte_empiezan_por_las_fallas(cliente, reglas):
     datos = get(cliente, "/api/v1/validaciones", corte=str(g.PERSONA_TARDE))
-    assert len(datos["reglas"]) == 48
+    assert len(datos["reglas"]) == len(expandir([r for r in reglas if r.activa]))  # sin fijar el total del catálogo
     assert (datos["reglas"][0]["id_regla"], datos["reglas"][0]["estado"]) == ("GEN-OPO-01", "FALLA")
     solo_n1 = get(cliente, "/api/v1/validaciones", corte=str(g.PERSONA_TARDE), nivel="N1")["reglas"]
     assert solo_n1 and {r["nivel"] for r in solo_n1} == {"N1"}
@@ -236,6 +237,40 @@ def test_certificacion_integral_del_dia_de_la_fuga(cliente):
     assert all(c["protegido"] for c in persona["privacidad"]["campos_cifrados"])
     assert persona["trazabilidad"]["objeto_business"] == "dq_business.p_persona"
     assert datos["historia"][str(g.PERSONA_TARDE)]["persona"] == "NO_CERTIFICADO"
+
+
+def negocio_ve(cliente, tabla: str, dia) -> str | None:
+    """El último día certificado (hasta `dia`) que la ficha de certificación dice que sigue viendo negocio."""
+    datos = get(cliente, "/api/v1/certificacion", corte=str(dia))
+    return next(t for t in datos["tablas"] if t["tabla"] == tabla)["trazabilidad"]["ultimo_certificado"]
+
+
+def test_cada_tabla_retenida_dice_que_dia_sigue_viendo_negocio(cliente):
+    assert negocio_ve(cliente, "persona", g.PERSONA_TARDE) == "2026-07-13"
+    assert negocio_ve(cliente, "siniestro", min(g.FUGA_PII)) == "2026-08-06"
+    # Un día que sí se publicó es su propio último día certificado.
+    assert negocio_ve(cliente, "persona", ANTES_DEL_RETRASO) == str(ANTES_DEL_RETRASO)
+    # Póliza el 28 de septiembre: aquí solo se procesan algunos días y POL-CON-03 ya la retiene desde el 26, así que
+    # negocio sigue en el último día publicado que haya. (Con la corrida completa es el 27: ver la prueba siguiente.)
+    historia = get(cliente, "/api/v1/certificacion", corte="2026-09-28")["historia"]
+    ultimo = max(d for d, e in historia.items() if d <= "2026-09-28" and e["poliza"] != "NO_CERTIFICADO")
+    assert negocio_ve(cliente, "poliza", date(2026, 9, 28)) == ultimo < "2026-09-28"
+
+
+def test_el_ultimo_dia_certificado_ignora_los_retenidos_y_los_dias_posteriores():
+    historia = {
+        date(2026, 7, 1): {"persona": "CERTIFICADO_CON_OBSERVACIONES", "pago": "NO_CERTIFICADO"},
+        date(2026, 7, 2): {"persona": "NO_CERTIFICADO", "pago": "NO_CERTIFICADO"},
+        date(2026, 7, 3): {"persona": "NO_CERTIFICADO"},
+        date(2026, 7, 4): {"persona": "CERTIFICADO"},
+    }
+    assert vistas.ultimo_certificado(historia, "persona", date(2026, 7, 3)) == date(2026, 7, 1)  # con observaciones también se publica
+    assert vistas.ultimo_certificado(historia, "persona", date(2026, 7, 4)) == date(2026, 7, 4)
+    assert vistas.ultimo_certificado(historia, "pago", date(2026, 7, 4)) is None  # todavía no hay ningún día certificado
+    assert vistas.ultimo_certificado(historia, "vehiculo", date(2026, 7, 4)) is None
+    # La corrida completa: Póliza se publica hasta el 27 de septiembre y POL-CON-03 la retiene del 28 al 30.
+    poliza = {date(2026, 9, d): {"poliza": "CERTIFICADO_CON_OBSERVACIONES" if d <= 27 else "NO_CERTIFICADO"} for d in range(24, 31)}
+    assert [vistas.ultimo_certificado(poliza, "poliza", date(2026, 9, d)) for d in (27, 28, 30)] == [date(2026, 9, 27)] * 3
 
 
 # ── fuentes y contrato ──────────────────────────────────────────────────────
@@ -272,6 +307,47 @@ def test_linaje_de_persona_de_raw_a_business(cliente):
     documento = next(c for c in datos["campos"] if c["master"] == "nro_documento")
     assert documento["raw"] == "NUM_DOC" and "cifrado determinístico" in documento["transformacion"]
     assert datos["cortes_retenidos"] == [str(g.PERSONA_TARDE), str(g.DOCUMENTO_NULO)]
+
+
+def motivos_del_dia(linaje: dict, dia, tipo: str | None = None) -> list[dict]:
+    retenido = next(r for r in linaje["retenidos"] if r["fecha_corte"] == str(dia))
+    return [m for m in retenido["motivos"] if tipo is None or m["tipo"] == tipo]
+
+
+def test_linaje_de_persona_dice_por_que_se_retuvo_cada_dia(cliente):
+    datos = get(cliente, "/api/v1/linaje/persona")
+    assert [r["fecha_corte"] for r in datos["retenidos"]] == datos["cortes_retenidos"] == [str(g.PERSONA_TARDE), str(g.DOCUMENTO_NULO)]
+    assert all(set(m) == {"tipo", "id", "texto"} for r in datos["retenidos"] for m in r["motivos"])
+    # El 14 de julio llegó tarde el archivo; el 22, las personas con DNI llegaron sin documento.
+    assert {"tipo": "regla", "id": "GEN-OPO-01", "texto": "el archivo llegó tarde"} in motivos_del_dia(datos, g.PERSONA_TARDE)
+    assert {"tipo": "regla", "id": "PER-COM-01", "texto": "faltan datos obligatorios en nro_documento"} in motivos_del_dia(datos, g.DOCUMENTO_NULO)
+    assert not motivos_del_dia(datos, g.PERSONA_TARDE, "privacidad")
+
+
+def test_linaje_de_siniestro_explica_la_fuga_de_datos_personales(cliente):
+    datos = get(cliente, "/api/v1/linaje/siniestro")
+    assert set(map(str, g.FUGA_PII)) <= {r["fecha_corte"] for r in datos["retenidos"]}
+    for dia, registros in g.FUGA_PII.items():
+        assert motivos_del_dia(datos, dia, "privacidad") == [
+            {"tipo": "privacidad", "id": "PII_EN_CLARO", "texto": f"datos personales sin cifrar en causa · {registros} registros"}
+        ]
+    # Lo que se publicó no aparece entre los retenidos.
+    assert not {r["fecha_corte"] for r in datos["retenidos"]} & set(datos["cortes_publicados"])
+
+
+def test_el_texto_del_motivo_se_arma_con_la_dimension_de_la_regla():
+    assert vistas.texto_motivo_regla("GEN-VOL-01", {"dim": "volumetria", "tipo": "variacion_volumen"}) == "el volumen de registros cambió más de lo normal"
+    assert vistas.texto_motivo_regla("GEN-VOL-02", {"dim": "volumetria", "tipo": "minimo_filas"}) == "llegaron muy pocos registros"
+    assert vistas.texto_motivo_regla("PER-UNI-01", {"dim": "unicidad", "campos": ["tipo_documento", "nro_documento"]}) == (
+        "hay registros duplicados en tipo_documento y nro_documento"
+    )
+    # Una regla que ya no está en el catálogo se explica por el código de su id; sin código, con una frase general.
+    assert vistas.texto_motivo_regla("POL-INT-02", None) == "hay referencias a registros que no existen"
+    assert vistas.texto_motivo_regla("XXX", None) == "falló una regla grave"
+    uno = {"id_ejecucion": "e", "reglas_bloqueantes": ""}
+    hallazgo = {"id_ejecucion": "e", "tipo": "PII_EN_CLARO", "columna": "causa", "bloqueante": True}
+    assert vistas.motivos_de_retencion(uno, [hallazgo], {})[0]["texto"] == "datos personales sin cifrar en causa · 1 registro"
+    assert vistas.motivos_de_retencion({**uno, "reglas_bloqueantes": "SIN_DATOS"}, [], {})[0]["texto"] == "ninguna de sus reglas pudo evaluarse"
 
 
 # ── HU-10: glosario ─────────────────────────────────────────────────────────
@@ -318,10 +394,19 @@ def test_una_regla_invalida_o_con_sql_roto_no_se_guarda(cliente):
 
 
 def test_admin_lanza_una_corrida_y_aparece_en_el_portal(cliente):
-    antes = len(get(cliente, "/api/v1/ejecuciones"))
+    antes = len(get(cliente, "/api/v1/ejecuciones", ADMIN))
     respuesta = cliente.post("/api/v1/ejecuciones", headers=como(ADMIN), json={})
     assert respuesta.status_code == 202 and respuesta.json()["estado"] == "terminada"
-    assert len(get(cliente, "/api/v1/ejecuciones")) == antes + 1
+    assert len(get(cliente, "/api/v1/ejecuciones", ADMIN)) == antes + 1
+
+
+@pytest.mark.parametrize("ruta", ["/api/v1/reglas", "/api/v1/ejecuciones"])
+def test_reglas_y_ejecuciones_solo_se_leen_con_permiso_de_configurar(cliente, config, ruta):
+    # Son los módulos Reglas y Ejecuciones del portal: la API responde igual que el menú.
+    for email in (LECTOR, GOBIERNO):
+        assert cliente.get(ruta, headers=como(email)).status_code == 403
+        assert any(e["accion"] == "ACCESO_DENEGADO" and e["email"] == email and e["recurso"] == ruta for e in config.auditoria())
+    assert get(cliente, ruta, ADMIN)
 
 
 def test_admin_gestiona_usuarios_pero_no_se_quita_el_acceso(cliente):

@@ -1,6 +1,7 @@
 """Motor de calidad sobre MASTER (HU-02, HU-03): estados, niveles, muestras y tendencia."""
 
 import json
+from collections import Counter
 from datetime import timedelta
 import re
 
@@ -12,15 +13,44 @@ from dqc.motor.reglas import expandir
 from conftest import CORTES_PRUEBA
 
 
-def test_catalogo_tiene_36_reglas_y_48_expandidas(reglas):
-    assert len(reglas) == 36
-    assert len(expandir(reglas)) == 48
+def test_catalogo_tiene_39_reglas_y_51_expandidas(reglas):
+    assert len(reglas) == 39
+    assert len(expandir(reglas)) == 51
 
 
-def test_cada_corte_evalua_las_48_reglas_con_su_nivel(ejecuciones):
+def test_catalogo_por_nivel(reglas):
+    por_nivel = Counter(NIVEL_POR_DIMENSION[r.dim] for r in reglas)
+    assert por_nivel == {"N1": 22, "N2": 14, "N3": 3}
+
+
+def test_cada_corte_evalua_las_51_reglas_con_su_nivel(ejecuciones):
     for e in ejecuciones.values():
-        assert len(e.resultados) == 48
+        assert len(e.resultados) == 51
         assert all(r.nivel == NIVEL_POR_DIMENSION[r.dimension] for r in e.resultados)
+
+
+# Reglas del Sprint 3 (auditoría de reglas): hoy no cambian ningún resultado.
+NUEVAS = {
+    "SIN-UNI-01": dict(tabla="siniestro", dim="unicidad", tipo="unico", campos=["id_siniestro"], umbral=100, sev="CRITICA"),
+    "PAG-VAL-01": dict(tabla="pago", dim="validez", tipo="dominio", campo="estado", valores=["PENDIENTE", "PAGADO", "VENCIDO"], umbral=100, sev="ALTA"),
+    "PER-VAL-06": dict(tabla="persona", dim="validez", tipo="dominio", campo="tipo_documento", valores=["DNI", "CE", "RUC"], umbral=100, sev="ALTA"),
+}
+
+
+def test_las_reglas_nuevas_tienen_la_definicion_decidida(reglas):
+    por_id = {r.id: r for r in reglas}
+    for id_regla, esperado in NUEVAS.items():
+        regla = por_id[id_regla]
+        assert {k: getattr(regla, k) for k in esperado} == esperado, id_regla
+        assert regla.activa and not regla.filtro
+
+
+def test_las_reglas_nuevas_dan_100_en_los_datos_sinteticos(ejecuciones):
+    """Los datos sintéticos nunca las hacen fallar: no mueven ningún resultado aceptado."""
+    for corte, e in ejecuciones.items():
+        nuevas = [r for r in e.resultados if r.id_regla in NUEVAS]
+        assert {r.id_regla for r in nuevas} == set(NUEVAS), corte
+        assert all(r.universo > 0 and r.cumplimiento == 100 and r.estado == "OK" for r in nuevas), corte
 
 
 def test_hay_reglas_en_ok_alerta_y_falla(ejecuciones):

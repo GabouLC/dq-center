@@ -60,6 +60,22 @@ def test_una_fuga_de_pii_bloquea_aunque_la_calidad_este_bien(simulacion):
         assert len(c.hallazgos) == registros
 
 
+def test_un_campo_que_debe_ir_cifrado_y_se_guardo_como_texto_bloquea(contratos):
+    """HU-07: si el DNI llega a MASTER como texto y no como BYTES, el Gate lo detecta y bloquea."""
+
+    class MasterSinCifrar:  # MASTER donde la homologación olvidó cifrar nro_documento
+        def columnas(self, tabla, dataset):
+            return [("nro_documento", "STRING")]
+
+    hallazgos = revisar(MasterSinCifrar(), "persona", CORTES[0], contratos["persona"], cifrados(contratos)["persona"])
+    assert [(h.tipo, h.columna, h.bloqueante) for h in hallazgos] == [("CAMPO_SIN_CIFRAR", "nro_documento", True)]
+
+    resultados = [ResultadoRegla("PER-COM-01", "persona", "completitud", "CRITICA", "no_nulo", 100, CORTES[0], 10, 10, [])]
+    ejecucion = type("E", (), {"resultados": resultados, "fecha_corte": CORTES[0]})
+    persona = next(c for c in certificar(ejecucion, hallazgos, "x") if c.tabla == "persona")
+    assert persona.estado == NO_CERTIFICADO and not persona.privacidad_ok and persona.calidad_ok
+
+
 def test_columna_nueva_sin_clasificar_es_observacion(simulacion):
     c = _cert(simulacion, "poliza", g.CANAL_VENTA)
     assert c.certificado

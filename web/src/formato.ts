@@ -29,11 +29,20 @@ const partesDia = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'nume
 function partes(iso: string): Record<string, string> {
   return Object.fromEntries(partesDia.formatToParts(new Date(`${iso}T00:00:00Z`)).map((p) => [p.type, p.value]))
 }
+/** "2026-07-14" -> "martes 14 de julio" (dentro de una frase: «sigue viendo el martes 14 de julio») */
+export function diaEnFraseMin(iso: string): string {
+  const p = partes(iso)
+  return `${p.weekday} ${p.day} de ${p.month}`
+}
 /** "2026-07-14" -> "Martes 14 de julio" (para frases) */
 export function diaEnFrase(iso: string): string {
-  const p = partes(iso)
-  const texto = `${p.weekday} ${p.day} de ${p.month}`
+  const texto = diaEnFraseMin(iso)
   return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+/** "2026-07-13" -> "13 de julio" (frase corta, sin día de la semana) */
+export function diaYMes(iso: string): string {
+  const p = partes(iso)
+  return `${p.day} de ${p.month}`
 }
 /** "2026-07-13" -> "lunes 13" */
 export function diaDeSemana(iso: string): string {

@@ -287,11 +287,79 @@ def _transformacion(columna, cifrado: str | None) -> str:
     return " · ".join(pasos) or "copia"
 
 
-def linaje(tabla: str, fuente: Fuente, contrato: dict, certificaciones_tabla: list[dict]) -> dict:
-    """Recorrido RAW -> MASTER -> BUSINESS de una tabla y de cada uno de sus campos."""
+# Por qué una regla bloqueante retiene un día, en palabras de negocio y según su dimensión. El texto
+# del catálogo (`descripcion`) dice qué vigila la regla, no qué pasó; por eso se arma aquí.
+MOTIVO_DIMENSION = {
+    "oportunidad": "el archivo llegó tarde",
+    "volumetria": "el volumen de registros cambió más de lo normal",
+    "completitud": "faltan datos obligatorios",
+    "unicidad": "hay registros duplicados",
+    "validez": "hay valores con formato no válido",
+    "consistencia": "hay datos que no cuadran entre sí",
+    "integridad": "hay referencias a registros que no existen",
+}
+# Respaldo si la regla ya no está en el catálogo: el código va en su id (PER-COM-01).
+DIMENSION_POR_CODIGO = {
+    "OPO": "oportunidad", "VOL": "volumetria", "COM": "completitud", "UNI": "unicidad",
+    "VAL": "validez", "CON": "consistencia", "INT": "integridad",
+}
+MOTIVO_PRIVACIDAD = {
+    "PII_EN_CLARO": "datos personales sin cifrar",
+    "CAMPO_SIN_CIFRAR": "campo sensible sin cifrar",
+    "COLUMNA_SIN_CLASIFICAR": "columna sin clasificación de sensibilidad (DAC)",
+}
+DIMENSIONES_CON_CAMPO = {"completitud", "unicidad", "validez", "integridad"}
+
+
+def texto_motivo_regla(id_regla: str, regla: dict | None) -> str:
+    """Qué significa que la regla haya bloqueado: «el archivo llegó tarde», «faltan datos obligatorios en nro_documento»."""
+    regla = regla or {}
+    if regla.get("tipo") == "minimo_filas":
+        return "llegaron muy pocos registros"
+    codigo = id_regla.split("-")[1] if id_regla.count("-") == 2 else ""
+    dimension = regla.get("dim") or DIMENSION_POR_CODIGO.get(codigo, "")
+    texto = MOTIVO_DIMENSION.get(dimension, "falló una regla grave")
+    campos = [c for c in (regla.get("campos") or [regla.get("campo")]) if c]
+    return f"{texto} en {' y '.join(campos)}" if campos and dimension in DIMENSIONES_CON_CAMPO else texto
+
+
+def motivos_de_retencion(certificacion: dict, hallazgos_dia: list[dict], reglas: dict[str, dict]) -> list[dict]:
+    """Por qué un día no se publicó: las reglas bloqueantes y los hallazgos de privacidad que bloquean."""
+    motivos = []
+    for id_regla in (r for r in certificacion["reglas_bloqueantes"].split(",") if r):
+        if id_regla == "SIN_DATOS":  # ninguna regla pudo evaluarse
+            motivos.append({"tipo": "regla", "id": id_regla, "texto": "ninguna de sus reglas pudo evaluarse"})
+        else:
+            motivos.append({"tipo": "regla", "id": id_regla, "texto": texto_motivo_regla(id_regla, reglas.get(id_regla))})
+    agrupados = Counter((h["tipo"], h["columna"]) for h in hallazgos_dia if h["bloqueante"])
+    for (tipo, columna), n in sorted(agrupados.items()):
+        texto = f"{MOTIVO_PRIVACIDAD.get(tipo, tipo)} en {columna}"
+        if tipo == "PII_EN_CLARO":
+            texto += f" · {n} {'registro' if n == 1 else 'registros'}"
+        motivos.append({"tipo": "privacidad", "id": tipo, "texto": texto})
+    return motivos
+
+
+def linaje(
+    tabla: str, fuente: Fuente, contrato: dict, certificaciones_tabla: list[dict],
+    hallazgos_tabla: list[dict] | None = None, reglas: dict[str, dict] | None = None,
+) -> dict:
+    """Recorrido RAW -> MASTER -> BUSINESS de una tabla y de cada uno de sus campos.
+
+    `retenidos` dice, por cada día que no se publicó, qué lo retuvo (regla bloqueante o privacidad).
+    """
     dac = {c["nombre"]: c for c in contrato["campos"]}
     publicados = sorted(c["fecha_corte"] for c in certificaciones_tabla if c["publicado"])
-    retenidos = sorted(c["fecha_corte"] for c in certificaciones_tabla if not c["publicado"])
+    no_publicadas = sorted((c for c in certificaciones_tabla if not c["publicado"]), key=lambda c: c["fecha_corte"])
+    retenidos = [
+        {
+            "fecha_corte": c["fecha_corte"],
+            "motivos": motivos_de_retencion(
+                c, [h for h in hallazgos_tabla or [] if h["id_ejecucion"] == c["id_ejecucion"]], reglas or {}
+            ),
+        }
+        for c in no_publicadas
+    ]
     nodos = [
         {"id": "raw", "capa": "RAW", "objeto": f"{RAW}.{fuente.archivo}", "detalle": f"CSV {fuente.archivo}_AAAAMMDD_NN.csv tal como llega"},
         {"id": "master", "capa": "MASTER", "objeto": f"{MASTER}.{tabla}", "detalle": "Modelo estándar, PII cifrada; aquí corre el motor de calidad"},
@@ -321,11 +389,21 @@ def linaje(tabla: str, fuente: Fuente, contrato: dict, certificaciones_tabla: li
         "aristas": aristas,
         "campos": campos,
         "cortes_publicados": publicados,
-        "cortes_retenidos": retenidos,
+        "cortes_retenidos": [r["fecha_corte"] for r in retenidos],
+        "retenidos": retenidos,
     }
 
 
 # ── HU-12: certificación integral ───────────────────────────────────────────
+
+
+def ultimo_certificado(historia: dict[date, dict[str, str]], tabla: str, corte: date) -> date | None:
+    """Último día, hasta `corte` inclusive, en que la tabla llegó a BUSINESS: lo que `v_<tabla>` mostraba entonces.
+
+    `historia` es el estado de certificación de cada tabla por día. Una tabla con observaciones también se publica.
+    """
+    dias = [d for d, estados in historia.items() if d <= corte and estados.get(tabla) not in (None, "NO_CERTIFICADO")]
+    return max(dias, default=None)
 
 
 def certificacion(
@@ -335,8 +413,13 @@ def certificacion(
     resultados_corte: list[dict],
     contratos_config: dict[str, dict],
     esquema_actual: dict[str, list[tuple[str, str]]],
+    historia: dict[date, dict[str, str]],
 ) -> list[dict]:
-    """Calidad, privacidad y trazabilidad de cada tabla en un corte."""
+    """Calidad, privacidad y trazabilidad de cada tabla en un corte.
+
+    Cada tabla dice también su `ultimo_certificado`, calculado con la `historia` de certificaciones: el día
+    que negocio veía ese día (el mismo corte si se publicó; `None` si todavía no hay ningún día certificado).
+    """
     salida = []
     for c in sorted(certificaciones_corte, key=lambda c: TABLAS_CORTE.index(c["tabla"])):
         tabla = c["tabla"]
@@ -373,6 +456,7 @@ def certificacion(
                 "certificado_en": c["certificado_en"],
                 "publicado": c["publicado"],
                 "objeto_business": f"{BUSINESS}.p_{tabla}" if c["publicado"] else None,
+                "ultimo_certificado": ultimo_certificado(historia, tabla, corte),
             },
             "fecha_corte": corte,
         })
