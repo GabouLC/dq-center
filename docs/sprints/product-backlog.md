@@ -29,15 +29,17 @@ valor.
 | 7 | HU-04 · Certificar la calidad de los datos | QA Specialist | 5 | 2 | Terminada | [#4](https://github.com/GabouLC/dq-center/issues/4) | SDGDCYP-13 |
 | 8 | HU-07 · Ejecutar el Quality & Privacy Gate | Data Owner | 8 | 2 | Terminada | [#7](https://github.com/GabouLC/dq-center/issues/7) | SDGDCYP-14 |
 | 9 | HU-08 · Publicar datos certificados en BUSINESS | Data Owner | 5 | 2 | Terminada | [#8](https://github.com/GabouLC/dq-center/issues/8) | SDGDCYP-15 |
-| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | En curso | [#13](https://github.com/GabouLC/dq-center/issues/13) | SDGDCYP-11 |
-| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | En curso | [#9](https://github.com/GabouLC/dq-center/issues/9) | SDGDCYP-16 |
-| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | En curso | [#12](https://github.com/GabouLC/dq-center/issues/12) | SDGDCYP-19 |
-| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | En curso | [#11](https://github.com/GabouLC/dq-center/issues/11) | SDGDCYP-18 |
-| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | En curso | [#10](https://github.com/GabouLC/dq-center/issues/10) | SDGDCYP-17 |
-| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | En curso | [#15](https://github.com/GabouLC/dq-center/issues/15) | SDGDCYP-20 |
+| 10 | HU-13 · Controlar el acceso a datos sensibles mediante roles | Data Architect | 5 | 3 | Terminada | [#13](https://github.com/GabouLC/dq-center/issues/13) | SDGDCYP-11 |
+| 11 | HU-09 · Visualizar el estado de calidad de los datos | Oficina de Datos | 5 | 3 | Terminada | [#9](https://github.com/GabouLC/dq-center/issues/9) | SDGDCYP-16 y 90 |
+| 12 | HU-12 · Consultar la certificación integral del dato | Data Owner | 5 | 3 | Terminada | [#12](https://github.com/GabouLC/dq-center/issues/12) | SDGDCYP-19 y 92 |
+| 13 | HU-11 · Consultar el linaje de los datos | Oficina de Datos | 8 | 3 | Terminada | [#11](https://github.com/GabouLC/dq-center/issues/11) | SDGDCYP-18 y 91 |
+| 14 | HU-10 · Consultar el glosario de negocio | Negocio | 3 | 3 | Terminada (en Jira, en revisión) | [#10](https://github.com/GabouLC/dq-center/issues/10) | SDGDCYP-17 y 89 |
+| 15 | HU-15 · Garantizar el tiempo de carga del portal | Negocio | 5 | 3 | Terminada | [#15](https://github.com/GabouLC/dq-center/issues/15) | SDGDCYP-20 y 93 |
 | | **Total** | | **76** | | | | |
 
-Los puntos son los del Product Backlog del equipo en Jira (proyecto SDGDCYP).
+Los puntos son los del Product Backlog del equipo en Jira (proyecto SDGDCYP). Las dos claves de Jira
+de HU-09, HU-10, HU-11, HU-12 y HU-15 son la historia original (Sprint 3) y la copia que el equipo
+registró en el Sprint 4 el 7 de noviembre; son la misma historia.
 
 ## Escala de estimación
 
@@ -61,11 +63,14 @@ Cambios al backlog que salieron de las revisiones:
 | 2026-10-15 | HU-09 suma la simulación en vivo; los cortes diarios cubren de julio a septiembre con variaciones realistas | Comentarios sobre el prototipo del portal: «que se sienta vivo, con variaciones realistas» |
 | 2026-10-19 | HU-12 y HU-11 suman el motivo de la retención y el último corte certificado visible para negocio | Revisión del Sprint 2 |
 | 2026-10-24 | HU-09, HU-11, HU-12 y HU-15 se reasignan (Josue Borda no participó en los Sprints 1 y 2); entran al Sprint 3 las reglas SIN-UNI-01, PAG-VAL-01 y PER-VAL-06 | Sprint Planning del Sprint 3 |
+| 2026-11-07 | El equipo vuelve a repartir HU-09, HU-10, HU-11, HU-12 y HU-15 al registrarlas en el Sprint 4 de Jira | Tablero de Jira del equipo |
+| 2026-11-11 | HU-10: el glosario pasa de 40 a 42 términos (los de PER-VAL-06 y PAG-VAL-01) | Cierre del Sprint 3 |
 
 **Pendiente de decisión del Product Owner.** La [auditoría del catálogo de reglas](../auditoria-reglas.md)
 (24 de octubre) propone que las reglas CRÍTICAS no tengan banda de ALERTA, siete reglas nuevas y
-ajustes a umbrales y condiciones. En la Sprint Planning del Sprint 3 entraron solo las tres reglas
-que hoy no cambian resultados; el resto sigue pendiente porque cambiaría resultados ya aceptados.
+ajustes a umbrales y condiciones. En el Sprint 3 entraron solo las tres reglas que no cambian
+resultados (hoy el catálogo tiene 39 reglas y 51 evaluaciones por corte); el resto sigue pendiente
+porque cambiaría resultados ya aceptados.
 
 ## Pendiente fuera de las historias
 

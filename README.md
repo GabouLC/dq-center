@@ -29,7 +29,7 @@ flowchart LR
 | Ingesta | Valida encabezado, campos por línea y UTF-8. Un archivo inválido se rechaza y queda registrado; uno válido llega a RAW sin cambios. | HU-01 |
 | Homologación | Renombra al modelo estándar y convierte tipos según `config/homologacion.yaml`, sin corregir valores. Lo que no se puede convertir va a incidencias. | HU-14 |
 | Privacy Gate | Cifra los campos `SENSIBLE_CIFRADO` del contrato: el DNI con cifrado determinístico y nombres, correo y celular con cifrado aleatorio (AEAD). | HU-05, HU-06 |
-| Motor | 36 reglas (48 al expandir las transversales) en tres niveles: N1 básicas, N2 de negocio y N3 de la carga. El SQL se genera a partir del tipo de cada regla. | HU-02, HU-03 |
+| Motor | 39 reglas (51 al expandir las transversales) en tres niveles: N1 básicas, N2 de negocio y N3 de la carga. El SQL se genera a partir del tipo de cada regla. | HU-02, HU-03 |
 | Certificación | Una regla CRÍTICA o ALTA en FAIL, o PII en texto claro, impide certificar. Cada veredicto lleva sello: corrida, versión del motor y versión de las reglas. | HU-04, HU-07 |
 | Publicación | Solo los cortes certificados llegan a `dq_business.p_<tabla>`; `v_<tabla>` muestra el último. | HU-08 |
 | Portal | Resumen, validaciones, certificación integral, fuentes, contrato, linaje, glosario, reglas, ejecuciones, usuarios y auditoría. | HU-09 a HU-13, HU-15 |
@@ -93,10 +93,10 @@ python -m venv .venv
 .venv/Scripts/pip install -e ".[datagen,local,api,dev]"     # en Linux/Mac: .venv/bin/pip
 
 .venv/Scripts/python -m dqc.datagen                          # genera data/landing y el manifiesto
-.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # unos 8 minutos
+.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # unos 4 minutos
 .venv/Scripts/python -m dqc.api                              # API en http://127.0.0.1:8000
 
-cd web && npm install && npm run dev                         # portal en http://localhost:5173
+cd web && npm ci && npm run dev                              # portal en http://localhost:5173
 ```
 
 **Simulación en vivo.** Con `--hasta`, los días posteriores quedan pendientes en

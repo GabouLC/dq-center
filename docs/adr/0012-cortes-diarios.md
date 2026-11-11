@@ -34,7 +34,7 @@ Cada error sembrado queda en el manifiesto, como antes (ADR 0010).
 
 ## Consecuencias
 
-- Una corrida completa produce 92 × 48 evaluaciones y 460 sellos. En local tarda unos
+- Una corrida completa produce 92 × 51 evaluaciones (48 hasta el Sprint 2) y 460 sellos. En local tarda unos
   minutos; en el sandbox de BigQuery, unas 9 horas (ADR 0014).
 - Las pruebas usan 22 días elegidos y una cartera a escala 0,25 (`tests/conftest.py`), y
   corren en menos de un minuto.

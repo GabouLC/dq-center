@@ -39,25 +39,36 @@ class FuenteBusiness:
         self.vigencia = vigencia
         self._datos: dict[str, list[dict]] = {}
         self._vence = 0.0
+        self._generacion = 0  # sube con cada invalidación: una lectura empezada antes no queda vigente
         self._lock = threading.Lock()
+        self._renovando = threading.Lock()  # una sola petición renueva; las demás esperan y reutilizan
 
     def precargar(self) -> None:
         """Lee todas las vistas a la vez: el tiempo total es el de la consulta más lenta."""
+        with self._lock:
+            generacion = self._generacion
         with self.candado, ThreadPoolExecutor(len(CONSULTAS)) as pool:
             leidas = dict(zip(CONSULTAS, pool.map(self.plataforma.consultar, CONSULTAS.values())))
         with self._lock:
             self._datos = leidas
-            self._vence = time.monotonic() + self.vigencia
+            # Si se invalidó mientras se leía (un corte recién publicado), esta lectura puede ser vieja.
+            self._vence = time.monotonic() + self.vigencia if generacion == self._generacion else 0.0
 
     def invalidar(self) -> None:
         with self._lock:
+            self._generacion += 1
             self._vence = 0.0
 
-    def _vista(self, nombre: str) -> list[dict]:
+    def _vigente(self) -> bool:
         with self._lock:
-            vigente = self._vence > time.monotonic()
-        if not vigente:
-            self.precargar()
+            return self._vence > time.monotonic()
+
+    def _vista(self, nombre: str) -> list[dict]:
+        if not self._vigente():
+            # Con la caché vencida, N peticiones a la vez leían las 7 vistas N veces (en BigQuery, N × 7 consultas).
+            with self._renovando:
+                if not self._vigente():
+                    self.precargar()
         return self._datos[nombre]
 
     def ejecuciones(self) -> list[dict]:

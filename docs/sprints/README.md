@@ -8,12 +8,13 @@ seguimiento, revisión con evidencia por criterio de aceptación y retrospectiva
 |---|---|---|---|---|---|
 | 1 | Base del pipeline: RAW, MASTER, DAC, calidad N1 y cifrado | HU-01, HU-14, HU-05, HU-02, HU-06 | 22 | Terminado | [sprint-1.md](sprint-1.md) |
 | 2 | Motor y Gate: N2 y N3, certificación, Privacy Gate y BUSINESS | HU-03, HU-04, HU-07, HU-08 | 23 | Terminado | [sprint-2.md](sprint-2.md) |
-| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 31 | En curso (24 de octubre al 2 de noviembre) | [sprint-3.md](sprint-3.md) |
+| 3 | Portal Smart-DQ: acceso, dashboard, certificación, linaje, glosario y rendimiento | HU-13, HU-09, HU-12, HU-11, HU-10, HU-15 | 31 | Terminado el 11 de noviembre (previsto: 2 de noviembre) | [sprint-3.md](sprint-3.md) |
 
 Los puntos son los que el equipo estimó en el Product Backlog de Jira (proyecto SDGDCYP),
 en Fibonacci. El Sprint 3 comprometió 31 SP, por encima de la velocidad de los dos primeros
-sprints (22 y 23): entran todas porque el prototipo ya cubre la mayor parte, y HU-15 sale primero
-si el sprint se atrasa.
+sprints (22 y 23): entraron todas porque el prototipo ya cubría la mayor parte, y HU-15 salía primero
+si el sprint se atrasaba. Se atrasó nueve días y no hizo falta recortar nada: el repositorio no tuvo
+trabajo entre el 25 de octubre y el 10 de noviembre y todo se cerró el 11.
 
 ## Scrum en el proyecto: dónde está cada pieza
 
@@ -26,13 +27,13 @@ equipo* significa que sale de una reunión y el documento trae el formato para r
 | **Product Owner y Scrum Master** | [Responsables](#responsables) | Listo | Listo | Listo |
 | **Developers** | [Responsables](#responsables) | Listo | Listo | Listo |
 | **Product Backlog** y su compromiso, el **objetivo del producto** | [product-backlog.md](product-backlog.md) | Listo | Listo | Listo |
-| **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo | Listo, con avance |
-| **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Listo | Pendiente |
+| **Sprint Backlog** y su compromiso, el **objetivo del sprint** | Secciones 1 y 2 de cada sprint | Listo | Listo | Listo |
+| **Incremento** y su compromiso, la **Definition of Done** | Sección 4 de cada sprint y [Definition of Done](#definition-of-done) | Listo | Listo | Listo |
 | **Sprint** (duración, compromiso y resultado) | Encabezado de cada sprint | Listo | Listo | Listo |
 | **Sprint Planning** (por qué, qué y cómo) | Sección 1 de cada sprint | Listo, más el *Sprint 1 Planning* del equipo | Listo | Listo (24 de octubre), con las decisiones del Product Owner |
-| **Daily Scrum** | Sección 3 de cada sprint y [dailies.md](dailies.md) | Listo: 4 actas | Listo: 9 actas | Desde el 26 de octubre |
-| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo, con asistentes y comentarios | Listo, con asistentes y comentarios | Pendiente; hay comentarios previos sobre el prototipo |
-| **Sprint Retrospective** | Sección 5 de cada sprint | Listo, con acciones y responsables | Listo, con el seguimiento de las acciones del Sprint 1 | Al cierre |
+| **Daily Scrum** | Sección 3 de cada sprint y [dailies.md](dailies.md) | Listo: 4 actas | Listo: 9 actas | Sin actas: no hay registro de dailies ([dailies.md](dailies.md)) |
+| **Sprint Review** | Sección 4 de cada sprint, con la evidencia de cada criterio | Listo, con asistentes y comentarios | Listo, con asistentes y comentarios | Listo, reconstruida el 11 de noviembre a partir de la verificación de cada criterio |
+| **Sprint Retrospective** | Sección 5 de cada sprint | Listo, con acciones y responsables | Listo, con el seguimiento de las acciones del Sprint 1 | Listo, reconstruida el 11 de noviembre, con acciones propuestas |
 | Complementos: Definition of Ready, burndown, impedimentos y velocidad | Este documento y la sección 3 de cada sprint | Listo | Listo | Listo |
 
 ## Cómo se priorizó
@@ -55,16 +56,17 @@ aplicados en este orden:
 |---|---|---|
 | 1 | jueves 1 al lunes 5 de octubre de 2026 | Cerrado |
 | 2 | martes 6 al lunes 19 de octubre | Cerrado (en el tablero, el 24 de octubre) |
-| 3 | sábado 24 de octubre al lunes 2 de noviembre (previsto desde el 20) | Activo |
+| 3 | sábado 24 de octubre al lunes 2 de noviembre (previsto desde el 20); trabajo cerrado el 11 de noviembre | Cerrado el 8 de noviembre (el equipo reabrió cinco historias en el Sprint 4 del tablero) |
 
-Backlog total: 76 SP en 15 historias. Terminados: 45 SP en dos sprints. Quedan 31 SP, todos del Sprint 3.
+Backlog total: 76 SP en 15 historias. Terminados: 76 SP en tres sprints. El Sprint 3 (31 SP) cerró el
+11 de noviembre; en Jira, HU-10 (3 SP) sigue en revisión de Franco.
 
 ```mermaid
 xychart-beta
     title "SP pendientes del release"
-    x-axis ["Inicio", "Fin del Sprint 1", "Fin del Sprint 2"]
+    x-axis ["Inicio", "Fin del Sprint 1", "Fin del Sprint 2", "Fin del Sprint 3"]
     y-axis "SP" 0 --> 80
-    line [76, 54, 31]
+    line [76, 54, 31, 0]
 ```
 
 | Momento | SP terminados | SP pendientes |
@@ -72,8 +74,9 @@ xychart-beta
 | Inicio | | 76 |
 | Fin del Sprint 1 (5 de octubre) | 22 | 54 |
 | Fin del Sprint 2 (19 de octubre) | 23 (HU-03, HU-04, HU-07 y HU-08) | 31 |
+| Fin del Sprint 3 (11 de noviembre) | 31 (HU-13, HU-09, HU-12, HU-11, HU-10 y HU-15) | 0 |
 
-Velocidad: 22 SP en el Sprint 1 y 23 en el Sprint 2.
+Velocidad: 22 SP en el Sprint 1, 23 en el Sprint 2 y 31 en el Sprint 3 (en nueve días más de lo previsto).
 
 ## Definition of Ready
 
@@ -98,11 +101,15 @@ Una historia está terminada cuando:
 
 | Integrante | Rol en el proyecto | Sprints 1 y 2 | Sprint 3 |
 |---|---|---|---|
-| Gabriel León | Data Enabler, líder | Coordinación | HU-10 |
-| Cristhian Pimentel | Data Engineer | HU-01, HU-02 | HU-09 y las reglas nuevas de la auditoría |
-| Jesus de la Cruz | Data Architect | HU-14, HU-05, HU-06 | HU-13, HU-11 |
-| Franco Delgado | QA Specialist | HU-03, HU-04, HU-07, HU-08 | HU-12, HU-15 |
+| Gabriel León | Data Enabler, líder | Coordinación | HU-09 y HU-11 (en Jira) |
+| Cristhian Pimentel | Data Engineer | HU-01, HU-02 | Sin historias en Jira |
+| Jesus de la Cruz | Data Architect | HU-14, HU-05, HU-06 | HU-12 y HU-15 (en Jira); HU-13 sin responsable en Jira (plan: Jesus) |
+| Franco Delgado | QA Specialist | HU-03, HU-04, HU-07, HU-08 | HU-10 (en Jira) |
 | Josue Borda | Full-Stack | — | Sin historias: las suyas se reasignaron en la Sprint Planning del Sprint 3 |
+
+La columna del Sprint 3 sigue a Jira, donde el equipo repartió las historias el 7 de noviembre. El plan
+de la Sprint Planning del 24 de octubre era otro (HU-11 a Jesus, HU-12 y HU-15 a Franco, HU-09 a
+Cristhian y HU-10 a Gabriel); ver [sprint-3.md](sprint-3.md).
 
 **Responsabilidades de Scrum**
 
@@ -112,12 +119,13 @@ Una historia está terminada cuando:
 - **Developers:** Cristhian Pimentel, Jesus de la Cruz, Franco Delgado y Josue Borda.
 
 Asistencia: Gabriel, Franco, Jesus y Cristhian asistieron a todos los eventos de los Sprints 1 y
-2; Josue Borda no asistió a ninguno.
+2; Josue Borda no asistió a ninguno. Del Sprint 3 no hay registro de asistencia: no hay actas de
+dailies y la revisión y la retrospectiva se reconstruyeron el 11 de noviembre.
 
 ## Eventos del equipo
 
 Las dailies, la conversación de la revisión y la retrospectiva son reuniones del equipo. Sus
-actas se reconstruyeron a partir del tablero de Jira, el orden del Sprint Backlog y los
+actas (las del Sprint 3, solo la revisión y la retrospectiva) se reconstruyeron a partir del tablero de Jira, el orden del Sprint Backlog y los
 impedimentos de cada sprint, y así lo indica cada una. Las dailies están en
 [dailies.md](dailies.md); la revisión y la retrospectiva, en las secciones 4 y 5 de cada sprint.
 El formato de cada evento está en [plantillas.md](plantillas.md).

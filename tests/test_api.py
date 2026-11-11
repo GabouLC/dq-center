@@ -1,6 +1,7 @@
 """API del portal (Sprint 3): HU-09 a HU-13 y HU-15, sobre la simulación en DuckDB."""
 
 import re
+import threading
 import time
 
 import pytest
@@ -193,6 +194,47 @@ def test_el_portal_solo_lee_la_capa_business(simulacion):
     fuente.incidencias("pago", PRIMERO, 5)
     tablas = {t for sql in leidas for t in re.findall(r"\b(?:FROM|JOIN)\s+([\w.]+)", sql)}
     assert tablas and {t.split(".")[0] for t in tablas} == {BUSINESS}
+
+
+def test_con_la_cache_vencida_solo_una_peticion_relee_las_vistas():
+    """HU-15: diez usuarios abren una sección justo cuando vence la caché de 10 minutos."""
+    consultas, salida = [], threading.Event()
+
+    class Lenta:
+        def consultar(self, sql):
+            consultas.append(sql)
+            salida.wait(0.3)  # lo que tarda BigQuery: da tiempo a que lleguen las demás peticiones
+            return []
+
+    fuente = FuenteBusiness(Lenta())
+    hilos = [threading.Thread(target=fuente.ejecuciones) for _ in range(10)]
+    for h in hilos:
+        h.start()
+    for h in hilos:
+        h.join()
+    assert len(consultas) == 7  # una lectura de las 7 vistas, no 70
+
+    fuente.invalidar()  # un corte recién publicado: la siguiente lectura sí vuelve a las vistas
+    fuente.ejecuciones()
+    assert len(consultas) == 14
+
+
+def test_una_lectura_empezada_antes_de_invalidar_no_queda_vigente():
+    """Si el corte se publica mientras se lee, la caché no se da por buena durante 10 minutos."""
+    consultas = []
+    fuente = None
+
+    class Invalida:
+        def consultar(self, sql):
+            consultas.append(sql)
+            if len(consultas) == 1:
+                fuente.invalidar()  # llega un corte nuevo en medio de la lectura
+            return []
+
+    fuente = FuenteBusiness(Invalida())
+    fuente.precargar()
+    fuente.ejecuciones()
+    assert len(consultas) == 14  # la segunda lectura se hizo: la primera no quedó vigente
 
 
 # ── HU-09: dashboard ────────────────────────────────────────────────────────
@@ -424,13 +466,18 @@ def test_admin_gestiona_usuarios_pero_no_se_quita_el_acceso(cliente):
 # ── HU-15: rendimiento ──────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("ruta", [
-    "/api/v1/resumen", "/api/v1/validaciones", "/api/v1/certificacion", "/api/v1/fuentes",
-    "/api/v1/contratos", "/api/v1/linaje/poliza", "/api/v1/glosario", "/api/v1/fuentes/persona/estructura",
+@pytest.mark.parametrize("ruta, email", [
+    # las siete secciones de consulta, como lector
+    ("/api/v1/resumen", LECTOR), ("/api/v1/validaciones", LECTOR), ("/api/v1/certificacion", LECTOR),
+    ("/api/v1/fuentes", LECTOR), ("/api/v1/contratos", LECTOR), ("/api/v1/linaje/poliza", LECTOR),
+    ("/api/v1/glosario", LECTOR), ("/api/v1/fuentes/persona/estructura", LECTOR),
+    # las cuatro de administración, como admin: las 11 secciones del portal
+    ("/api/v1/reglas", ADMIN), ("/api/v1/ejecuciones", ADMIN),
+    ("/api/v1/admin/usuarios", ADMIN), ("/api/v1/admin/auditoria", ADMIN),
 ])
-def test_cada_seccion_responde_en_menos_de_8_segundos(cliente, ruta):
+def test_cada_seccion_responde_en_menos_de_8_segundos(cliente, ruta, email):
     inicio = time.perf_counter()
-    respuesta = cliente.get(ruta, headers=como(LECTOR))
+    respuesta = cliente.get(ruta, headers=como(email))
     assert respuesta.status_code == 200
     assert time.perf_counter() - inicio < LIMITE_SEGUNDOS
     assert respuesta.headers["Server-Timing"].startswith("app;dur=")
