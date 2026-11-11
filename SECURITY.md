@@ -42,18 +42,19 @@ Solo lo que existe en el repositorio.
 | Roles y campos sensibles ocultos (HU-13) | Roles `admin`, `gobierno` y `lector`; quien no tiene el permiso de ver sensibles recibe esos campos ocultos | `src/dqc/api/app.py` |
 | Auditoría | Inicios de sesión, intentos fallidos, bloqueos, cambios de contraseña y accesos denegados o restringidos quedan registrados; solo el rol `admin` la consulta | `src/dqc/api/app.py`, `src/dqc/api/configuracion.py` |
 
-## A activar por el propietario del repositorio
+## Ajustes de GitHub
 
-Estos ajustes se hacen en la configuración de GitHub (no viven en el código). Hasta que alguien los
-active, **no hay que darlos por vigentes**.
+Estos ajustes se hacen en la configuración de GitHub (no viven en el código). Aquí dice cuáles están
+activos al 11 de noviembre de 2026 y cuáles no; no hay que dar por vigente lo que figura como pendiente.
 
-| Ajuste | Dónde en GitHub |
-|---|---|
-| Protección de la rama `main`: PR obligatorio, 1 aprobación, checks obligatorios (ver `.github/workflows/README.md`) | Settings > Branches |
-| Secret scanning | Settings > Advanced Security |
-| Push protection (bloquea el push que trae una clave) | Settings > Advanced Security |
-| Dependabot alerts y Dependabot security updates | Settings > Advanced Security |
-| Private vulnerability reporting (el aviso privado de arriba) | Settings > Advanced Security |
+| Ajuste | Estado | Dónde en GitHub |
+|---|---|---|
+| Protección de la rama `main`: PR obligatorio y 6 checks obligatorios (pytest, build del portal, los dos análisis de CodeQL, gitleaks y e2e; ver `.github/workflows/README.md`); sin force-push ni borrado | **Activa** (0 aprobaciones: el administrador puede saltarla) | Settings > Branches |
+| Secret scanning | **Activo** | Settings > Advanced Security |
+| Push protection (bloquea el push que trae una clave) | **Activa** | Settings > Advanced Security |
+| Exigir 1 aprobación en los PR | Pendiente: hoy solo hay una persona que revisa (ver [ADR 0017](docs/adr/0017-controles-del-repositorio.md)) | Settings > Branches |
+| Dependabot alerts y Dependabot security updates | Pendiente | Settings > Advanced Security |
+| Private vulnerability reporting (el aviso privado de arriba) | Pendiente | Settings > Advanced Security |
 
 ## Manejo de secretos
 

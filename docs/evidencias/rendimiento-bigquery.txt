@@ -1,9 +1,9 @@
-Rendimiento del portal (HU-15: cada sección carga en menos de 8 s) · modo gcp · 2026-11-11 21:43 UTC
+Rendimiento del portal (HU-15: cada sección carga en menos de 8 s) · modo gcp · 2026-11-11 22:52 UTC
 Python 3.12.10 · duckdb 1.5.6 · FastAPI 0.143.2 · uvicorn 0.54.0
 Máquina: Windows-11-10.0.26300-SP0 · 12 CPU lógicas · API y cliente en la misma máquina (127.0.0.1:8003), un solo proceso de uvicorn
 Datos: 92 cortes evaluados · 1373904 filas cargadas a RAW en las 5 tablas por corte (cargas EXITOSAS) · sintéticos
 Base: BigQuery y Firestore del proyecto dq-center-gabou (sandbox), DQC_DEMO=0, administrador temporal
-Arranque de la API: responde /health/liveness a los 8.4 s y /health/readiness a los 13.5 s
+Arranque de la API: responde /health/liveness a los 7.3 s y /health/readiness a los 12.0 s
 
 Lectura prevista en BigQuery (num_bytes de las tablas detrás de las vistas v_calidad_*; metadatos, sin costo) · proyecto dq-center-gabou
 tabla                                  MB  la lee el portal al precargar
@@ -16,7 +16,7 @@ dq_engine.certificaciones            0.15  sí
 dq_engine.hallazgos_privacidad       0.01  sí
 dq_raw.registro_cargas               0.03  sí
 dq_master.incidencias_homologacion   0.24  sí
-Una lectura completa de lo que precarga el portal: 2.57 MB. Lecturas previstas: 26 (ver lecturas_previstas). Total previsto: 66.86 MB (tope 1 GB; el sandbox no tiene facturación).
+Una lectura completa de lo que precarga el portal: 2.57 MB. Lecturas previstas: 8 (ver lecturas_previstas). Total previsto: 20.57 MB (tope 1 GB; el sandbox no tiene facturación).
 
 Cómo se midió
 - Abrir una sección es lo que hace el portal al recargar la página con la sesión guardada: primero /auth/me; después, en
@@ -73,44 +73,44 @@ auditoria
 Tiempos de apertura por sección (ms)
 sección        pet.  et.  justo  frío  cal. p50  cal. p95  cal. máx  conc. p95  conc. máx  err.  veredicto
 -------------  ----  ---  -----  ----  --------  --------  --------  ---------  ---------  ----  ---------
-resumen           6    3   5477  4976      1406      1574      1606       2689       2741     0  CUMPLE
-validaciones      5    3   3504  3697      1333      1544      1557       1899       1911     0  CUMPLE
-certificacion     5    3   1740  2131      1338      1538      1563       1782       1796     0  CUMPLE
-fuentes           4    2   1195  1186       887      1091      1136       1169       1307     0  CUMPLE
-contratos         3    2    969  1058       906      1185      1198       1509       1587     0  CUMPLE
-linaje            4    2   1762  1097       875      1144      1300       1220       1475     0  CUMPLE
-glosario          3    2    923   857       863       952      1151       1100       1160     0  CUMPLE
-reglas            3    2    874   857       869      1092      1119        943       1001     0  CUMPLE
-ejecuciones       3    2    894   916       876       923      1135        959       1000     0  CUMPLE
-usuarios          3    2   1266  1255      1286      1328      1339       1353       1387     0  CUMPLE
-auditoria         3    2   1123  1102      1104      1353      1403       1144       1321     0  CUMPLE
+resumen           6    3   4882  5143      1368      1597      1625       2923       2924     0  CUMPLE
+validaciones      5    3   3880  3932      1316      1578      1604       2242       2266     0  CUMPLE
+certificacion     5    3   2305  1656      1328      1513      1565       1890       1912     0  CUMPLE
+fuentes           4    2   1111  1130       883       936      1155       1329       1385     0  CUMPLE
+contratos         3    2   1064   907       904      1143      1354       1405       1414     0  CUMPLE
+linaje            4    2   1455  1110       864      1106      1284       1327       1413     0  CUMPLE
+glosario          3    2    906   851       864       935      1106        926        965     0  CUMPLE
+reglas            3    2    859   869       868       968      1328        949        983     0  CUMPLE
+ejecuciones       3    2    894   861       856       881       924        901        915     0  CUMPLE
+usuarios          3    2   1284  1845      1257      1341      1500       1344       1412     0  CUMPLE
+auditoria         3    2   1132  1051      1069      1175      1297       1116       1129     0  CUMPLE
 
 Servidor y red (ms): «servidor» es el Server-Timing de la API; «red y cola» es el resto (conexión, cola del cliente, lectura)
 sección        cal. p50  servidor  red y cola  conc. p95  servidor  red y cola    KB
 -------------  --------  --------  ----------  ---------  --------  ----------  ----
-resumen            1406      1398         7.8       2689      2624         501   183
-validaciones       1333      1326         6.4       1899      1864         121  51.8
-certificacion      1338      1332         6.3       1782      1753         104  62.4
-fuentes             887       882         4.6       1169      1162        26.6   160
-contratos           906       897         4.3       1509      1503         108  13.9
-linaje              875       870         4.6       1220      1160         155  17.0
-glosario            863       856         3.5       1100      1096        16.6  12.8
-reglas              869       862         3.9        943       939        10.0  10.6
-ejecuciones         876       870         4.0        959       955         6.9  21.6
-usuarios           1286      1280         3.7       1353      1345        13.3   1.0
-auditoria          1104      1101         3.7       1144      1139         9.6   1.0
+resumen            1368      1359         6.8       2923      2832         455   183
+validaciones       1316      1309         6.4       2242      2210         189  51.8
+certificacion      1328      1322         6.5       1890      1872         168  62.4
+fuentes             883       878         4.7       1329      1312        38.1   160
+contratos           904       896         3.9       1405      1322         125  13.9
+linaje              864       860         4.6       1327      1304         111  17.0
+glosario            864       860         4.6        926       922        13.7  12.8
+reglas              868       860         4.9        949       936        14.7  10.6
+ejecuciones         856       852         4.3        901       890        16.4  21.6
+usuarios           1257      1254         3.8       1344      1337        16.3   1.0
+auditoria          1069      1066         3.8       1116      1112         8.8   1.2
 
-Inicio de sesión (PBKDF2, 10 seguidos): p50 1142 ms · p95 1169 ms · máx 1175 ms
-Caché vencida (10 usuarios abren el Resumen a la vez tras esperar a que venza): mejor 8513 ms · p50 8593 ms · peor 8771 ms (API del peor: 8719 ms) · 0 errores · NO CUMPLE el límite de 8 s
-Apertura más lenta de todo el recorrido: 8771 ms (resumen, caché vencida)
-Solicitudes que la propia API midió por encima de 8 s (auditoría RENDIMIENTO_LENTO): 0
+Inicio de sesión (PBKDF2, 10 seguidos): p50 1135 ms · p95 1198 ms · máx 1215 ms
+Caché vencida (10 usuarios abren el Resumen a la vez tras esperar a que venza; se les responde con lo último leído): mejor 5349 ms · p50 5466 ms · peor 5605 ms (API del peor: 5560 ms) · 0 errores · CUMPLE el límite de 8 s
+Apertura más lenta de todo el recorrido: 5605 ms (resumen, caché vencida)
+Solicitudes de la API que ella misma midió por encima de 8 s durante esta corrida (auditoría RENDIMIENTO_LENTO, sin las sondas /health): 0
 
 Límites de la medición
 - Una sola máquina: el cliente de medición y la API comparten CPU, y cualquier otro proceso en marcha suma ruido.
 - «Justo» se parece a «frío» cuando el precargado de las vistas ya terminó al llegar la primera petición, como pasa con
   DuckDB (el inicio de sesión tarda más que el precargado). Con la caché vacía de verdad (un arranque lento sobre BigQuery
-  o la caché vencida a los 10 minutos), FuenteBusiness renueva las vistas con una sola petición y las demás esperan y
-  reutilizan el resultado; antes de ese arreglo cada petición las releía completas.
+  o la caché vencida a los 10 minutos), FuenteBusiness lee las vistas una sola vez: al vencer los 10 minutos las peticiones
+  reciben lo último leído y una renueva en segundo plano; con datos nuevos (un corte publicado) esperan esa lectura.
 - La caché vencida se midió con --caducidad: es la fila «Caché vencida» de arriba.
 - Los usuarios son sesiones distintas de una misma cuenta de administrador (con otros roles se ven menos secciones). Sus inicios
   de sesión van de uno en uno: la API cuenta como intento cada inicio en curso (HU-13) y rechaza con 423 el sexto simultáneo.
