@@ -18,6 +18,7 @@ dist/
 *-key.json
 credentials*.json
 service-account*.json
+token*.json
 *.pem
 *.key
 *.p12

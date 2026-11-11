@@ -81,7 +81,7 @@ Las tareas de cada historia, con su responsable. Al cierre del sprint el tablero
 - [x] Contratos en Firestore (`src/dqc/gcp/firestore.py`)
 
 **HU-02 · Calidad N1** · Cristhian Pimentel
-- [x] Catálogo de 36 reglas, 48 al expandir las transversales (`config/reglas_iniciales.yaml`)
+- [x] Catálogo de 36 reglas, 48 al expandir las transversales (`config/reglas_iniciales.yaml`; 39 y 51 desde el Sprint 3)
 - [x] Motor: SQL por tipo de regla en dialecto BigQuery, traducido a DuckDB para las pruebas (`src/dqc/motor/sql.py`, `motor.py`)
 - [x] Estado de cada regla según su umbral, con muestra de registros fallidos (`src/dqc/motor/puntuacion.py`)
 - [x] Prueba de aceptación contra el manifiesto de errores sembrados (`src/dqc/pipeline/verificacion.py`)
@@ -172,7 +172,7 @@ sin detectar y 0 detectados de más en ingesta, homologación y reglas, tanto en
 |---|---|---|
 | Los datos de RAW se transforman al modelo estándar de MASTER | `test_la_homologacion_cubre_el_contrato_con_los_mismos_tipos` ([test_flujo.py](../../tests/test_flujo.py)) | [Fuentes › Póliza](../evidencias/portal/hu14-fuentes-poliza-estructura.png): estructura de MASTER, con `canal_venta` nueva desde el 9 de septiembre |
 | Nombres distintos entre fuentes se unifican | `test_master_usa_los_nombres_estandar` | [Linaje](../evidencias/portal/hu11-linaje.png): `NUM_DOC` → `nro_documento` |
-| El dato homologado queda disponible para N1 y N2 | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Las 48 reglas corren sobre MASTER en los 92 cortes |
+| El dato homologado queda disponible para N1 y N2 | `test_cada_corte_evalua_las_51_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Las reglas corren sobre MASTER en los 92 cortes (48 en el Sprint 1; 51 desde el Sprint 3) |
 | Un registro no homologable se registra como incidencia y queda fuera de MASTER | `test_los_registros_no_homologables_quedan_fuera_de_master` | Incidencias por corte ([bigquery.txt](../evidencias/bigquery.txt)): importes y fechas de aviso no convertibles |
 
 ### HU-05 · Clasificar datos según la taxonomía DAC
@@ -191,7 +191,7 @@ El backlog habla de PASS y FAIL. El motor usa tres estados: **OK** es PASS; **AL
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Las pruebas N1 se ejecutan sobre los registros | `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | 19 reglas N1 en cada uno de los 92 cortes ([bigquery.txt](../evidencias/bigquery.txt)) |
+| Las pruebas N1 se ejecutan sobre los registros | `test_cada_corte_evalua_las_51_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | Reglas N1 en cada uno de los 92 cortes: 19 en el Sprint 1, 22 desde el Sprint 3 ([bigquery.txt](../evidencias/bigquery.txt)) |
 | Un registro que cumple se marca PASS | `test_estado_segun_umbral` ([test_reglas.py](../../tests/test_reglas.py)) | [Validaciones del 14 de julio](../evidencias/portal/hu02-hu03-validaciones-14-julio.png) |
 | Un registro que incumple se marca FAIL con observación | `test_muestras_traen_la_fila_sin_exponer_pii`, `test_cada_etapa_detecta_exactamente_lo_sembrado` | [Detalle de una regla](../evidencias/portal/hu13-validaciones-gobierno.png): registros fallidos con su fila |
 | Al terminar, queda el estado de cada regla | `test_hay_reglas_en_ok_alerta_y_falla` | Tabla de reglas por corte en [pipeline-local.txt](../evidencias/pipeline-local.txt) |

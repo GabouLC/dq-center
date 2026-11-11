@@ -10,8 +10,9 @@ Datos 100 % sintéticos.
 - No está desplegado en Cloud Run. El diseño lo prevé (ADR 0003), pero sin facturación todo corre
   en local o en el sandbox de BigQuery más Firestore (ADR 0008; README, «Despliegue en Cloud Run»).
 - No usa Cloud Composer, Dataplex ni API Gateway (ADR 0003, 0004 y 0005).
-- No es el lugar para cambiar reglas, umbrales ni severidades: las propuestas van a
-  [docs/auditoria-reglas.md](docs/auditoria-reglas.md).
+- No es el lugar para cambiar reglas, umbrales ni severidades sin una decisión del Product Owner: las
+  propuestas van a [docs/auditoria-reglas.md](docs/auditoria-reglas.md) (el catálogo tiene 39 reglas y
+  51 evaluaciones por corte; la banda de ALERTA de las CRÍTICAS sigue pendiente).
 
 ## Reglas del proyecto
 
@@ -20,8 +21,9 @@ Datos 100 % sintéticos.
   curso (SDGDCYP) se actualiza solo con `scripts/jira_sync.py`, nunca con un conector.
 - Cuentas: GitHub `GabouLC`, GCP `gabrielomchos88@gmail.com` (proyecto `dq-center-gabou`).
 - Alcance: issues HU-01 a HU-15 (Product Backlog del curso). Decisiones: [docs/adr/](docs/adr/).
-- Una rama y un pull request por historia, vinculado a su issue y revisado por otro integrante;
-  cerrar el issue cuando sus criterios tengan prueba.
+- Una rama y un pull request por cambio, vinculado a su issue; que lo revise otro integrante cuando
+  haya uno disponible (la protección de `main` exige el CI en verde, no aprobaciones). Cerrar el
+  issue cuando sus criterios tengan prueba.
 
 ## Estructura
 
@@ -43,8 +45,11 @@ Paso a paso desde un clon limpio, con comprobaciones: [AGENTS.md](AGENTS.md).
 .venv/Scripts/python -m dqc.api                           # API local (cuentas *@demo.local, clave SmartDQ-2026)
 cd web && npm run dev                                     # portal en http://localhost:5173
 .venv/Scripts/python -m pytest -q                         # pruebas (sin GCP)
+.venv/Scripts/python scripts/verificar_portal.py --arrancar # e2e del portal con Playwright (roles, teclado, contraste)
+.venv/Scripts/python scripts/medir_rendimiento.py           # HU-15: las 11 secciones en frío y bajo carga (--modo gcp: BigQuery)
 DQC_PROYECTO=dq-center-gabou .venv/Scripts/python -m dqc.gcp --sandbox simular   # en BigQuery (unas 9 h)
 DQC_PROYECTO=dq-center-gabou .venv/Scripts/python -m dqc.gcp --sandbox simular --desde 2026-09-08  # reanuda
+DQC_PROYECTO=dq-center-gabou .venv/Scripts/python -m dqc.gcp --sandbox ejecutar --todos  # reevalúa todos los cortes con el catálogo actual
 DQC_PROYECTO=dq-center-gabou .venv/Scripts/python scripts/evidencia_bigquery.py  # evidencia y paridad
 .venv/Scripts/python scripts/jira_sync.py [--aplicar]       # Jira del curso (JIRA_* en el entorno)
 ```
@@ -62,8 +67,8 @@ Qué hace cada paso al desplegar y dónde se cumple cada HU:
 
 ## Cómo saber que algo funciona
 
-- Siempre: `.venv/Scripts/python -m pytest -q` (127 passed al 27/10/2026) y `cd web && npm run build`
-  (`✓ built`). Es lo mismo que corre el CI en cada pull request.
+- Siempre: `.venv/Scripts/python -m pytest -q` (227 passed al 11/11/2026) y `cd web && npm run build`
+  (`✓ built`). Es lo mismo que corre el CI en cada pull request, más las pruebas e2e del portal.
 - Si tocaste el pipeline o el motor: corre `dqc.pipeline` sobre un `data/` limpio y compara con
   `docs/evidencias/pipeline-local.txt`.
 - Si tocaste el portal: `scripts/capturas_portal.py` y revisa `docs/evidencias/portal/`.
@@ -78,4 +83,10 @@ Cada vez que se resuelva un error raro, agrega una línea: qué pasó y cómo se
 - Las tablas del sandbox de BigQuery vencen a los 60 días: antes de una demo tardía, vuelve a
   cargar con `simular` (unas 9 h). Si la carga se corta, se reanuda con `--desde` (ADR 0014).
 - Las capturas usan sus propios puertos (8001 y 5174) para no chocar con una demo abierta.
+- Con la caché de 10 minutos vencida, cada petición releía las 7 vistas de BUSINESS: en BigQuery, 10
+  usuarios a la vez esperaban 8,6 s (más del límite de HU-15). Ahora `FuenteBusiness` responde con lo
+  último leído y renueva en segundo plano con una sola lectura; un corte publicado sí espera datos
+  nuevos. Lo midió `scripts/medir_rendimiento.py --modo gcp --caducidad`.
+- Jira y el repositorio tienen que contar lo mismo: en el Sprint 3, Jira dio las historias por
+  terminadas antes de que el repo tuviera todas sus tareas. Enlaza cada tarea con su commit o PR.
 - En PowerShell 5.1 no existe `&&`: separa los comandos con `;`.

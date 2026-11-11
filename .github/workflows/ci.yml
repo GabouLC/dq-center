@@ -36,3 +36,42 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  e2e:
+    name: Portal e2e (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar
+        run: pip install -e ".[datagen,local,api,dev]" playwright
+      - name: Instalar Chromium
+        run: playwright install --with-deps chromium
+      - name: Instalar el portal
+        run: npm ci
+        working-directory: web
+      # Cartera al 25 % y solo hasta el 14 de julio: datos y flujo tardan unos 30 s (en local) y ese día
+      # Persona queda no certificada, que es lo que necesitan las pruebas de humo.
+      - name: Datos reducidos
+        run: python -m dqc.datagen --escala 0.25
+      - name: Flujo hasta el 14 de julio
+        run: python -m dqc.pipeline --db data/ci.duckdb --hasta 2026-07-14
+      # Levanta su propia API (8002) y su propio portal (5182) sobre una copia de la base.
+      - name: Pruebas e2e del portal
+        run: python scripts/verificar_portal.py --arrancar --rapido --db data/ci.duckdb
+      - name: Guardar el resultado y las capturas de lo que falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-portal
+          path: data/verificar_portal/
+          retention-days: 7

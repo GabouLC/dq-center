@@ -1,10 +1,17 @@
 # Smart-DQ · dq-center
 
+[![CI](https://github.com/GabouLC/dq-center/actions/workflows/ci.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml)
+[![Secretos](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml)
+
 Portal de calidad y privacidad de datos para una **aseguradora ficticia**, con datos
 100 % sintéticos. Es la implementación del proyecto del curso *Diseño e Implementación
 de Sistemas* (USMP, 2026-II, Grupo 6): las historias HU-01 a HU-15 del Product Backlog
 están en los [issues](https://github.com/GabouLC/dq-center/issues), y las decisiones
-técnicas frente al Documento de Arquitectura, en [docs/adr](docs/adr/README.md).
+técnicas frente al Documento de Arquitectura, en [docs/adr](docs/adr/README.md). La arquitectura, con
+diagramas, está en [docs/arquitectura.md](docs/arquitectura.md).
+
+![Resumen del portal: lectura rápida del día, % de reglas que cumplen y sello de cada tabla](docs/evidencias/portal/hu09-resumen-14-julio.png)
 
 ## Qué hace
 
@@ -29,7 +36,7 @@ flowchart LR
 | Ingesta | Valida encabezado, campos por línea y UTF-8. Un archivo inválido se rechaza y queda registrado; uno válido llega a RAW sin cambios. | HU-01 |
 | Homologación | Renombra al modelo estándar y convierte tipos según `config/homologacion.yaml`, sin corregir valores. Lo que no se puede convertir va a incidencias. | HU-14 |
 | Privacy Gate | Cifra los campos `SENSIBLE_CIFRADO` del contrato: el DNI con cifrado determinístico y nombres, correo y celular con cifrado aleatorio (AEAD). | HU-05, HU-06 |
-| Motor | 36 reglas (48 al expandir las transversales) en tres niveles: N1 básicas, N2 de negocio y N3 de la carga. El SQL se genera a partir del tipo de cada regla. | HU-02, HU-03 |
+| Motor | 39 reglas (51 al expandir las transversales) en tres niveles: N1 básicas, N2 de negocio y N3 de la carga. El SQL se genera a partir del tipo de cada regla. | HU-02, HU-03 |
 | Certificación | Una regla CRÍTICA o ALTA en FAIL, o PII en texto claro, impide certificar. Cada veredicto lleva sello: corrida, versión del motor y versión de las reglas. | HU-04, HU-07 |
 | Publicación | Solo los cortes certificados llegan a `dq_business.p_<tabla>`; `v_<tabla>` muestra el último. | HU-08 |
 | Portal | Resumen, validaciones, certificación integral, fuentes, contrato, linaje, glosario, reglas, ejecuciones, usuarios y auditoría. | HU-09 a HU-13, HU-15 |
@@ -93,10 +100,10 @@ python -m venv .venv
 .venv/Scripts/pip install -e ".[datagen,local,api,dev]"     # en Linux/Mac: .venv/bin/pip
 
 .venv/Scripts/python -m dqc.datagen                          # genera data/landing y el manifiesto
-.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # unos 8 minutos
+.venv/Scripts/python -m dqc.pipeline --db data/dq.duckdb --hasta 2026-09-24   # unos 4 minutos
 .venv/Scripts/python -m dqc.api                              # API en http://127.0.0.1:8000
 
-cd web && npm install && npm run dev                         # portal en http://localhost:5173
+cd web && npm ci && npm run dev                              # portal en http://localhost:5173
 ```
 
 **Simulación en vivo.** Con `--hasta`, los días posteriores quedan pendientes en
@@ -125,7 +132,7 @@ La configuración local vive en `data/config_local.json` y el secreto que firma 
 sesiones, en `data/secreto_sesiones`. La API mantiene abierto `data/dq.duckdb`:
 detenla antes de volver a correr `dqc.pipeline`.
 
-Pruebas: `.venv/Scripts/python -m pytest -q` (127 pruebas) y `npm run build` en `web/`.
+Pruebas: `.venv/Scripts/python -m pytest -q` (227 pruebas) y `npm run build` en `web/`.
 
 ## Correrlo en GCP
 
@@ -212,7 +219,7 @@ src/dqc/
   api/           API FastAPI del portal e inicio de sesión
   gcp/           Firestore y la línea de comandos de GCP
 web/             portal en Vue 3 + TypeScript + Pinia (MVVM)
-tests/           127 pruebas, incluida la de aceptación contra el manifiesto
+tests/           227 pruebas, incluida la de aceptación contra el manifiesto
 docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 ```
 

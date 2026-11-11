@@ -22,6 +22,7 @@ cuando una decisión de aquí reemplaza o ajusta un ADR de ese documento, lo dic
 | [0014](0014-reanudar-carga.md) | Reanudar una carga cortada con `--desde` | Ajusta el ADR 0008 |
 | [0015](0015-indicador-pass.md) | El % de reglas en PASS es el indicador principal | Ajusta la puntuación del brief |
 | [0016](0016-roles-de-la-aplicacion.md) | Roles de la aplicación, no IAM de GCP, para los campos Sensibles | Ajusta el criterio a) de la HU-13 |
+| [0017](0017-controles-del-repositorio.md) | Controles automáticos del repositorio: CodeQL, gitleaks, Dependabot, protección de `main` y pruebas e2e | Nuevo |
 
 Principios del documento que se mantienen tal cual: publicar solo resultados
 completos (ADR-04), guardianes de acceso a datos (ADR-09), vistas de contrato

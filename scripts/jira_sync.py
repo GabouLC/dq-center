@@ -43,10 +43,16 @@ RESPONSABLES = {
     "HU-01": "Cristhian Pimentel", "HU-02": "Cristhian Pimentel",
     "HU-14": "Jesus de la Cruz", "HU-05": "Jesus de la Cruz", "HU-06": "Jesus de la Cruz", "HU-13": "Jesus de la Cruz",
     "HU-03": "Franco Delgado", "HU-04": "Franco Delgado", "HU-07": "Franco Delgado", "HU-08": "Franco Delgado",
-    # Sprint 3: las historias de Josue Borda se reasignaron en la Sprint Planning del 24 de octubre.
-    "HU-11": "Jesus de la Cruz", "HU-12": "Franco Delgado", "HU-15": "Franco Delgado", "HU-09": "Cristhian Pimentel",
-    "HU-10": "Gabriel Leon",
+    # Sprint 3: las historias de Josue Borda se reasignaron en la Sprint Planning del 24 de octubre. Esto es lo que
+    # el equipo dejó en Jira al registrar las copias del Sprint 4 (7 de nov): manda Jira, no el plan de la planificación
+    # (que era HU-11 Jesus, HU-12 y HU-15 Franco, HU-09 Cristhian, HU-10 Gabriel).
+    "HU-11": "Gabriel Leon", "HU-12": "Jesus de la Cruz", "HU-15": "Jesus de la Cruz", "HU-09": "Gabriel Leon",
+    "HU-10": "Franco Delgado",
 }
+# El equipo volvió a registrar estas historias en el Sprint 4 de Jira (30 oct a 12 nov) como duplicados de las del
+# Sprint 3, y son las que se aceptan. Aquí solo se les agrega el comentario de revisión; no se tocan su estado
+# ni sus responsables, que son del equipo.
+DUPLICADAS = {"HU-09": "SDGDCYP-90", "HU-10": "SDGDCYP-89", "HU-11": "SDGDCYP-91", "HU-12": "SDGDCYP-92", "HU-15": "SDGDCYP-93"}
 SPRINTS = [
     {
         "numero": 1, "nombre": "SDGDCYP Sprint 1", "epica": "Base del pipeline", "estado": "cerrado",
@@ -66,7 +72,7 @@ SPRINTS = [
         "tareas": [],
     },
     {
-        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ", "estado": "en_curso",
+        "numero": 3, "nombre": "SDGDCYP Sprint 3", "epica": "Portal Smart-DQ", "estado": "cerrado",
         "inicio": "2026-10-24T09:00:00.000-05:00", "fin": "2026-11-02T18:00:00.000-05:00",
         "objetivo": "Llevar los resultados al negocio: un portal donde cada rol ve la salud y la certificación "
                     "de los datos, su linaje y su glosario, con acceso controlado y cada sección en menos de 8 s.",
@@ -383,15 +389,18 @@ def publicar_revision(jira: Jira, numeros: list[int]) -> None:
             if not filas or categoria_de(tareas.get(hu, [])) != HECHA:
                 print(f"  {hu}: todavía no se acepta; sin revisión")
                 continue
-            comentarios = jira.leer(f"/rest/api/3/issue/{clave}/comment", maxResults=100)["comments"]
-            if not any(f"Revisión del Sprint {n}" in json.dumps(c["body"], ensure_ascii=False) for c in comentarios):
-                jira.escribir(f"comentario de revisión en {clave} ({hu}, {len(filas)} criterios)", "POST",
-                              f"/rest/api/3/issue/{clave}/comment", {"body": comentario_de_revision(n, hu, filas)})
-            adjuntos = {a["filename"] for a in jira.leer(f"/rest/api/3/issue/{clave}", fields="attachment")["fields"]["attachment"]}
-            imagenes = sorted({m for fila in filas for m in re.findall(r"\(\.\./evidencias/portal/([\w-]+\.png)\)", " ".join(fila))})
-            for nombre in imagenes:
-                if nombre not in adjuntos:
-                    jira.adjuntar(clave, RAIZ / "docs" / "evidencias" / "portal" / nombre)
+            for destino in (clave, DUPLICADAS.get(hu)):
+                if destino is None:
+                    continue
+                comentarios = jira.leer(f"/rest/api/3/issue/{destino}/comment", maxResults=100)["comments"]
+                if not any(f"Revisión del Sprint {n}" in json.dumps(c["body"], ensure_ascii=False) for c in comentarios):
+                    jira.escribir(f"comentario de revisión en {destino} ({hu}, {len(filas)} criterios)", "POST",
+                                  f"/rest/api/3/issue/{destino}/comment", {"body": comentario_de_revision(n, hu, filas)})
+                adjuntos = {a["filename"] for a in jira.leer(f"/rest/api/3/issue/{destino}", fields="attachment")["fields"]["attachment"]}
+                imagenes = sorted({m for fila in filas for m in re.findall(r"\(\.\./evidencias/portal/([\w-]+\.png)\)", " ".join(fila))})
+                for nombre in imagenes:
+                    if nombre not in adjuntos:
+                        jira.adjuntar(destino, RAIZ / "docs" / "evidencias" / "portal" / nombre)
 
 
 def main() -> None:

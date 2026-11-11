@@ -146,3 +146,12 @@ registrados en cada sprint.*
 | Cristhian Pimentel | Tablas `p_` y vistas `v_` de las cinco tablas (HU-08) | Demostración en la revisión | Nada |
 | Jesus de la Cruz | Vistas de contrato; el portal solo lee BUSINESS | Demostración en la revisión | Nada |
 | Gabriel León | Criterios de HU-07 y HU-08 revisados contra las pruebas | Revisión y retrospectiva | La evidencia de BigQuery sigue con los datos mensuales |
+
+## Sprint 3 · 24 de octubre al 2 de noviembre de 2026
+
+**Sin actas.** Las dailies del Sprint 3 estaban previstas para las 8:00 p. m. de cada día hábil desde
+el lunes 26 de octubre, pero no hay registro de que se hicieran: el repositorio no tiene commits entre
+el 25 de octubre y el 10 de noviembre, y en Jira la actividad del equipo está el 29 de octubre y del 7
+al 11 de noviembre. A diferencia de los Sprints 1 y 2, aquí no se reconstruyen actas, porque no hay
+nada con qué respaldarlas. Lo que sí se sabe del sprint está en el
+[seguimiento de sprint-3.md](sprint-3.md#3-seguimiento--daily-scrum).

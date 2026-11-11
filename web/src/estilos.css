@@ -261,7 +261,9 @@ tr.con-acento > :first-child { box-shadow: inset 3px 0 0 var(--acento, transpare
 .titulo-seccion svg { color: var(--marca); }
 
 /* ── tablas ──────────────────────────────────────────────────────────── */
-.tabla-envoltura { overflow-x: auto; }
+/* position: relative para que el texto «visualmente-oculto» (absoluto) de las cabeceras quede dentro del recorte
+   y no ensanche la página en el móvil (en Usuarios, «Acciones» llegaba a 659 px). */
+.tabla-envoltura { overflow-x: auto; position: relative; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
 th { font-size: 12px; font-weight: 700; color: var(--tenue); white-space: nowrap; }
@@ -314,6 +316,8 @@ select, input, textarea {
   padding: 7px 11px;
 }
 input[type="search"] { min-width: 220px; }
+/* El gris por defecto del navegador no cambia con el tema: en oscuro queda en 3,7:1 sobre la superficie. */
+::placeholder { color: var(--tenue); opacity: 1; }
 label.campo { display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--tinta-2); }
 label.campo > * { color: var(--tinta); font-size: 14px; font-weight: 500; }
 

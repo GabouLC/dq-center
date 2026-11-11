@@ -6,7 +6,7 @@
 
 El brief proponía un score ponderado (pesos 3, 2 y 1 por nivel) como cifra principal del
 Resumen. Con los datos diarios, ese score varía muy poco: entre 96,9 y 99,6 en los 92 días. En
-cambio, las reglas en OK van de 33 a 40 de 48. Un número que casi no se mueve no ayuda a decidir
+cambio, las reglas en OK van de 33 a 40 de 48 (con las 51 del Sprint 3, de 36 a 43 de 51). Un número que casi no se mueve no ayuda a decidir
 si se puede confiar en un día. El backlog, además, habla de reglas en PASS y FAIL.
 
 ## Decisión

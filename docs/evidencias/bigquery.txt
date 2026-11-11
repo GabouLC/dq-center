@@ -1,5 +1,5 @@
 Evidencia en BigQuery · proyecto dq-center-gabou (sandbox, datos sintéticos)
-Generada: 2026-10-25 02:51 UTC · consultas estimadas por dry run: 83.4 MB
+Generada: 2026-11-11 21:25 UTC · consultas estimadas por dry run: 91.3 MB
 Verificación contra el manifiesto: 0 diferencias · paridad con DuckDB: 0 diferencias
 
 ## Verificación contra el manifiesto de errores sembrados (92 cortes en BigQuery)
@@ -17,7 +17,7 @@ qué se compara                                    filas_bigquery  filas_duckdb 
 ------------------------------------------------  --------------  ------------  -----------
 Cargas en RAW (archivo, filas, estado, motivo)    463             463           0
 Incidencias de homologación                       3062            3062          0
-Resultados de reglas (universo, cumplen, estado)  4416            4416          0
+Resultados de reglas (universo, cumplen, estado)  4692            4692          0
 Registros fallidos por regla                      107483          107483        0
 Sellos de certificación                           460             460           0
 Hallazgos del Privacy Gate                        30              30            0
@@ -75,7 +75,7 @@ id_persona  nro_documento_cifrado      email_cifrado
 
 nivel  reglas  ok    alerta  falla  sin_datos
 -----  ------  ----  ------  -----  ---------
-N1     19      1184  378     186    0
+N1     22      1460  378     186    0
 N2     14      945   255     88     0
 N3     15      1373  0       2      5
 
@@ -113,7 +113,7 @@ COLUMNA_SIN_CLASIFICAR  poliza     canal_venta  False       22         22      2
 
 version_motor  version_reglas  sellos  primero                           ultimo                          
 -------------  --------------  ------  --------------------------------  --------------------------------
-0.2.0          417addeaec      460     2026-10-16 01:24:32.748189+00:00  2026-10-25 02:48:33.530211+00:00
+0.2.0          3f1fc02c78      460     2026-11-11 19:59:45.653146+00:00  2026-11-11 21:23:35.687086+00:00
 
 ## HU-08 · Objetos de BUSINESS (p_ = tablas con lo certificado, v_ = vistas)
 

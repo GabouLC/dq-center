@@ -6,9 +6,12 @@ con las seis dimensiones de calidad de DAMA, sobre los resultados de los 92 cort
 ya aceptados en los Sprints 1 y 2.
 
 **Estado al 11 de noviembre.** En la Sprint Planning del Sprint 3 el Product Owner aprobó las tres
-reglas que no cambian ningún resultado (SIN-UNI-01, PAG-VAL-01 y PER-VAL-06) y ya están en el
+reglas que no cambian ningún sello (SIN-UNI-01, PAG-VAL-01 y PER-VAL-06) y ya están en el
 catálogo, que pasó a 39 reglas y 51 evaluaciones por corte. Se marcan abajo como *aplicada*. El
-resto sigue pendiente de decisión. El análisis conserva las cifras del 24 de octubre.
+resto sigue pendiente de decisión. El análisis conserva las cifras del 24 de octubre. Al correr los
+92 cortes con las 51 evaluaciones se comprobó que los sellos no cambian, pero el puntaje sí sube un poco
+(hasta 0,2 puntos el global y 1,2 el de Persona) y cada día quedan 3 reglas más en OK, porque las
+nuevas dan 100 %.
 
 Las cifras salen de consultar la corrida completa en DuckDB (`data/dq_completo.duckdb`) y el
 manifiesto de errores sembrados. Lo que es opinión, y no dato, va marcado como *(opinión)*.

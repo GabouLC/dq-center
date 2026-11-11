@@ -22,6 +22,9 @@ updates:
       time: "05:00"
       timezone: "America/Lima"
     open-pull-requests-limit: 5
+    # pyproject.toml declara solo mínimos (>=). Subir el mínimo con cada versión nueva no protege a nadie y
+    # obliga a todos a actualizar; solo se toca cuando la versión nueva ya no cumple el rango.
+    versioning-strategy: increase-if-necessary
     groups:
       python-menores-y-parches:
         patterns: ["*"]

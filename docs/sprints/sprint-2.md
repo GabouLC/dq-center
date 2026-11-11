@@ -149,7 +149,7 @@ asistió. Las actas completas están en [dailies.md](dailies.md#sprint-2--6-al-1
 ## 4. Sprint Review e Incremento
 
 **Incremento.** Cada uno de los 92 cortes diarios sale del pipeline con un veredicto por tabla:
-48 reglas en tres niveles, revisión de privacidad, sello de certificación y publicación en
+48 reglas en tres niveles (51 desde el Sprint 3), revisión de privacidad, sello de certificación y publicación en
 BUSINESS solo de lo certificado. En DuckDB y en BigQuery, la verificación contra el manifiesto
 da 0 diferencias en las cuatro etapas, y los resultados de BigQuery coinciden fila por fila con
 los de DuckDB ([pipeline-local.txt](../evidencias/pipeline-local.txt),
@@ -167,7 +167,7 @@ python scripts/evidencia_bigquery.py                            # evidencia y pa
 
 | Criterio de aceptación | Prueba automatizada | Evidencia |
 |---|---|---|
-| Con reglas configuradas, el motor las evalúa automáticamente | `test_catalogo_tiene_36_reglas_y_48_expandidas`, `test_cada_corte_evalua_las_48_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | 14 reglas N2 y hasta 15 N3 en cada uno de los 92 cortes ([pipeline-local.txt](../evidencias/pipeline-local.txt)) |
+| Con reglas configuradas, el motor las evalúa automáticamente | `test_catalogo_tiene_39_reglas_y_51_expandidas`, `test_cada_corte_evalua_las_51_reglas_con_su_nivel` ([test_motor.py](../../tests/test_motor.py)) | 14 reglas N2 y hasta 15 N3 en cada uno de los 92 cortes ([pipeline-local.txt](../evidencias/pipeline-local.txt)) |
 | Si los datos cumplen, se registra PASS | `test_estado_segun_umbral` ([test_reglas.py](../../tests/test_reglas.py)) | [Validaciones del 14 de julio](../evidencias/portal/hu02-hu03-validaciones-14-julio.png) |
 | Si incumplen, se registra FAIL con observación | `test_hay_reglas_en_ok_alerta_y_falla`, `test_cada_etapa_detecta_exactamente_lo_sembrado` ([test_flujo.py](../../tests/test_flujo.py)) | Reglas fuera de OK por corte en [pipeline-local.txt](../evidencias/pipeline-local.txt) |
 | Se identifican las reglas que impiden la certificación | `test_la_certificacion_dice_que_reglas_la_bloquean` ([test_certificacion.py](../../tests/test_certificacion.py)) | Motivo de cada día sin certificar en [pipeline-local.txt](../evidencias/pipeline-local.txt) |

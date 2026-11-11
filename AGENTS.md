@@ -71,7 +71,7 @@ parecida a `VEH-VAL-02  57  41`. Existe `data\landing\entregas.json`.
 ```
 
 Procesa los cortes del 1 de julio al 24 de septiembre: ingesta a RAW, homologación y cifrado a
-MASTER, 48 reglas de calidad, Quality & Privacy Gate y publicación en BUSINESS. Los días del 25 al
+MASTER, 51 reglas de calidad, Quality & Privacy Gate y publicación en BUSINESS. Los días del 25 al
 30 quedan pendientes para la simulación en vivo. Sin `--hasta` procesa los 92 días.
 
 **Comprobación:** las últimas líneas son exactamente estas cuatro:
@@ -124,7 +124,7 @@ segundos. El portal muestra «En vivo» y se actualiza sin recargar.
 cd web; npm run build
 ```
 
-**Comprobación:** `127 passed` (o más, si agregaste pruebas) y `✓ built in …` sin errores de
+**Comprobación:** `227 passed` (o más, si agregaste pruebas) y `✓ built in …` sin errores de
 tipos. Es lo mismo que corre el CI de GitHub Actions en cada pull request.
 
 ## Detener y volver a empezar
@@ -138,7 +138,7 @@ tipos. Es lo mismo que corre el CI de GitHub Actions en cada pull request.
 | Síntoma | Causa | Qué hacer |
 |---|---|---|
 | `IO Error: Could not set lock on file "data/dq.duckdb"` al correr el pipeline | La API tiene abierta la base | Detén la API y vuelve a correr el paso 4 |
-| `[Errno 10048]` o «address already in use» al levantar la API | El puerto 8000 está ocupado | Detén el otro proceso, o usa `python -m dqc.api --puerto 8001` y cambia el proxy en `web/vite.config.ts` |
+| `[Errno 10048]` o «address already in use» al levantar la API | El puerto 8000 está ocupado | Detén el otro proceso, o usa `python -m dqc.api --puerto 8001` y arranca el portal con la variable `DQC_API` (en PowerShell: `$env:DQC_API="http://127.0.0.1:8001"; npm run dev`) |
 | Vite abre el portal en 5174 en vez de 5173 | Otro portal ya usa el 5173 | Usa la dirección que muestra Vite, o cierra el otro portal |
 | `pip` no encuentra versiones o falla al compilar | Otra versión de Python | Crea el entorno con `py -3.12` (Windows) o `python3.12` |
 | El portal no carga datos o no deja entrar | La API no está levantada | Paso 5, primera terminal |

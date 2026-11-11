@@ -252,8 +252,9 @@ const LECTURA: Clave[] = [
 .cifra-fuente.estado-bien .icono-cifra { color: var(--bien-texto); }
 .cifra-fuente.estado-critico .icono-cifra { color: var(--critico-texto); }
 .cifra-fuente strong { font-size: 22px; font-weight: 800; color: var(--tinta); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.bien { color: var(--bien); }
-.critico { color: var(--critico); }
+/* Solo íconos y marcas: un chip ya trae su propio color de texto (con el contraste de --bien-texto y --critico-texto). */
+.bien:not(.chip) { color: var(--bien); }
+.critico:not(.chip) { color: var(--critico); }
 .texto-critico { color: var(--critico-texto); font-weight: 800; }
 .marca-c { color: var(--marca); }
 .pequeno { font-size: 12.5px; }

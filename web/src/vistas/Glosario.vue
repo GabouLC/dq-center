@@ -181,7 +181,7 @@ const LECTURA: Clave[] = [
 .buscar input { border: 0; outline: none; background: transparent; font-size: 16px; padding: 10px 0; flex: 1; min-width: 0; }
 .dominio .cuenta { font-size: 11.5px; color: var(--tenue); font-weight: 800; }
 .dominio.activo { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }
-.dominio.activo .cuenta { color: var(--sobre-marca); opacity: 0.8; }
+.dominio.activo .cuenta { color: var(--sobre-marca); opacity: 0.9; }
 .abc { display: flex; flex-wrap: wrap; gap: 4px; }
 .abc button { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 8px; font-weight: 800; font-size: 13px; }
 .abc button.activo { background: var(--marca); color: var(--sobre-marca); border-color: var(--marca); }
