@@ -4,6 +4,7 @@ No arranca la API ni toca la red: todo se calcula con datos inventados.
 """
 
 import importlib.util
+from datetime import datetime, timezone
 import json
 import re
 import sys
@@ -189,3 +190,17 @@ def test_la_cache_vencida_que_no_cumple_hace_fallar_la_corrida(mr):
     assert mr.caducidad_cumple(ok) is True
     assert mr.caducidad_cumple(lenta) is False  # pasa de los 8 s
     assert mr.caducidad_cumple(con_error) is False  # un error cuenta aunque sea rápida
+
+
+def test_las_solicitudes_lentas_son_las_de_esta_corrida_y_de_la_api(mr):
+    desde = datetime(2026, 11, 11, 22, 0, tzinfo=timezone.utc)
+    eventos = [
+        {"accion": "RENDIMIENTO_LENTO", "recurso": "/api/v1/resumen", "fecha": "2026-11-11T21:48:53+00:00"},  # corrida anterior
+        {"accion": "RENDIMIENTO_LENTO", "recurso": "/health/readiness", "fecha": "2026-11-11T22:05:00+00:00"},  # una sonda
+        {"accion": "ACCESO_DENEGADO", "recurso": "/api/v1/resumen", "fecha": "2026-11-11T22:05:00+00:00"},  # otro evento
+        {"accion": "RENDIMIENTO_LENTO", "recurso": "/api/v1/resumen", "fecha": "2026-11-11 22:05:00.123456+00:00"},  # cuenta
+        {"accion": "RENDIMIENTO_LENTO", "recurso": "/api/v1/linaje/persona", "fecha": "2026-11-11T22:06:00"},  # sin zona: UTC
+        {"accion": "RENDIMIENTO_LENTO", "recurso": "/api/v1/glosario", "fecha": "no es una fecha"},  # ilegible: se cuenta
+    ]
+    assert mr.lentas_de_la_corrida(eventos, desde) == 3
+    assert mr.lentas_de_la_corrida([], desde) == 0

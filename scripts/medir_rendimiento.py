@@ -392,7 +392,9 @@ def informe(m: Medicion, meta: Meta) -> tuple[str, int]:
         peor = max(todas_las_aperturas)
         lineas.append(f"Apertura más lenta de todo el recorrido: {formato_ms(peor[0])} ms ({peor[1]}, {peor[2]})")
     if m.lentas is not None:
-        lineas.append(f"Solicitudes que la propia API midió por encima de 8 s (auditoría RENDIMIENTO_LENTO): {m.lentas}")
+        lineas.append(
+            f"Solicitudes de la API que ella misma midió por encima de 8 s durante esta corrida (auditoría RENDIMIENTO_LENTO, sin las sondas /health): {m.lentas}"
+        )
     if errores_vistos:
         lineas.append("Errores vistos (hasta 5 distintos):")
         lineas += [f"  - {d}" for d in list(dict.fromkeys(errores_vistos))[:5]]
@@ -575,11 +577,33 @@ def fase_caducidad(puerto: int, usuarios: int, email: str, clave: str, espera_s:
         return list(pool.map(abrir, tokens))
 
 
-def contar_lentas(puerto: int, token: str) -> int | None:
-    """Cuántas solicitudes pasaron de 8 s según la propia API (auditoría RENDIMIENTO_LENTO)."""
+def lentas_de_la_corrida(eventos: Sequence[dict], desde: datetime) -> int:
+    """Eventos RENDIMIENTO_LENTO de esta corrida: de rutas de la API (no las sondas /health) y posteriores a `desde`.
+
+    La auditoría es acumulada (en Firestore se conserva entre corridas): sin este filtro, una solicitud lenta de una corrida
+    anterior, o la sonda de salud esperando el precargado de BigQuery al arrancar, se contaría como lenta de ahora.
+    """
+    cuenta = 0
+    for e in eventos:
+        if e.get("accion") != "RENDIMIENTO_LENTO" or not str(e.get("recurso", "")).startswith("/api/"):
+            continue
+        try:
+            fecha = datetime.fromisoformat(str(e.get("fecha")))
+            if fecha.tzinfo is None:
+                fecha = fecha.replace(tzinfo=timezone.utc)
+        except ValueError:
+            cuenta += 1  # sin fecha legible no se puede descartar: se cuenta
+            continue
+        if fecha >= desde:
+            cuenta += 1
+    return cuenta
+
+
+def contar_lentas(puerto: int, token: str, desde: datetime) -> int | None:
+    """Cuántas solicitudes de la API pasaron de 8 s durante esta corrida, según la propia API (auditoría)."""
     r = pedir(puerto, "/api/v1/admin/auditoria?limite=1000", token, guardar=True)
     try:
-        return sum(1 for e in json.loads(r.cuerpo or b"") if e.get("accion") == "RENDIMIENTO_LENTO") if not r.error else None
+        return lentas_de_la_corrida(json.loads(r.cuerpo or b""), desde) if not r.error else None
     except (ValueError, AttributeError):
         return None
 
@@ -659,6 +683,7 @@ def entorno_de(modo: str, carpeta: Path, nombre: str, base: Path | None, proyect
 def medir(args: argparse.Namespace, carpeta: Path, base: Path | None, email: str, clave: str) -> Medicion:
     """Dos arranques de la API: el primero mide «justo»; el segundo, frío, caliente, concurrencia y, si se pide, caché vencida."""
     m = Medicion(usuarios=args.usuarios, rondas=args.rondas, repeticiones=args.repeticiones)
+    inicio_de_la_corrida = datetime.now(timezone.utc)
     espera = 120.0 if args.modo == "local" else 300.0
 
     print("1/2 Arranque sin esperar el precargado (justo)", flush=True)
@@ -684,7 +709,7 @@ def medir(args: argparse.Namespace, carpeta: Path, base: Path | None, email: str
         if args.caducidad:
             m.caducidad = fase_caducidad(args.puerto, args.usuarios, email, clave, VIGENCIA_CACHE_S + 5)
             print("    caché vencida: " + ", ".join(formato_ms(c.ms) for c in m.caducidad), flush=True)
-        m.lentas = contar_lentas(args.puerto, token)
+        m.lentas = contar_lentas(args.puerto, token, inicio_de_la_corrida)
     return m
 
 
