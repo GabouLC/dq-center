@@ -18,6 +18,9 @@ dist/
 *-key.json
 credentials*.json
 service-account*.json
+*.pem
+*.key
+*.p12
 
 # Datos generados localmente
 data/
