@@ -1,0 +1,12 @@
+# CODEOWNERS de dq-center
+#
+# Hoy hay un solo responsable para todo el repo. Se amplía cuando se sume cada integrante: la
+# historia de cada uno está en la tabla «Responsables» de docs/sprints/README.md (por ejemplo,
+# la API y los datos con quien tenga HU-13 y HU-06; el portal con quien tenga las del portal).
+# Una línea por carpeta, con el usuario de GitHub de la persona; la última coincidencia gana.
+#
+# Ojo con la protección de rama: no actives «Require review from Code Owners» mientras el único
+# dueño sea también quien abre el PR. GitHub no deja aprobar el propio PR y quedaría bloqueado.
+# Actívalo cuando haya al menos otro dueño por carpeta.
+
+* @GabouLC

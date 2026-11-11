@@ -1,0 +1,45 @@
+name: CodeQL (SAST)
+# Análisis estático del código propio: Python (src, scripts, tests) y JavaScript/TypeScript (web).
+# No revisa dependencias (eso lo hace Dependabot). Los hallazgos salen en Security > Code scanning.
+# Si algún día se activa la "configuración predeterminada" de code scanning en el repo,
+# desactívala: no puede convivir con este workflow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # lunes 06:00 UTC (01:00 en Lima)
+  workflow_dispatch:
+
+# Permisos mínimos: leer el código, leer las ejecuciones y subir los resultados de CodeQL.
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analizar (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python", "javascript-typescript"]
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Inicializar CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Analizar
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
