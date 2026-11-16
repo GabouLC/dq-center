@@ -11,7 +11,7 @@ dependencies = ["pyyaml>=6.0", "pandas>=2.2", "pyarrow>=17", "sqlglot>=26", "tzd
 
 [project.optional-dependencies]
 # Faker fijo: con otra versión la misma semilla puede generar otros nombres.
-datagen = ["faker==40.43.0", "python-dateutil>=2.9"]
+datagen = ["faker==40.54.0", "python-dateutil>=2.9"]
 # pytz: DuckDB lo necesita para devolver TIMESTAMPTZ a Python.
 local = ["duckdb>=1.4,<2", "cryptography>=42", "pytz"]  # <2: ver CLAUDE.md, «Lo que aprendimos»
 gcp = ["google-cloud-bigquery>=3.25", "google-cloud-firestore>=2.19", "google-cloud-run>=0.10", "firebase-admin>=6.5"]
