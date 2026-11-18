@@ -38,7 +38,7 @@ SOLO_VENTANA = {"hu13-validaciones-gobierno", "hu13-validaciones-lector", "hu09-
 
 
 # ── servidores ─────────────────────────────────────────────────────────────
-
+#////////////////////////////////////////////////////////////////////////////////
 
 def esperar(url: str, segundos: float = 90) -> None:
     limite = time.monotonic() + segundos
