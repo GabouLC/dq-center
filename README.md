@@ -4,6 +4,7 @@
 [![CodeQL](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/codeql.yml)
 [![Secretos](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/GabouLC/dq-center/actions/workflows/secret-scan.yml)
 
+
 Portal de calidad y privacidad de datos para una **aseguradora ficticia**, con datos
 100 % sintéticos. Es la implementación del proyecto del curso *Diseño e Implementación
 de Sistemas* (USMP, 2026-II, Grupo 6): las historias HU-01 a HU-15 del Product Backlog
@@ -228,3 +229,6 @@ docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 Gabriel León (Data Enabler, líder) · Jesus de la Cruz (Data Architect) · Cristhian
 Pimentel (Data Engineer) · Franco Delgado (QA Specialist) · Josue Borda (Full-Stack
 Developer). Docente: Ing. Juan Manuel Huapalla García.
+
+
+<!-- Fin de la documentación principal del proyecto -->
