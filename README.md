@@ -229,3 +229,6 @@ docs/            brief, ADR, documentos de cada sprint y evidencia de las HU
 Gabriel León (Data Enabler, líder) · Jesus de la Cruz (Data Architect) · Cristhian
 Pimentel (Data Engineer) · Franco Delgado (QA Specialist) · Josue Borda (Full-Stack
 Developer). Docente: Ing. Juan Manuel Huapalla García.
+
+
+<!-- Fin de la documentación principal del proyecto -->
