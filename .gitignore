@@ -1,3 +1,5 @@
+# Exclusiones para archivos temporales del entorno de desarrollo
+
 # Python
 __pycache__/
 *.py[cod]
