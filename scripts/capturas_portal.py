@@ -113,7 +113,7 @@ def sesion(email: str, clave: str = CLAVE) -> dict:
 
 
 # ── navegador ──────────────────────────────────────────────────────────────
-
+#////////////////////////////////////////////////////////////////////////
 
 class Capturador:
     def __init__(self, navegador, salida: Path):
